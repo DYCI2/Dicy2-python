@@ -17,7 +17,7 @@ Associated Max patch Tuto_AM1,2,3...
 
 import sys
 import multiprocessing
-from DYCI2_Modules.OSCAgentServer import *
+from dyci2.agent import *
 
 
 if __name__ == '__main__':

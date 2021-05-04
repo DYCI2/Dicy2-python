@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 #############################################################################
-# CorpusBuilder.py 
+# corpus_builder.py
 # Axel Chemla--Romeu-Santos, IRCAM STMS LAB - Jérôme Nika, IRCAM STMS LAB 
 # copyleft 2016 - 2017
 #############################################################################
@@ -19,7 +19,7 @@ TODO
 
 import json
 from numpy import *
-from .ParseAnnotationFiles import *
+from dyci2.parse_annotation_files import *
 
 
 class CorpusBuilder(object):

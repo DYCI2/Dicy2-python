@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 #############################################################################
-# Intervals.py 
+# intervals.py
 # Using intervals.
 # Jérôme Nika, IRCAM STMS LAB
 # copyleft 2016 - 2017
@@ -16,7 +16,7 @@ Some subclasses of :class:`~Label.Label` enable to define a notion of interval. 
 """
 
 from copy import deepcopy, copy
-from .PrefixIndexing import *
+from dyci2.prefix_indexing import *
 
 
 def prefix_indexing_intervals(sequence, pattern, sequence_to_interval_fun = None, **args):

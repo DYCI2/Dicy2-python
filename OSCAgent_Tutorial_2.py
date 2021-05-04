@@ -14,7 +14,7 @@ Tutorial 2 for the class :class:`~OSCAgentServer.OSCAgent` defined in :mod:`OSCA
 Associated Max patch Tuto_AM1,2,3...
 """
 
-from DYCI2_Modules.OSCAgentServer import *
+from dyci2.agent import *
 
 
 print("\nCreation of a OSC agent \nModel type = Factor Oracle.\n Empty (Empty sequence, empty labels)")

@@ -2,7 +2,7 @@
 
 
 #############################################################################
-# OSCAgentServer.py
+# agent.py
 # Jérôme Nika, IRCAM STMS LAB - Joakim Borg, IRCAM STMS LAB
 # copyleft 2016 - 2020
 #############################################################################
@@ -25,17 +25,14 @@ from typing import Optional, Any, Union, List, Tuple, Dict, Callable, Type
 # TODO[JB]: Don't forget to add maxosc and python-osc to requirements.txt
 from maxosc import Sender, SendFormat
 from maxosc.caller import Caller
-from maxosc.exceptions import MaxOscError
 from maxosc.maxformatter import MaxFormatter
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
 
-from . import Label, Query
-from . import GeneratorBuilder, SaveSendFormat
-from .Generator import GenerationHandler
-from .Label import Label, ListLabel
-from .Query import Query
-from .Temporary_parse_file import TemporaryParser
+from dyci2 import label, query
+from dyci2 import generator_builder, save_send_format
+from dyci2.generator import GenerationHandler
+from dyci2.legacy.Temporary_parse_file import TemporaryParser
 
 # TODO[JB]: This is a placeholder for all places where you're expected to specify the real type of the input value!
 TODO_INSERTTYPE = Union[None, List, Tuple, Dict, int, float, str]
@@ -176,20 +173,20 @@ class OSCAgent(Server):
 
     def load_generation_handler_from_json_file(self, dict_memory: TODO_INSERTTYPE, keys_label: TODO_INSERTTYPE,
                                                keys_content: TODO_INSERTTYPE):
-        label_type: Type[Label] = Label
+        label_type: Type[label] = label
         # TODO[JB]: Handle this with a simple Label.from_string implementation instead
         # TODO 2021 : CHECK THAT IT WORKS...
-        label_type = Label.from_string(str(keys_label))
+        label_type = label.from_string(str(keys_label))
         #exec("%s = %s" % ("label_type", keys_label))
         content_type: Optional[TODO_INSERTTYPE] = None
         # TODO[JB]: Handle this with a simple TODO_INSERTTYPE.from_string implementation instead
         if keys_content != "state":
             # TODO 2021 : CHECK THAT IT WORKS...
-            content_type = Label.from_string(str(keys_content))
+            content_type = label.from_string(str(keys_content))
             #exec("%s = %s" % ("content_type", keys_content))
 
         # TODO: Manage parameters from max
-        self.generation_handler = GeneratorBuilder.new_generation_handler_from_json_file(
+        self.generation_handler = generator_builder.new_generation_handler_from_json_file(
             path_json_file=dict_memory, keys_labels=keys_label,
             keys_contents=keys_content, model_navigator="FactorOracleNavigator",
             label_type=label_type, authorized_tranformations=(0,),
@@ -197,7 +194,7 @@ class OSCAgent(Server):
 
         self._client.send("/new_generator_built_from_memory", str(dict_memory))
         self.send_init_control_parameters()
-        l_dates, l_labels, length, l_pos = SaveSendFormat.load_dates_json_memory_in_antescofo(dict_memory, keys_label)
+        l_dates, l_labels, length, l_pos = save_send_format.load_dates_json_memory_in_antescofo(dict_memory, keys_label)
         try:
             assert length == len(l_dates) and length == len(l_pos) and length == len(l_labels)
         except AssertionError as e:
@@ -232,13 +229,13 @@ class OSCAgent(Server):
         # TODO[JB]: The following lines are just code duplication from load_generation_handler_from_json_file
         # TODO[JB]: Handle this with a simple Label.from_string implementation instead
         # TODO 2021 : CHECK THAT IT WORKS...
-        label_type = Label.from_string(str(keys_label))
+        label_type = label.from_string(str(keys_label))
         #exec("%s = %s" % ("label_type", keys_label))
         content_type: Optional[TODO_INSERTTYPE] = None
         # TODO[JB]: Handle this with a simple TODO_INSERTTYPE.from_string implementation instead
         if keys_content != "state":
             # TODO 2021 : CHECK THAT IT WORKS...
-            content_type = Label.from_string(str(keys_content))
+            content_type = label.from_string(str(keys_content))
             #exec("%s = %s" % ("content_type", keys_content))
 
         self.generation_handler: GenerationHandler = GenerationHandler(label_type=label_type, content_type=content_type)
@@ -250,15 +247,15 @@ class OSCAgent(Server):
 
         # TODO[JB]: The following lines are just code duplication from load_generation_handler_from_json_file
         # TODO[JB]: Handle this with a simple Label.from_string implementation instead
-        label_type: Type[Label] = Label
+        label_type: Type[label] = label
         # TODO 2021 : CHECK THAT IT WORKS...
-        label_type = Label.from_string(str(keys_label))
+        label_type = label.from_string(str(keys_label))
         #exec("%s = %s" % ("label_type", keys_label))
         content_type: Optional[TODO_INSERTTYPE] = None
         # TODO[JB]: Handle this with a simple TODO_INSERTTYPE.from_string implementation instead
         if keys_content != "state":
             # TODO 2021 : CHECK THAT IT WORKS...
-            content_type = Label.from_string(str(keys_content))
+            content_type = label.from_string(str(keys_content))
             #exec("%s = %s" % ("content_type", keys_content))
 
         self.generation_handler.learn_event(state=value_content, label=value_label)
@@ -294,14 +291,14 @@ class OSCAgent(Server):
             #exec('%s = %s' % ("label_type", str(received_elements[6])))
             # exec("label_type = {}".format(str(received_elements[6])))
             # TODO 2021 : CHECK THAT IT WORKS...
-            label_type = Label.from_string(str(received_elements[6]))
+            label_type = label.from_string(str(received_elements[6]))
             print(label_type)
             if len(received_elements) == 8:
                 handle: TODO_INSERTTYPE = [received_elements[7]]
             else:
                 handle: TODO_INSERTTYPE = received_elements[7:]
 
-        new_query: Query = Query(start_date=start_date, start_unit=start_unit, start_type=start_type,
+        new_query: query = query(start_date=start_date, start_unit=start_unit, start_type=start_type,
                                  scope_duration=scope_duration, scope_unit=scope_unit, handle=handle,
                                  label_type=label_type)
 
@@ -333,5 +330,5 @@ class OSCAgent(Server):
             # TODO: What to do with None?
             if len(list_to_send) > 0:
                 print("... SENT TO MAX : {}".format(list_to_send))
-                map_antescofo = SaveSendFormat.write_list_as_antescofo_map(list_to_send, abs_start_date)
+                map_antescofo = save_send_format.write_list_as_antescofo_map(list_to_send, abs_start_date)
                 self._client.send("/antescofo", ["/updated_buffered_impro_with_info_transfo", map_antescofo])

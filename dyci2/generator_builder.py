@@ -1,6 +1,6 @@
 # -*-coding:Utf-8 -*
 #############################################################################
-# GeneratorBuilder.py 
+# generator_builder.py
 # Jérôme Nika, IRCAM STMS Lab
 # copyleft 2016 - 2017
 #############################################################################
@@ -15,8 +15,8 @@ Example of the required json / dict format: :file:`_Tutorial_/ExamplesCorpus/Exa
 
 """
 
-from .Generator import *
-from .CorpusBuilder import *
+from dyci2.generator import *
+from dyci2.corpus_builder import *
 
 
 # TODO: Possibilité de faire multimodal key

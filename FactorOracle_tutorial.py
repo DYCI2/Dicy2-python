@@ -15,7 +15,7 @@ Tutorial for the class :class:`~Model.FactorOracle` defined in :mod:`Model`.
 """
 
 
-from DYCI2_Modules.Model import *
+from dyci2.model import *
 
 
 sequence = ['A','B','B','C','A','B','C','D','A','B','C']

@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 ####################################################################################
-# ModelNavigator.py 
+# model_navigator.py
 # Definition of "model navigators" using the metaclass MetaModelNavigator
 # Jérôme Nika, IRCAM STMS LAB
 # copyleft 2016 - 2017
@@ -25,8 +25,8 @@ Tutorial in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`
 # Class FactorOracleNavigator
 #####################################################################################
 #####################################################################################
-from .Model import *
-from .Navigator import *
+from dyci2.model import *
+from dyci2.navigator import *
 
 docstring = """
 	**Factor Oracle Navigator class**.

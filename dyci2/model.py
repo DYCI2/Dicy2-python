@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 #############################################################################
-# Model.py
+# model.py
 # Models of symbolic sequences.
 # Jérôme Nika, IRCAM STMS LAB / Ken Deguernel, INRIA Nancy - IRCAM STMS Lab
 # copyleft 2016 - 2017
@@ -21,7 +21,7 @@ Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/Factor
 """
 
 import random
-from .Label import *
+from dyci2.label import *
 from collections import Counter
 
 class Model(object):

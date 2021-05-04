@@ -14,8 +14,8 @@ Tutorial for the tools defined in :mod:`Intervals` allowing the use of intervals
 
 """
 
-from DYCI2_Modules.Intervals import *
-from DYCI2_Modules.Label import *
+from dyci2.intervals import *
+from dyci2.label import *
 
 chord_label_1 = ChordLabel("c# maj7")
 chord_label_2 = ChordLabel("db maj7")

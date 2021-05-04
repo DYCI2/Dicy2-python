@@ -13,8 +13,8 @@ Tutorial 1 for the class :class:`~OSCAgentServer.OSCAgent` defined in :mod:`OSCA
 Associated Max patch Tuto_AM1,2,3...
 """
 
-from DYCI2_Modules.Label import *
-from DYCI2_Modules.OSCAgentServer import *
+from dyci2.label import *
+from dyci2.agent import *
 
 # 1) IMPROVISE AND SEND
 

@@ -14,7 +14,7 @@ Tutorial for the class :class:`~Generator.GenerationHander` defined in :mod:`Gen
 
 """
 
-from DYCI2_Modules.Generator import *
+from dyci2.generator import *
 import time
 
 

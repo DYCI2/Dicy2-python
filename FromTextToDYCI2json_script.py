@@ -19,7 +19,7 @@ import argparse     #for command line parser
 import sys
 import logging      #for printing managing
 import traceback    #for exception handling
-from DYCI2_Modules.CorpusBuilder import *
+from dyci2.corpus_builder import *
 
 #LOGGER
 log = logging.getLogger("DYCI2")

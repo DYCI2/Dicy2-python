@@ -2,7 +2,7 @@
 # -*-coding:Utf-8 -*
 
 
-from DYCI2_Modules.GeneratorBuilder import * 
+from dyci2.generator_builder import *
 import os
 
 

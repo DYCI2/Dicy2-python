@@ -31,8 +31,8 @@ import time
 from multiprocessing import Process
 
 ###
-from Generator import *
-from GeneratorBuilder import *
+from generator import *
+from generator_builder import *
 from SaveSendFormat import *
 
 

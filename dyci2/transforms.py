@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 #############################################################################
-# Transforms.py 
+# transforms.py
 # Axel Chemla--Romeu-Santos, IRCAM STMS LAB - Jérôme Nika, IRCAM STMS LAB 
 # copyleft 2016 - 2017
 #############################################################################
@@ -19,7 +19,7 @@ Class defining transformations on labels and contents.
 # TODO : TUTO
 
 
-from .Label import *
+from dyci2.label import *
 
 # from numpy import roll
 

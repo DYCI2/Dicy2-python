@@ -5,10 +5,10 @@ Created on Wed Apr 18 15:14:00 2018
 @author: chemla
 """
 
-from Model import Model
-from Navigator import Navigator
+from model import Model
+from navigator import Navigator
 
-from MetaModelNavigator import MetaModelNavigator
+from meta_model_navigator import MetaModelNavigator
 
 from collections import deque
 import random, bisect, pdb

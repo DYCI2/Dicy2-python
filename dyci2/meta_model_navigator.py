@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 ####################################################################################
-# MetaModelNavigator.py 
+# meta_model_navigator.py
 # Heuristics of navigation through a Factor Oracle automaton for creative applications.
 # Jérôme Nika
 # copyleft 2016 - 2017
@@ -13,14 +13,14 @@ Meta Model Navigator
 
 This module defines the main tool to create a new class of **model navigator**: the metaclass :class:`~MetaModelNavigator.MetaModelNavigator`.
 A model navigator is a class that implements different algorithms, strategies, and heuristics to navigate through a given model of sequence for analysis or creative applications, for example **generating new sequences using concatenative synthesis of events learned in the model**. 
-The creation of the class :class:`~ModelNavigator.FactorOracleNavigator` in the file :file:`ModelNavigator.py` can be considered as a tutorial for the metaclass :class:`~MetaModelNavigator.MetaModelNavigator`.
+The creation of the class :class:`~ModelNavigator.FactorOracleNavigator` in the file :file:`model_navigator.py` can be considered as a tutorial for the metaclass :class:`~MetaModelNavigator.MetaModelNavigator`.
 When the whole library is loaded, the global dict *implemented_model_navigator_classes* automatically stores the different classes of model navigators available.
 
 
 """
 
-from .Model import *
-from .Navigator import *
+from dyci2.model import *
+from dyci2.navigator import *
 
 
 # TODO : AGGRANDIR TAILLE HISTORY (ET AUTRES ?) VENANT DE NAVIGATOR QUAND ON APPREND UN EVENT DANS LE MODEL
@@ -96,7 +96,7 @@ class MetaModelNavigator(type):
 	>>> MyModelNavigator = MetaModelNavigator("MyModelNavigator", tuple_bases, dict_methods)
 
 
-	:see also: **The creation of the class** :class:`~ModelNavigator.FactorOracleNavigator` **in the file** :file:`ModelNavigator.py` **can be considered as a tutorial**. 
+	:see also: **The creation of the class** :class:`~ModelNavigator.FactorOracleNavigator` **in the file** :file:`model_navigator.py` **can be considered as a tutorial**.
 
 	"""
 

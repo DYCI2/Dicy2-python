@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 ####################################################################################
-# FactorOracleProbaNavigator.py 
+# factor_oracle_proba_navigator.py
 # All-step tutorial for the creation of the ModelNavigator : FactorOracleProbaNavigator
 # Ken Déguernel, IRCAM STMS Lab / Inria Nancy - Grand Est
 # copyleft 2016 - 2018
@@ -15,13 +15,13 @@ This is based on the Knowledge/Intuition paradigm introduced in **Deguernel, Vin
 
 """
 
-from .ModelNavigator import *
+from dyci2.model_navigator import *
 import xml.etree.ElementTree as ET
 
 
 ##########
 ##### STEP 1: Define your alphabet.
-##### In this example, we are using the classes Label and ListLabel, already implemented in Label.py
+##### In this example, we are using the classes Label and ListLabel, already implemented in label.py
 ##### Therefore, we do not need to define a new class here.
 ##########
 
@@ -31,7 +31,7 @@ import xml.etree.ElementTree as ET
 
 ##########
 ##### STEP 2: Define your Model(s).
-##### We are going to use the class FactorOracle as the model use for navigation, already implemented in Model.py
+##### We are going to use the class FactorOracle as the model use for navigation, already implemented in model.py
 ##### We also need to create a subclass of Model to represent the probabilistic models.
 ########## 
 
@@ -256,7 +256,7 @@ class ProbaNavigator(Navigator):
 def create_factor_oracle_proba_navigator(factor_oracle_proba_navigator, models = [], interpolation_coefs = [], model_data_locations = [], sequence = [], labels = [], max_continuity = 20, control_parameters = [], history_parameters = [], equiv = (lambda x,y : x == y), label_type = None, content_type = None):
 	""" 
 	Constructor for the class FactorOracleProbaNavigator.
-	:see also: The class FactorOracle in Model.py
+	:see also: The class FactorOracle in model.py
 
 	"""
 

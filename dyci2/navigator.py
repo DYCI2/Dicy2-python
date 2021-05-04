@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 ####################################################################################
-# Navigator.py
+# navigator.py
 # Parameters and methods to navigate through a symbolic sequence.
 # Jérôme Nika, Ken Déguernel - IRCAM STMS Lab
 # copyleft 2016 - 2018
@@ -21,7 +21,7 @@ The classes defined in this module are used in association with models (cf. :mod
 
 import random
 import copy
-from .Intervals import *
+from dyci2.intervals import *
 
 
 def noneIsInfinite(value):

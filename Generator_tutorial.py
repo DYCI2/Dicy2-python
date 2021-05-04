@@ -14,7 +14,7 @@ Tutorial for the class :class:`~Generator.Generator` defined in :mod:`Generator`
 
 """
 
-from DYCI2_Modules.GeneratorBuilder import * 
+from dyci2.generator_builder import *
 import os
 
 print("\n1) EXAMPLES OF FREE AND SIMPLY GUIDED GENERATIONS")

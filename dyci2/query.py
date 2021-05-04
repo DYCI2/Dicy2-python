@@ -1,14 +1,14 @@
 # -*-coding:Utf-8 -*
 
 #############################################################################
-# Query.py 
+# query.py
 # Class Query and its subclasses.
 # These classes are then be used by the class Generator for creative applications.
 # Jérôme Nika, IRCAM STMS Lab
 # copyleft 2016 - 2021
 #############################################################################
 
-from .Label import *
+from dyci2.label import *
 
 """ 
 Query

@@ -14,9 +14,9 @@ Prefix Indexing Tutorial
 Tutorial for the prefix indexing algorithms defined in :mod:`PrefixIndexing`. 
 """
 
-from DYCI2_Modules.PrefixIndexing import *
+from dyci2.prefix_indexing import *
 
-print("\n\nTutorial for the prefix indexing algorithms defined in PrefixIndexing.py.")
+print("\n\nTutorial for the prefix indexing algorithms defined in prefix_indexing.py.")
 
 # --- 1) FAILURE FUNCTION
 print("\n\n1) BUILD A FAILURE FUNCTION ON A SEQUENCE:")

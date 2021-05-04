@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 #############################################################################
-# Generator.py 
+# generator.py
 # Classes Generator and GenerationHandler
 # Generate new sequences from a model of sequence and a query.
 # Jérôme Nika, Dimitri Bouche, Jean Bresson, Ken Déguernel - IRCAM STMS Lab
@@ -36,9 +36,9 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 
 # TODO : SUPPRIMER DANS LA DOC LES FONCTIONS "EQUIV-MOD..." "SEQUENCE TO INTERVAL..."
 
-from DYCI2_Modules.Transforms import *
-from .ModelNavigator import *
-from .Query import *
+from dyci2.transforms import *
+from dyci2.model_navigator import *
+from dyci2.query import *
 
 
 # TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
@@ -116,7 +116,7 @@ class Generator(object):
         try:
             implemented_model_navigator_classes
         except NameError:
-            print("No model navigator available. Please load ModelNavigator.py")
+            print("No model navigator available. Please load model_navigator.py")
             return None
         else:
             try:

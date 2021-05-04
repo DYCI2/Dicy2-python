@@ -11,4 +11,4 @@ sys.path.append(os.path.expanduser("~") + "/Library/Python/3.9/lib/python/site-p
 
 print(sys.path)
 
-from DYCI2_Modules.GeneratorBuilder import *
+from dyci2.generator_builder import *

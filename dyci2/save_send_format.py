@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 #############################################################################
-# SaveSendFormat.py 
+# save_send_format.py
 # Jérôme Nika, IRCAM STMS Lab
 # copyleft 2016 - 2017
 #############################################################################
@@ -14,7 +14,7 @@ Tools to save, send, and format models and sequence using different format.
 """
 
 import os, json
-from .GeneratorBuilder import *
+from dyci2.generator_builder import *
 #TODO : pour "extract..." --> a remettre dans un meilleur module
 
 #####################################################################################

@@ -14,7 +14,7 @@ Tutorial for the tools and functions defined in :mod:`ParseAnnotationFiles`: rea
 """
 
 
-from DYCI2_Modules.ParseAnnotationFiles import *
+from dyci2.parse_annotation_files import *
 import os
 current_dir = os.path.dirname(os.path.abspath(__file__))
 

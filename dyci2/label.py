@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 #############################################################################
-# Label.py 
+# label.py
 # Axel Chemla--Romeu-Santos, IRCAM STMS LAB - Jérôme Nika, IRCAM STMS LAB 
 # copyleft 2016 - 2017
 #############################################################################
@@ -23,7 +23,7 @@ Definition of alphabets of labels to build sequences and use them in creative ap
 # **Tutorial in** :file:`_Tutorials_/Label_tutorial.py`.
 
 # TODO 2021 : imports circulaires Label <-> Transforms regles temporairement en supprimant les "available transforms" des labels
-#from DYCI2_Modules.Transforms import *
+#from dyci2.Transforms import *
 from copy import deepcopy, copy
 
 

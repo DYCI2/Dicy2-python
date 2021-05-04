@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 ####################################################################################
-# FactorOracleMultiLevelNavigator.py 
+# factor_oracle_multi_level_navigator.py
 # All-step tutorial for the creation of the ModelNavigator : FactorOracleMultiLevelNavigator
 # Ken Déguernel, IRCAM STMS Lab / Inria Nancy - Grand Est
 # copyleft 2016 - 2018
@@ -15,7 +15,7 @@ see **Deguernel, "Apprentissage de structures musicales en context d'improvisati
 
 """
 
-from .ModelNavigator import *
+from dyci2.model_navigator import *
 
 ##########
 ##### STEP 1: Define your alphabet.
@@ -71,7 +71,7 @@ class MultiLevelLabel(Label):
 
 ##########
 ##### STEP 2: Define your Model(s).
-##### We are going to use the class FactorOracle as the model use for navigation, already implemented in Model.py
+##### We are going to use the class FactorOracle as the model use for navigation, already implemented in model.py
 ##### Therefore, we do not need to define a new class here.
 ########## 
 
@@ -88,7 +88,7 @@ class MultiLevelLabel(Label):
 class MultiLevelNavigator(Navigator):
 		"""
 		This class describes the methods of navigation and anticipation when using a scenario with Multi-Level Labels describing the temporal structures of a scenario.
-		:see also: **MultiLevelLabel in** :file:`Label.py`.
+		:see also: **MultiLevelLabel in** :file:`label.py`.
 		
 		see **Deguernel, "Apprentissage de structures musicales en context d'improvisation", Ph.D. Thesis, Université de Lorraine, 2018.** (https://tel.archives-ouvertes.fr/tel-01735308)
 		
@@ -159,7 +159,7 @@ class MultiLevelNavigator(Navigator):
 def create_factor_oracle_multi_level_navigator(factor_oracle_multi_level_navigator, sequence = [], labels = [], level_weights = [], max_continuity = 20, control_parameters = [], history_parameters = [], equiv = (lambda x,y : x == y), label_type = None, content_type = None):
 	""" 
 	Constructor for the class FactorOracleMultiLevelNavigator.
-	:see also: The class FactorOracle in Model.py
+	:see also: The class FactorOracle in model.py
 
 	"""
 

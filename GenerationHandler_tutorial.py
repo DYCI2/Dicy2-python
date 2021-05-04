@@ -17,7 +17,7 @@ Tutorial for the class :class:`~Generator.GenerationHander` defined in :mod:`Gen
 from dyci2.generation_handler_new import *
 import time
 
-from generation_handler_old import GenerationHandlerOld
+from legacy.legacy_generation_handler import GenerationHandlerOld
 
 list_for_labels = ["d m7", "d m7", "g 7", "g 7", "c maj7","c maj7","c# maj7","c# maj7", "d# m7", "d# m7", "g# 7", "g# 7", "c# maj7", "c# maj7"]
 list_for_sequence = ["d m7(1)", "d m7(2)", "g 7(3)", "g 7(4)", "c maj7(5)","c maj7(6)","c# maj7(7)","c# maj7(8)", "d# m7(9)", "d# m7(10)", "g# 7(11)", "g# 7(12)", "c# maj7(13)", "c# maj7(14)"]

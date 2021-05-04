@@ -21,7 +21,7 @@ from dyci2.corpus_builder import *
 
 # TODO: Possibilité de faire multimodal key
 # TODO: test si clé demandée est bien ou non dedans
-from generation_handler_old import GenerationHandlerOld
+from legacy.legacy_generation_handler import GenerationHandlerOld
 
 
 def extract_labels_and_contents_from_dict_memory(dict_memory, keys_labels, keys_contents):
@@ -90,6 +90,7 @@ def new_generator_from_dict_memory(dict_memory, keys_labels, keys_contents, mode
                                    equiv=(lambda x, y: x == y),
                                    label_type=None, content_type=None, authorized_tranformations=[0],
                                    continuity_with_future=[0.0, 1.0]):
+    # TODO[D2]: This should create a non-realtime GenerationHandler, i.e. old Generator!
     """
 	Creates an instance of class :class:`~Generator.Generator` from a dict defining a sequence of events with metadata..
 
@@ -128,6 +129,7 @@ def new_generation_handler_from_dict_memory(dict_memory, keys_labels, keys_conte
                                             model_navigator="FactorOracleNavigator", equiv=(lambda x, y: x == y),
                                             label_type=None, content_type=None, authorized_tranformations=[0],
                                             continuity_with_future=[0.0, 1.0]):
+    # TODO[D2]: This should create a realtime GenerationHandler, i.e. old GenerationHandler!
     """
 	Creates an instance of class :class:`~Generator.GenerationHandler` from a dict defining a sequence of events with metadata..
 

@@ -20,7 +20,7 @@ import os
 print("\n1) EXAMPLES OF FREE AND SIMPLY GUIDED GENERATIONS")
 sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
 labels = [s[0] for s in sequence]
-generator = Generator(sequence=sequence, labels=labels, label_type = Label, model_navigator = "FactorOracleNavigator")
+generator = GenerationHandlerNew(sequence=sequence, labels=labels, label_type = Label, model_navigator ="FactorOracleNavigator")
 generator.memory.print_model()
 
 # SETTINGS PARAMETERS OF THE GENERATION MODEL : HERE FACTOR ORACLE AUTOMATON
@@ -58,7 +58,7 @@ labels = from_list_to_labels(labels = list_for_labels, label_type = ChordLabel)
 sequence = from_list_to_labels(labels = list_for_sequence, label_type = ChordLabel)
 
 authorized_intervals = list(range(-6,6))
-generator = Generator(sequence = sequence, labels = labels, label_type = ChordLabel, content_type = ChordLabel, model_navigator = "FactorOracleNavigator", authorized_tranformations = authorized_intervals)
+generator = GenerationHandlerNew(sequence = sequence, labels = labels, label_type = ChordLabel, content_type = ChordLabel, model_navigator ="FactorOracleNavigator", authorized_tranformations = authorized_intervals)
 
 #generator.memory.avoid_repetitions_mode = 1 
 generator.memory.max_continuity = 3

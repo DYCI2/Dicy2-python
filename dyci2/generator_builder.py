@@ -15,12 +15,15 @@ Example of the required json / dict format: :file:`_Tutorial_/ExamplesCorpus/Exa
 
 """
 
-from dyci2.generator import *
+from dyci2.generation_handler_new import *
 from dyci2.corpus_builder import *
 
 
 # TODO: Possibilité de faire multimodal key
 # TODO: test si clé demandée est bien ou non dedans
+from generation_handler_old import GenerationHandlerOld
+
+
 def extract_labels_and_contents_from_dict_memory(dict_memory, keys_labels, keys_contents):
     """
 	Extracts a sequence of labels and sequence of contents from a dict / json file defining a sequence of events with metadata..
@@ -115,10 +118,10 @@ def new_generator_from_dict_memory(dict_memory, keys_labels, keys_contents, mode
 
 	"""
     labels, contents = extract_labels_and_contents_from_dict_memory(dict_memory, keys_labels, keys_contents)
-    return Generator(sequence=contents, labels=labels, model_navigator=model_navigator, equiv=equiv,
-                     label_type=label_type, content_type=content_type,
-                     authorized_tranformations=authorized_tranformations,
-                     continuity_with_future=continuity_with_future)
+    return GenerationHandlerNew(sequence=contents, labels=labels, model_navigator=model_navigator, equiv=equiv,
+                                label_type=label_type, content_type=content_type,
+                                authorized_tranformations=authorized_tranformations,
+                                continuity_with_future=continuity_with_future)
 
 
 def new_generation_handler_from_dict_memory(dict_memory, keys_labels, keys_contents,
@@ -153,10 +156,10 @@ def new_generation_handler_from_dict_memory(dict_memory, keys_labels, keys_conte
 
 	"""
     labels, contents = extract_labels_and_contents_from_dict_memory(dict_memory, keys_labels, keys_contents)
-    return GenerationHandler(sequence=contents, labels=labels, model_navigator=model_navigator, equiv=equiv,
-                             label_type=label_type, content_type=content_type,
-                             authorized_tranformations=authorized_tranformations,
-                             continuity_with_future=continuity_with_future)
+    return GenerationHandlerOld(sequence=contents, labels=labels, model_navigator=model_navigator, equiv=equiv,
+                                label_type=label_type, content_type=content_type,
+                                authorized_tranformations=authorized_tranformations,
+                                continuity_with_future=continuity_with_future)
 
 
 def new_generator_from_json_file(path_json_file, keys_labels, keys_contents, model_navigator="FactorOracleNavigator",

@@ -14,9 +14,10 @@ Tutorial for the class :class:`~Generator.GenerationHander` defined in :mod:`Gen
 
 """
 
-from dyci2.generator import *
+from dyci2.generation_handler_new import *
 import time
 
+from generation_handler_old import GenerationHandlerOld
 
 list_for_labels = ["d m7", "d m7", "g 7", "g 7", "c maj7","c maj7","c# maj7","c# maj7", "d# m7", "d# m7", "g# 7", "g# 7", "c# maj7", "c# maj7"]
 list_for_sequence = ["d m7(1)", "d m7(2)", "g 7(3)", "g 7(4)", "c maj7(5)","c maj7(6)","c# maj7(7)","c# maj7(8)", "d# m7(9)", "d# m7(10)", "g# 7(11)", "g# 7(12)", "c# maj7(13)", "c# maj7(14)"]
@@ -26,7 +27,7 @@ sequence = from_list_to_labels(labels = list_for_sequence, label_type = ChordLab
 print("\nCreation of a Generation Handler\nModel type = Factor Oracle\nSequence: {}\nLabels: {}".format(sequence, labels))
 
 authorized_intervals = list(range(-6,6))
-generation_handler = GenerationHandler(sequence = sequence, labels = labels, label_type = ChordLabel, model_navigator = "FactorOracleNavigator", authorized_tranformations = authorized_intervals)
+generation_handler = GenerationHandlerOld(sequence = sequence, labels = labels, label_type = ChordLabel, model_navigator ="FactorOracleNavigator", authorized_tranformations = authorized_intervals)
 generation_handler.memory.avoid_repetitions_mode = 1 
 generation_handler.memory.max_continuity = 3
 generation_handler.memory.no_empty_event = False

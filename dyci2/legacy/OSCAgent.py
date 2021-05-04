@@ -26,12 +26,10 @@ See the different tutorials accompanied with Max patches.
 import OSC
 from Query import *
 
-import random
 import time
 from multiprocessing import Process
 
 ###
-from generator import *
 from generator_builder import *
 from SaveSendFormat import *
 
@@ -74,8 +72,8 @@ class OSCAgent(Server):
                  max_length_osc_mess=100, *args, **kwargs):
         Server.__init__(self, inport=inport, outport=outport, *args, **kwargs)
 
-        self.generation_handler = GenerationHandler(sequence, labels, model_type, equiv, label_type, content_type,
-                                                    authorized_transformations, continuity_with_future)
+        self.generation_handler = GenerationHandlerOld(sequence, labels, model_type, equiv, label_type, content_type,
+                                                       authorized_transformations, continuity_with_future)
         self.max_length_osc_mess = max_length_osc_mess
 
     def run(self):  # , inport = 4567, outport = 1234):
@@ -277,11 +275,11 @@ class OSCAgent(Server):
         if keys_content != "state":
             exec("%s = %s" % ("content_type", keys_content))
 
-        self.generation_handler = GenerationHandler(model_navigator="FactorOracleNavigator",
-                                                    equiv=(lambda x, y: x == y),
-                                                    label_type=label_type,
-                                                    authorized_tranformations=[0],
-                                                    continuity_with_future=[0.0, 1.0], content_type=content_type)
+        self.generation_handler = GenerationHandlerOld(model_navigator="FactorOracleNavigator",
+                                                       equiv=(lambda x, y: x == y),
+                                                       label_type=label_type,
+                                                       authorized_tranformations=[0],
+                                                       continuity_with_future=[0.0, 1.0], content_type=content_type)
 
         message = OSC.OSCMessage("/new_empty_memory")
         message.append(str(received_elements[0]))

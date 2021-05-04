@@ -37,7 +37,7 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 
 
 # TODO : SUPPRIMER DANS LA DOC LES FONCTIONS "EQUIV-MOD..." "SEQUENCE TO INTERVAL..."
-from typing import List
+from typing import List, Optional
 
 from dyci2.query import *
 from dyci2.transforms import *
@@ -182,7 +182,7 @@ class GenerationHandlerNew:
         self.memory.learn_sequence(sequence=sequence, labels=labels)
 
     def receive_query(self, query: Query, print_info: bool = False):
-        # FIXME[MergeState]: A[], B[], C[], D[], E[]
+        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ DOCSTRING WAS REMOVED """
         # ## LEGACY[`Generator.receive_query`]:
         # print("************************************")
@@ -201,7 +201,8 @@ class GenerationHandlerNew:
             self.query_pool_ms.append(query)
             self.process_prioritary_query("ms", print_info)
 
-    def process_prioritary_query(self, unit=None, print_info=False):
+    def process_prioritary_query(self, unit: Optional[str] = None, print_info: bool = False):
+        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ Processes the prioritary query in the query pool. """
         if unit:
             if unit == "event":
@@ -228,6 +229,7 @@ class GenerationHandlerNew:
                 self.genhandler_process_query(self.query_pool_event.pop(0), print_info)
 
     def genhandler_process_query(self, query: Query, print_info: bool = False):
+        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ DOCSTRING WAS REMOVED """
         print("\n--------------------")
         # print("current navigation index:")
@@ -285,7 +287,7 @@ class GenerationHandlerNew:
                     self.memory.go_to_anterior_state_using_execution_trace(index_for_generation - 1)
 
             self.memory.current_navigation_index = index_for_generation - 1
-            GenerationHandlerNew.generator_process_query(self, query, print_info=print_info)
+            self.generator_process_query(query, print_info=print_info)
 
             l = 0
             if not self.current_generation_output is None:
@@ -334,7 +336,7 @@ class GenerationHandlerNew:
         return query.start["date"]
 
     def generator_process_query(self, query: Query, print_info: bool = False):
-        # FIXME[MergeState]: A[], B[], C[], D[]
+        # FIXME[MergeState]: A[x], B[], C[], D[]
         """
         The key differences between :class:`~Generator.Generator` and :class:`~Generator.GenerationHandler` are:
             * :meth:`Generator.receive_query` / :meth:`GenerationHandler.receive_query`
@@ -361,7 +363,7 @@ class GenerationHandlerNew:
 
     # TODO: Manage if query.scope["unit"] == "ms"
     def _l_generation_matching_query(self, query: Query, print_info: bool = False) -> None:
-        # FIXME[MergeState]: A[], B[], C[], D[]
+        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """
         Launches the run of a generation process corresponding to :attr:`self.current_generation_query` (more precisely
         its attributes :attr:`Query.handle` and :attr:`Query.scope`):
@@ -419,6 +421,7 @@ class GenerationHandlerNew:
 
     # TODO: Definitely not optimal to encode/decode at each iteration
     def handle_free_generation(self, length, print_info=False):
+        # TODO[A]: This one should iterate over entire length, i.e. migrate parts of Navigator/ModelNavigator
         """
         Generates a sequence using the method :meth:`~Navigator.Navigator.free_generation` of the model navigator
         (cf. :mod:`ModelNavigator`) in :attr:`self.memory`. :meth:`Generator.encode_memory_with_current_transfo` and
@@ -439,6 +442,7 @@ class GenerationHandlerNew:
 
     # TODO: Definitely not optimal to encode/decode at each iteration
     def handle_generation_matching_label(self, label, print_info=False):
+        # TODO[A]: This one should iterate over entire length, i.e. migrate parts of Navigator/ModelNavigator
         """
         Generates a single event using the method :meth:`~Navigator.Navigator.simply_guided_generation` of the model
         navigator (cf. :mod:`ModelNavigator`) in :attr:`self.memory`.

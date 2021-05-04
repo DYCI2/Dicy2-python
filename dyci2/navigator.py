@@ -25,14 +25,7 @@ import random
 from dyci2.intervals import *
 
 
-def noneIsInfinite(value):
-    if value is None:
-        return float("inf")
-    else:
-        return value
-
-
-class Navigator(object):
+class Navigator:
     """
     The class :class:`~Navigator.Navigator` implements **parameters and methods that are used to navigate through a
     model of sequence**.
@@ -654,10 +647,10 @@ class Navigator(object):
         #     equiv_mod_interval = self.equiv_mod_interval, print_info = False)
 
         else:
-            index_delta_prefixes, max_length = filtered_prefix_indexing(sequence=labels, pattern=list_of_labels,
-                                                                        length_interval=continuity_with_future,
-                                                                        authorized_indexes=authorized_indexes,
-                                                                        equiv=equiv, print_info=False)
+            index_delta_prefixes, max_length = PrefixIndexing\
+                .filtered_prefix_indexing(sequence=labels, pattern=list_of_labels,
+                                          length_interval=continuity_with_future, authorized_indexes=authorized_indexes,
+                                          equiv=equiv, print_info=False)
 
         # TODO : FAIRE LE PRINT COMME POUR LE RESTE DE LA NAVIGATION
         # TODO : FILTRER LISTES DES PREFIXES

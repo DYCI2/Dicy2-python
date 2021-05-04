@@ -39,12 +39,11 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 # TODO : SUPPRIMER DANS LA DOC LES FONCTIONS "EQUIV-MOD..." "SEQUENCE TO INTERVAL..."
 from typing import List
 
-from dyci2.model_navigator import *
 from dyci2.query import *
 from dyci2.transforms import *
 # TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
 # TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
-from utils import format_list_as_list_of_strings
+from utils import format_list_as_list_of_strings, implemented_model_navigator_classes
 
 
 def basic_equiv(x, y):

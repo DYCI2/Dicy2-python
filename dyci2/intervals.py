@@ -54,7 +54,7 @@ def prefix_indexing_intervals(sequence, pattern, sequence_to_interval_fun = None
 
     #print("LOOKING FOR INTERVALS {}".format(interval_pattern))
 
-    prefixes , max_length = prefix_indexing(interval_sequence , interval_pattern, **args)
+    prefixes , max_length = PrefixIndexing.prefix_indexing(interval_sequence , interval_pattern, **args)
     for length,list_of_left_pos_in_sequence in prefixes.items():
         deltas = []
         for p in list_of_left_pos_in_sequence:

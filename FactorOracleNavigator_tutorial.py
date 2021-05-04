@@ -19,7 +19,7 @@ from dyci2.model_navigator import *
 sequence = ['A1', 'B1', 'B2', 'C1', 'A2', 'B3', 'C2', 'D1', 'A3', 'B4', 'C3']
 labels = [s[0] for s in sequence]
 print("\n-------------\nFactor oracle navigator on {}\nwhere chosen label = letter only\n-------------".format(sequence))
-FON = FactorOracleNavigator(sequence, labels, label_type = Label)
+FON = FactorOracleGenerator(sequence, labels, label_type = Label)
 FON.print_model()
 
 index = 0
@@ -73,7 +73,7 @@ print("Generated sequence: {}".format(generated_sequence))
 
 
 print("""\n2 - SIMPLY USING LISTS """)
-FON = FactorOracleNavigator(sequence, labels)#, label_type = Label)
+FON = FactorOracleGenerator(sequence, labels)#, label_type = Label)
 guide = from_list_to_labels(['C','A','B','B','C','C','D'], Label)
 guide = ['C','A','B','B','C','C','D']
 print("\nSimply guided generation of a sequence using the FO\nGuide: {}\n(avoid_repetitions_mode = {}, max continuity = {}, min. length forward context = {}).\nDetails of the generation steps:".format(guide, FON.avoid_repetitions_mode, FON.max_continuity, forward_context_length_min))

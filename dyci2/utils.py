@@ -1,3 +1,5 @@
+from model_navigator import FactorOracleGenerator
+
 IntQ = int
 
 
@@ -23,3 +25,13 @@ def format_obj_as_string(o):
     else:
         s = format(o)
     return s
+
+
+implemented_model_navigator_classes = {"FactorOracleNavigator": FactorOracleGenerator}
+
+
+def noneIsInfinite(value):
+    if value is None:
+        return float("inf")
+    else:
+        return value

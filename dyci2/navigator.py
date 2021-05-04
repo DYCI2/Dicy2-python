@@ -15,12 +15,13 @@ Navigator
 ===================
 
 This module defines parameters and methods to navigate through a symbolic sequence.
-The classes defined in this module are used in association with models (cf. :mod:`Model`) when creating **model navigator** classes (cf. :mod:`ModelNavigator`).
+The classes defined in this module are used in association with models (cf. :mod:`Model`) when creating
+**model navigator** classes (cf. :mod:`ModelNavigator`).
 
 """
 
 import random
-import copy
+
 from dyci2.intervals import *
 
 
@@ -33,40 +34,51 @@ def noneIsInfinite(value):
 
 class Navigator(object):
     """
-	The class :class:`~Navigator.Navigator` implements **parameters and methods that are used to navigate through a model of sequence**.
-	These parameters and methods are **model-independent**.
-	This class defines in particular the naive versions of the methods :meth:`Navigator.simply_guided_navigation` and :meth:`Navigator.free_navigation` handling the navigation through a sequence when it is respectively guided by target labels and free.
-	These methods are overloaded by model-dependant versions (and other model-dependent parameters or methods can be added) when creating a **model navigator** class (cf. :mod:`ModelNavigator`).
-	This class is not supposed to be used alone, only in association with a model within a model navigator. Therefore its attributes are only "flags" that can be used when defining a model navigator.
+    The class :class:`~Navigator.Navigator` implements **parameters and methods that are used to navigate through a
+    model of sequence**.
+    These parameters and methods are **model-independent**.
+    This class defines in particular the naive versions of the methods :meth:`Navigator.simply_guided_navigation`
+    and :meth:`Navigator.free_navigation` handling the navigation through a sequence when it is respectively guided by
+    target labels and free.
+    These methods are overloaded by model-dependant versions (and other model-dependent parameters or methods can be
+    added) when creating a **model navigator** class (cf. :mod:`ModelNavigator`).
+    This class is not supposed to be used alone, only in association with a model within a model navigator. Therefore
+    its attributes are only "flags" that can be used when defining a model navigator.
 
-	:param sequence: sequence learnt in the model.
-	:type sequence: list or str
-	:param labels: sequence of labels chosen to describe the sequence.
-	:type labels: list or str
-	:param equiv: compararison function given as a lambda function, default if no parameter is given: self.equiv.
-	:type equiv: function
+    :param sequence: sequence learnt in the model.
+    :type sequence: list or str
+    :param labels: sequence of labels chosen to describe the sequence.
+    :type labels: list or str
+    :param equiv: compararison function given as a lambda function, default if no parameter is given: self.equiv.
+    :type equiv: function
 
-	:param current_navigation_index: current length of the navigation
-	:type current_navigation_index: int
+    :param current_navigation_index: current length of the navigation
+    :type current_navigation_index: int
 
-	:param current_position_in_sequence: current position of the readhead in the model. ** When this attribute receives a new value, :meth:`Navigator.record_execution_trace` is called to update :attr:`self.execution_trace`, and :meth:`Navigator.update_history_and_taboos` is called to update :attr:`self.history_and_taboos`.**
-	:type current_position_in_sequence: int
-	:param current_continuity: current number of consecutive elements retrieved in the sequence at the current step of generation
-	:type current_continuity: int
-	:param max_continuity: limitation of the length of the sub-sequences that can be retrieved from the sequence.
-	:type max_continuity: int
-	:param no_empty_event: authorize or not to output empty events.
-	:type no_empty_event: bool
-	:param avoid_repetitions_mode: 0: authorize repetitions; 1: favor less previously retrieved events; 2: forbid repetitions.
-	:type avoid_repetitions_mode: int
-	:param control_parameters: list of the slots of the class that are considered as "control parameters" i.e. that can be used by a user to author / monitor the generation processes.
-	:type control_parameters: list(str)
-	:param execution_trace_parameters: list of the slots of the class that are stored in the execution trace used in :meth:`Generator.go_to_anterior_state_using_execution_trace`.
-	:type control_parameters: list(str)
-	:param execution_trace: History of the previous runs of the generation model. The list of the parameters of the model whose values are stored in the execution trace is defined in :attr:`self.execution_trace_parameters`.
-	:type execution_trace: dict
-
-	"""
+    :param current_position_in_sequence: current position of the readhead in the model. ** When this attribute receives
+    a new value, :meth:`Navigator.record_execution_trace` is called to update :attr:`self.execution_trace`, and
+    :meth:`Navigator.update_history_and_taboos` is called to update :attr:`self.history_and_taboos`.**
+    :type current_position_in_sequence: int
+    :param current_continuity: current number of consecutive elements retrieved in the sequence at the current step of
+    generation
+    :type current_continuity: int
+    :param max_continuity: limitation of the length of the sub-sequences that can be retrieved from the sequence.
+    :type max_continuity: int
+    :param no_empty_event: authorize or not to output empty events.
+    :type no_empty_event: bool
+    :param avoid_repetitions_mode: 0: authorize repetitions; 1: favor less previously retrieved events;
+    2: forbid repetitions.
+    :type avoid_repetitions_mode: int
+    :param control_parameters: list of the slots of the class that are considered as "control parameters" i.e. that can
+    be used by a user to author / monitor the generation processes.
+    :type control_parameters: list(str)
+    :param execution_trace_parameters: list of the slots of the class that are stored in the execution trace used in
+    :meth:`Generator.go_to_anterior_state_using_execution_trace`.
+    :type control_parameters: list(str)
+    :param execution_trace: History of the previous runs of the generation model. The list of the parameters of the
+    model whose values are stored in the execution trace is defined in :attr:`self.execution_trace_parameters`.
+    :type execution_trace: dict
+    """
 
     def __setattr__(self, name_attr, val_attr):
         # super.__setattr__(self, name_attr, val_attr)
@@ -128,18 +140,21 @@ class Navigator(object):
     # self.avoid_repetitions_mode = 1
     # TODO : mode 0 : répétitions authorisées, mode 1 = on prend le min, mode 2, interdire les déjà passés
     # TODO : SURCHARGER POUR INTERDIRE LES AUTRES
-    # TODO : QUAND ON GENERE, DEBUT OU NON ? SOIT INTEGRER DANS PARAMETRES FONCTIONS SOIT DECIDER QU'ON APPELLE reinit_navigation_param si c'est le début
+    # TODO : QUAND ON GENERE, DEBUT OU NON ? SOIT INTEGRER DANS PARAMETRES FONCTIONS SOIT DECIDER QU'ON APPELLE
+    #  reinit_navigation_param si c'est le début
 
     def record_execution_trace(self, index_in_navigation):
         """
-		Stores in :attr:`self.execution_trace` the values of different parameters of the model when generating the event in the sequence at the index given in argument.
+        Stores in :attr:`self.execution_trace` the values of different parameters of the model when generating the
+        event in the sequence at the index given in argument.
 
-		:param index_in_navigation:
-		:type index_in_navigation: int
+        :param index_in_navigation:
+        :type index_in_navigation: int
 
-		:see also: The list of the parameters of the model whose values are stored in the execution trace is defined in :attr:`self.execution_trace_parameters`.
-
-		"""
+        :see also: The list of the parameters of the model whose values are stored in the execution trace is defined
+        in :attr:`self.execution_trace_parameters`.
+        
+        """
         trace_index = {}
         for name_slot in self.execution_trace_parameters:
             # trace_index[name_slot] = copy.deepcopy(self.__dict__[name_slot])
@@ -149,15 +164,16 @@ class Navigator(object):
 
     def update_history_and_taboos(self, index_in_sequence):
         """
-		Increases the value associated to the index given in argument in :attr:`self.history_and_taboos`.
-		Handles the taboos linked to :attr:`self.max_continuity`.
+        Increases the value associated to the index given in argument in :attr:`self.history_and_taboos`.
+        Handles the taboos linked to :attr:`self.max_continuity`.
 
-		:param index_in_sequence:
-		:type index_in_sequence: int
+        :param index_in_sequence:
+        :type index_in_sequence: int
 
 
-		"""
-        # print("Record history_and_taboos for index {} in sequence.\nPREVIOUSLY:\n{}".format(index_in_sequence, self.history_and_taboos))
+        """
+        # print("Record history_and_taboos for index {} in sequence.\nPREVIOUSLY:\n{}".format(index_in_sequence,
+        #                                                                                     self.history_and_taboos))
         if not self.history_and_taboos[index_in_sequence] is None:
             self.history_and_taboos[index_in_sequence] += 1
         # print("Increases history of selected index.\nNew self.history_and_taboos = {}".format(self.history_and_taboos))
@@ -177,11 +193,17 @@ class Navigator(object):
 
         if self.current_continuity == self.max_continuity - 1 and self.current_position_in_sequence + 1 < self.index_last_state():
             self.forbid_indexes([self.current_position_in_sequence + 1])
-        # print("Continuity reaches (self.max_continuity - 1). \nNew self.history_and_taboos = {}".format(self.history_and_taboos))
+        # print("Continuity reaches (self.max_continuity - 1). \n"
+        #       "New self.history_and_taboos = {}".format(self.history_and_taboos))
 
-        elif not previous_previous_continuity_in_sequence is None and self.current_continuity == 0 and not previous_position_in_sequence is None and previous_position_in_sequence < self.index_last_state() and not previous_continuity is None:  # and previous_continuity > 0:
+        elif not previous_previous_continuity_in_sequence is None \
+                and self.current_continuity == 0 \
+                and not previous_position_in_sequence is None \
+                and previous_position_in_sequence < self.index_last_state() \
+                and not previous_continuity is None:  # and previous_continuity > 0:
             self.history_and_taboos[previous_position_in_sequence + 1] = previous_previous_continuity_in_sequence
-        # print("Delete taboo set because of max_continuity at last step. \nNew self.history_and_taboos = {}".format(self.history_and_taboos))
+        # print("Delete taboo set because of max_continuity at last step. \n"
+        #       "New self.history_and_taboos = {}".format(self.history_and_taboos))
 
     # print("previous_continuity = {}".format(previous_continuity))
     # print("previous_position_in_sequence = {}".format(previous_position_in_sequence))
@@ -189,15 +211,16 @@ class Navigator(object):
 
     def go_to_anterior_state_using_execution_trace(self, index_in_navigation):
         """
-		This method is called when the run of a new query rewrites previously generated anticipations.
-		It uses :attr:`self.execution_trace` to go back at the state where the navigator was at the "tiling time".
+        This method is called when the run of a new query rewrites previously generated anticipations.
+        It uses :attr:`self.execution_trace` to go back at the state where the navigator was at the "tiling time".
 
-		:param index_in_navigation: "tiling index" in the generated sequence
-		:type index_in_navigation: int
+        :param index_in_navigation: "tiling index" in the generated sequence
+        :type index_in_navigation: int
 
-		:see also: The list of the parameters of the model whose values are stored in the execution trace is defined in :attr:`self.execution_trace_parameters`.
+        :see also: The list of the parameters of the model whose values are stored in the execution trace is defined in
+        :attr:`self.execution_trace_parameters`.
 
-		"""
+        """
 
         print("GO TO ANTERIOR STATE USING EXECUTION TRACE\nGoing back to state when {} was generated:\n{}".format(
             index_in_navigation, self.execution_trace[index_in_navigation]))
@@ -208,30 +231,30 @@ class Navigator(object):
     def free_generation(self, length, new_max_continuity=None, forward_context_length_min=0, init=False, equiv=None,
                         print_info=False):
         """ Free navigation through the sequence.
-		Naive version of the method handling the free navigation in a sequence (random).
-		This method has to be overloaded by a model-dependant version when creating a **model navigator** class (cf. :mod:`ModelNavigator`).
+        Naive version of the method handling the free navigation in a sequence (random).
+        This method has to be overloaded by a model-dependant version when creating a **model navigator** class
+        (cf. :mod:`ModelNavigator`).
 
-		:param length: length of the generated sequence
-		:type length: int
-		:param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
-		:type new_max_continuity: int
-		:param forward_context_length_min: minimum length of the forward common context
-		:type forward_context_length_min: int
-		:param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
-		:type init: bool
-		:param equiv: Compararison function given as a lambda function, default: self.equiv.
-		:type equiv: function
-		:param print_info: print the details of the navigation steps
-		:type print_info: bool
-		:return: generated sequence
-		:rtype: list
-		:see also: Example of overloaded method: :meth:`FactorOracleNavigator.free_navigation`.
+        :param length: length of the generated sequence
+        :type length: int
+        :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
+        :type new_max_continuity: int
+        :param forward_context_length_min: minimum length of the forward common context
+        :type forward_context_length_min: int
+        :param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
+        :type init: bool
+        :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        :type equiv: function
+        :param print_info: print the details of the navigation steps
+        :type print_info: bool
+        :return: generated sequence
+        :rtype: list
+        :see also: Example of overloaded method: :meth:`FactorOracleNavigator.free_navigation`.
 
-		:!: **equiv** has to be consistent with the type of the elements in labels.
-		:!: The result **strongly depends** on the tuning of the parameters self.max_continuity, self.avoid_repetitions_mode, self.no_empty_event.
-
-
-		"""
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+        :!: The result **strongly depends** on the tuning of the parameters self.max_continuity,
+            self.avoid_repetitions_mode, self.no_empty_event.
+        """
 
         if equiv is None:
             equiv = self.equiv
@@ -255,32 +278,31 @@ class Navigator(object):
     def simply_guided_generation(self, required_labels, new_max_continuity=None, forward_context_length_min=0,
                                  init=False, equiv=None, print_info=False, shift_index=0, break_when_none=False):
         """ Navigation in the sequence, simply guided step by step by an input sequence of label.
-		Naive version of the method handling the navigation in a sequence when it is guided by target labels.
-		This method has to be overloaded by a model-dependant version when creating a **model navigator** class (cf. :mod:`ModelNavigator`).
+        Naive version of the method handling the navigation in a sequence when it is guided by target labels.
+        This method has to be overloaded by a model-dependant version when creating a **model navigator** class
+        (cf. :mod:`ModelNavigator`).
 
 
-		:param required_labels: guiding sequence of labels
-		:type required_labels: list
-		:param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
-		:type new_max_continuity: int
-		:param forward_context_length_min: minimum length of the forward common context
-		:type forward_context_length_min: int
-		:param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
-		:type init: bool
-		:param equiv: Compararison function given as a lambda function, default: self.equiv.
-		:type equiv: function
-		:param print_info: print the details of the navigation steps
-		:type print_info: bool
-		:return: generated sequence
-		:rtype: list
-		:see also: Example of overloaded method: :meth:`FactorOracleNavigator.free_navigation`.
+        :param required_labels: guiding sequence of labels
+        :type required_labels: list
+        :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
+        :type new_max_continuity: int
+        :param forward_context_length_min: minimum length of the forward common context
+        :type forward_context_length_min: int
+        :param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
+        :type init: bool
+        :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        :type equiv: function
+        :param print_info: print the details of the navigation steps
+        :type print_info: bool
+        :return: generated sequence
+        :rtype: list
+        :see also: Example of overloaded method: :meth:`FactorOracleNavigator.free_navigation`.
 
-		:!: **equiv** has to be consistent with the type of the elements in labels.
-		:!: The result **strongly depends** on the tuning of the parameters self.max_continuity, self.avoid_repetitions_mode, self.no_empty_event.
-
-
-
-		"""
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+        :!: The result **strongly depends** on the tuning of the parameters self.max_continuity,
+        self.avoid_repetitions_mode, self.no_empty_event.
+        """
 
         if equiv is None:
             equiv = self.equiv
@@ -302,37 +324,38 @@ class Navigator(object):
                 sequence.append(self.sequence[generated_index])
         return sequence
 
-    # TODO : traiter le cas ou trop de taboos par ex... bref on ne peut plus générer. 	KEN : if len(taboo_list) > taboo_list_length: taboo_list.pop(0)
+    # TODO : traiter le cas ou trop de taboos par ex... bref on ne peut plus générer.
+    #  KEN : if len(taboo_list) > taboo_list_length: taboo_list.pop(0)
     # TODO : autoriser factor links ?
     def free_navigation(self, length, new_max_continuity=None, forward_context_length_min=0, init=False, equiv=None,
                         print_info=False):
         """ Free navigation through the sequence.
-		Naive version of the method handling the free navigation in a sequence (random).
-		This method has to be overloaded by a model-dependant version when creating a **model navigator** class (cf. :mod:`ModelNavigator`).
-		(Returns a **path**, i.e., a list of indexes. Generated sequence: cf. :meth:`Navigator.free_generation`.)
+        Naive version of the method handling the free navigation in a sequence (random).
+        This method has to be overloaded by a model-dependant version when creating a **model navigator** class
+        (cf. :mod:`ModelNavigator`).
+        (Returns a **path**, i.e., a list of indexes. Generated sequence: cf. :meth:`Navigator.free_generation`.)
 
-		:param length: length of the generated sequence
-		:type length: int
-		:param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
-		:type new_max_continuity: int
-		:param forward_context_length_min: minimum length of the forward common context
-		:type forward_context_length_min: int
-		:param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
-		:type init: bool
-		:param equiv: Compararison function given as a lambda function, default: self.equiv.
-		:type equiv: function
-		:param print_info: print the details of the navigation steps
-		:type print_info: bool
-		:return: list of indexes of the generated path.
-		:rtype: list (int)
-		:see also: :meth:`Navigator.free_generation`.
-		:see also: Example of overloaded method: :meth:`FactorOracleNavigator.free_navigation`.
+        :param length: length of the generated sequence
+        :type length: int
+        :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
+        :type new_max_continuity: int
+        :param forward_context_length_min: minimum length of the forward common context
+        :type forward_context_length_min: int
+        :param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
+        :type init: bool
+        :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        :type equiv: function
+        :param print_info: print the details of the navigation steps
+        :type print_info: bool
+        :return: list of indexes of the generated path.
+        :rtype: list (int)
+        :see also: :meth:`Navigator.free_generation`.
+        :see also: Example of overloaded method: :meth:`FactorOracleNavigator.free_navigation`.
 
-		:!: **equiv** has to be consistent with the type of the elements in labels.
-		:!: The result **strongly depends** on the tuning of the parameters self.max_continuity, self.avoid_repetitions_mode, self.no_empty_event.
-
-
-		"""
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+        :!: The result **strongly depends** on the tuning of the parameters self.max_continuity,
+            self.avoid_repetitions_mode, self.no_empty_event.
+        """
 
         if equiv is None:
             equiv = self.equiv
@@ -360,32 +383,34 @@ class Navigator(object):
     def simply_guided_navigation(self, required_labels, new_max_continuity=None, forward_context_length_min=0,
                                  init=False, equiv=None, print_info=False, shift_index=0, break_when_none=False):
         """ Navigation through the sequence, simply guided step by step by an input sequence of label.
-		Naive version of the method handling the guided navigation in a sequence.
-		This method has to be overloaded by a model-dependant version when creating a **model navigator** class (cf. :mod:`ModelNavigator`).
-		(Returns a **path**, i.e., a list of indexes. Generated sequence: cf. :meth:`Navigator.simply_guided_generation`.)
+        Naive version of the method handling the guided navigation in a sequence.
+        This method has to be overloaded by a model-dependant version when creating a **model navigator** class
+        (cf. :mod:`ModelNavigator`).
+        (Returns a **path**, i.e., a list of indexes. Generated sequence: cf. :meth:`Navigator.simply_guided_generation`.)
 
-		:param required_labels: guiding sequence of labels
-		:type required_labels: list
-		:param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
-		:type new_max_continuity: int
-		:param forward_context_length_min: minimum length of the forward common context
-		:type forward_context_length_min: int
-		:param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
-		:type init: bool
-		:param equiv: Compararison function given as a lambda function, default: self.equiv.
-		:type equiv: function
-		:param print_info: print the details of the navigation steps
-		:type print_info: bool
-		:return: list of indexes of the generated path.
-		:rtype: list (int)
-		:see also: :meth:`Navigator.simply_guided_generation`.
-		:see also: Example of overloaded method: :meth:`FactorOracleNavigator.simply_guided_navigation`.
+        :param required_labels: guiding sequence of labels
+        :type required_labels: list
+        :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
+        :type new_max_continuity: int
+        :param forward_context_length_min: minimum length of the forward common context
+        :type forward_context_length_min: int
+        :param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
+        :type init: bool
+        :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        :type equiv: function
+        :param print_info: print the details of the navigation steps
+        :type print_info: bool
+        :return: list of indexes of the generated path.
+        :rtype: list (int)
+        :see also: :meth:`Navigator.simply_guided_generation`.
+        :see also: Example of overloaded method: :meth:`FactorOracleNavigator.simply_guided_navigation`.
 
-		:!: **equiv** has to be consistent with the type of the elements in labels.
-		:!: The result **strongly depends** on the tuning of the parameters self.max_continuity, self.avoid_repetitions_mode, self.no_empty_event.
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+        :!: The result **strongly depends** on the tuning of the parameters self.max_continuity,
+            self.avoid_repetitions_mode, self.no_empty_event.
 
 
-		"""
+        """
 
         if equiv is None:
             equiv = self.equiv
@@ -411,7 +436,8 @@ class Navigator(object):
         return generated_sequence_of_indexes
 
     def reinit_navigation_param(self):
-        """ (Re)initializes the navigation parameters (current navigation index, history of retrieved indexes, current continuity,...)."""
+        """ (Re)initializes the navigation parameters (current navigation index, history of retrieved indexes,
+        current continuity,...)."""
         self.history_and_taboos = [0] * (len(self.sequence))
         self.current_continuity = -1
         self.current_position_in_sequence = -1
@@ -420,18 +446,18 @@ class Navigator(object):
 
     def learn_sequence(self, sequence, labels, equiv=None):
         """
-		Learns (appends) a new sequence in the model.
+        Learns (appends) a new sequence in the model.
 
-		:param sequence: sequence learnt in the Factor Oracle automaton
-		:type sequence: list or str
-		:param labels: sequence of labels chosen to describe the sequence
-		:type labels: list or str
-		:param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-		:type equiv: function
+        :param sequence: sequence learnt in the Factor Oracle automaton
+        :type sequence: list or str
+        :param labels: sequence of labels chosen to describe the sequence
+        :type labels: list or str
+        :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
+        :type equiv: function
 
-		:!: **equiv** has to be consistent with the type of the elements in labels.
+        :!: **equiv** has to be consistent with the type of the elements in labels.
 
-		"""
+        """
         if equiv is None:
             equiv = self.equiv
         try:
@@ -467,23 +493,24 @@ class Navigator(object):
 
     def forbid_indexes(self, indexes):
         """
-		Introduces "taboos" (events that cannot be retrieved) in the navigation mechanisms.
+        Introduces "taboos" (events that cannot be retrieved) in the navigation mechanisms.
 
-		:param indexes: indexes of forbidden indexes (/!\ depending on the model the first event can be at index 0 or 1).
-		:type indexes: list(int)
+        :param indexes: indexes of forbidden indexes (/!\ depending on the model the first event can be at index 0 or 1).
+        :type indexes: list(int)
 
-		"""
+        """
         for i in indexes:
             self.history_and_taboos[i] = None
 
     def authorize_indexes(self, indexes):
         """
-		Delete the "taboos" (events that cannot be retrieved) in the navigation mechanisms for the states listed in the parameter indexes.
+        Delete the "taboos" (events that cannot be retrieved) in the navigation mechanisms for the states listed in
+        the parameter indexes.
 
-		:param indexes: indexes of authorized indexes (/!\ depending on the model the first event can be at index 0 or 1).
-		:type indexes: list(int)
+        :param indexes: indexes of authorized indexes (/!\ depending on the model the first event can be at index 0 or 1).
+        :type indexes: list(int)
 
-		"""
+        """
         for i in indexes:
             self.history_and_taboos[i] = 0
 
@@ -492,9 +519,8 @@ class Navigator(object):
 
     def delete_taboos(self):
         """
-		Delete all the "taboos" (events that cannot be retrieved) in the navigation mechanisms.
-
-		"""
+        Delete all the "taboos" (events that cannot be retrieved) in the navigation mechanisms.
+        """
         s = []
         for i in range(0, self.index_last_state() + 1):
             if self.is_taboo(i):
@@ -512,16 +538,16 @@ class Navigator(object):
     def length_common_forward_context(self, index_state1, index_state2, equiv=None):
         """ Length of the forward context shared by two states in the sequence.
 
-		:type index_state1: int
-		:type index_state2: int
-		:param equiv: Compararison function given as a lambda function, default: self.equiv.
-		:type equiv: function
-		:return: Length of the longest equivalent sequences of labels after these states.
-		:rtype: int
+        :type index_state1: int
+        :type index_state2: int
+        :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        :type equiv: function
+        :return: Length of the longest equivalent sequences of labels after these states.
+        :rtype: int
 
-		:!: **equiv** has to be consistent with the type of the elements in labels.
+        :!: **equiv** has to be consistent with the type of the elements in labels.
 
-		"""
+        """
 
         if equiv is None:
             equiv = self.equiv
@@ -540,16 +566,16 @@ class Navigator(object):
     def length_common_backward_context(self, index_state1, index_state2, equiv=None):
         """ Length of the backward context shared by two states in the sequence.
 
-		:type index_state1: int
-		:type index_state2: int
-		:param equiv: Compararison function given as a lambda function, default: self.equiv.
-		:type equiv: function
-		:return: Length of the longest equivalent sequences of labels before these states.
-		:rtype: int
+        :type index_state1: int
+        :type index_state2: int
+        :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        :type equiv: function
+        :return: Length of the longest equivalent sequences of labels before these states.
+        :rtype: int
 
-		:!: **equiv** has to be consistent with the type of the elements in labels.
+        :!: **equiv** has to be consistent with the type of the elements in labels.
 
-		"""
+        """
         if equiv is None:
             equiv = self.equiv
 
@@ -564,13 +590,13 @@ class Navigator(object):
 
     def navigate_without_continuation(self, authorized_indexes):
         """
-		Random state in the sequence if self.no_empty_event is True (else None).
+        Random state in the sequence if self.no_empty_event is True (else None).
 
-		:param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
-		:type authorized_indexes: list(int)
-		:return: index of the state
-		:rtype: int
-		"""
+        :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
+        :type authorized_indexes: list(int)
+        :return: index of the state
+        :rtype: int
+        """
 
         s = None
         if self.no_empty_event and authorized_indexes and len(authorized_indexes) > 0:
@@ -579,19 +605,19 @@ class Navigator(object):
 
     def find_matching_label_without_continuation(self, required_label, authorized_indexes, equiv=None):
         """
-		Random state in the sequence matching required_label if self.no_empty_event is True (else None).
+        Random state in the sequence matching required_label if self.no_empty_event is True (else None).
 
-		:param required_label: label to read
-		:param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
-		:type authorized_indexes: list(int)
-		:param equiv: Compararison function given as a lambda function, default: self.equiv.
-		:type equiv: function
-		:return: index of the state
-		:rtype: int
+        :param required_label: label to read
+        :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
+        :type authorized_indexes: list(int)
+        :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        :type equiv: function
+        :return: index of the state
+        :rtype: int
 
-		:!: **equiv** has to be consistent with the type of the elements in labels.
+        :!: **equiv** has to be consistent with the type of the elements in labels.
 
-		"""
+        """
         if equiv is None:
             equiv = self.equiv
 
@@ -603,7 +629,7 @@ class Navigator(object):
                 s = possible_states[random.randint(0, len(possible_states) - 1)]
         return s
 
-    #### NEW 27/09/18 KEN
+    # ### NEW 27/09/18 KEN
 
     def find_prefix_matching_with_labels(self, use_intervals, labels, list_of_labels, continuity_with_future,
                                          authorized_indexes, authorized_transformations, sequence_to_interval_fun,
@@ -620,9 +646,12 @@ class Navigator(object):
                                                                                   sequence_to_interval_fun=sequence_to_interval_fun,
                                                                                   equiv=equiv_interval,
                                                                                   print_info=False)
-        # index_delta_prefixes, max_length = filtered_prefix_indexing_intervals(sequence = self.memory.labels, pattern = list_of_labels,
-        #  length_interval = self.continuity_with_future, authorized_indexes = authorized_indexes,
-        # 	authorized_intervals = self.authorized_tranformations , sequence_to_interval_fun = self.sequence_to_interval_fun , equiv_mod_interval = self.equiv_mod_interval, print_info = False)
+        # index_delta_prefixes, max_length = filtered_prefix_indexing_intervals(sequence = self.memory.labels,
+        #     pattern = list_of_labels, length_interval = self.continuity_with_future,
+        #     authorized_indexes = authorized_indexes,
+        #     authorized_intervals = self.authorized_tranformations ,
+        #     sequence_to_interval_fun = self.sequence_to_interval_fun,
+        #     equiv_mod_interval = self.equiv_mod_interval, print_info = False)
 
         else:
             index_delta_prefixes, max_length = filtered_prefix_indexing(sequence=labels, pattern=list_of_labels,
@@ -630,19 +659,15 @@ class Navigator(object):
                                                                         authorized_indexes=authorized_indexes,
                                                                         equiv=equiv, print_info=False)
 
-        ##############################
         # TODO : FAIRE LE PRINT COMME POUR LE RESTE DE LA NAVIGATION
-        #
         # TODO : FILTRER LISTES DES PREFIXES
-        #
-        # TODO : MODULARISER FAIRE UNE FONCTION POUR LE CHOIX, ET PLUS DE POSSIBILITES QUE RANDOM (e.g. longueur prefixe)...
-        # ON EN EST OU DU FILTRAGE PAR POSITIONS OU IL Y A DES SUFFIX LINKS ?
+        # TODO : MODULARISER FAIRE UNE FONCTION POUR LE CHOIX, ET PLUS DE POSSIBILITES QUE RANDOM
+        #  (e.g. longueur prefixe)...
+        #  ON EN EST OU DU FILTRAGE PAR POSITIONS OU IL Y A DES SUFFIX LINKS ?
         # TODO : STOCKER ALTERNATIVE_PATHS ICI, IE TOUS LES PREFIXES --> MELANGE SOMAX
 
         # print("SCENARIO ONE PHASE 2")
-
         s, t, length_selected_prefix = self.choose_prefix_from_list(index_delta_prefixes, pattern=list_of_labels)
-
         return s, t, length_selected_prefix
 
     def choose_prefix_from_list(self, index_delta_prefixes, pattern=[]):

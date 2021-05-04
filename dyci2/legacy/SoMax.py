@@ -8,10 +8,10 @@ Created on Wed Apr 18 15:14:00 2018
 from model import Model
 from navigator import Navigator
 
-from meta_model_navigator import MetaModelNavigator
+from legacy.meta_model_navigator import MetaModelNavigator
 
 from collections import deque
-import random, bisect, pdb
+import random, bisect
 import numpy as np
 from bisect import bisect_left
 

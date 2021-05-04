@@ -18,48 +18,29 @@ Tutorial in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`
 
 """
 
-# from .MetaModelNavigator import *
-
-#####################################################################################
-#####################################################################################
-# Class FactorOracleNavigator
-#####################################################################################
-#####################################################################################
 from dyci2.model import *
 from dyci2.navigator import *
 
-docstring = """
-	**Factor Oracle Navigator class**.
-	This class implements heuristics of navigation through a Factor Oracle automaton for creative applications: 
-	different ways to find paths in the labels of the automaton to collect the associated contents and generate new sequences using concatenative synthesis.
-	Original navigation heuristics, see **Assayag, Bloch, "Navigating the Oracle: a heuristic approach", in Proceedings of the International Computer Music Conference 2007** (https://hal.archives-ouvertes.fr/hal-01161388).
-
-	:see also: **Tutorial in** :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`. 
-	:see also: This "model navigator" class is created with the metaclass :class:`~MetaModelNavigator.MetaModelNavigator`.
-
-	:Example:
- 
-	>>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-	>>> labels = [s[0] for s in sequence]
-	>>> FON = FactorOracleNavigator(sequence, labels)
-
-
-	"""
-
-
-#####################################################################################
-# METHODS 
-# Definining the methods free_navigation and simply_guided_navigation of the class
-# /!\ In these methods, :attr:`self.current_position_in_sequence` must be updated at every step of generation.
-# Optional: define __init__
-# Optional: define subroutines of free_navigation and simply_guided_navigation
-
-# dict_methods = {}
 
 class FactorOracleNavigator(FactorOracle, Navigator):
+    """
+        **Factor Oracle Navigator class**.
+        This class implements heuristics of navigation through a Factor Oracle automaton for creative applications:
+        different ways to find paths in the labels of the automaton to collect the associated contents and generate new
+        sequences using concatenative synthesis.
+        Original navigation heuristics, see **Assayag, Bloch, "Navigating the Oracle: a heuristic approach", in
+        Proceedings of the International Computer Music Conference 2007** (https://hal.archives-ouvertes.fr/hal-01161388).
 
-    # Most of the time, __init__ won't have to be defined but it is needed in this particular case (because
-    # reinit_navigation_param is overloaded).
+        :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`.
+        :see also: This "model navigator" class is created with the metaclass :class:`~MetaModelNavigator.MetaModelNavigator`.
+
+        :Example:
+
+        >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
+        >>> labels = [s[0] for s in sequence]
+        >>> FON = FactorOracleNavigator(sequence, labels)
+    """
+
     def __init__(self, sequence=[], labels=[], max_continuity=20,
                  control_parameters=[], history_parameters=[], equiv=(lambda x, y: x == y),
                  label_type=None, content_type=None):
@@ -101,12 +82,12 @@ class FactorOracleNavigator(FactorOracle, Navigator):
     # dict_methods["reinit_navigation_param"] = reinit_navigation_param
 
     # initially in MetamodelNavigator
-    def learn_event(self, state, label, equiv = None):
+    def learn_event(self, state, label, equiv=None):
         FactorOracle.learn_event(self, state, label, equiv)
         Navigator.learn_event(self, state, label, equiv)
 
     # initially in MetamodelNavigator
-    def learn_sequence(self, sequence, labels, equiv = None):
+    def learn_sequence(self, sequence, labels, equiv=None):
         FactorOracle.learn_sequence(self, sequence, labels, equiv)
         Navigator.learn_sequence(self, sequence, labels, equiv)
 
@@ -114,8 +95,10 @@ class FactorOracleNavigator(FactorOracle, Navigator):
         """
         Continuation using direct transition from self.current_position_in_sequence.
 
-        In the method free_generation, this method is called with authorized_indexes = possible continuations filtered to satisfy the constraints of taboos and repetitions.
-        In the method simply_guided_generation, this method is called with authorized_indexes = possible continuations **matching the required label** filtered to satisfy the constraints of taboos and repetitions.
+        In the method free_generation, this method is called with authorized_indexes = possible continuations
+        filtered to satisfy the constraints of taboos and repetitions.
+        In the method simply_guided_generation, this method is called with authorized_indexes = possible continuations
+        **matching the required label** filtered to satisfy the constraints of taboos and repetitions.
 
         :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
         :type authorized_indexes: list(int)
@@ -142,10 +125,13 @@ class FactorOracleNavigator(FactorOracle, Navigator):
 
     def continuations_with_jump(self, authorized_indexes):
         """
-        List of continuations with jumps to indexes with similar contexts direct transition from self.current_position_in_sequence.
+        List of continuations with jumps to indexes with similar contexts direct transition from
+        self.current_position_in_sequence.
 
-        In the method free_generation, this method is called with authorized_indexes = possible continuations filtered to satisfy the constraints of taboos and repetitions.
-        In the method simply_guided_generation, this method is called with authorized_indexes = possible continuations **matching the required label** filtered to satisfy the constraints of taboos and repetitions.
+        In the method free_generation, this method is called with authorized_indexes = possible continuations filtered
+        to satisfy the constraints of taboos and repetitions.
+        In the method simply_guided_generation, this method is called with authorized_indexes = possible continuations
+        **matching the required label** filtered to satisfy the constraints of taboos and repetitions.
 
         :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
         :type authorized_indexes: list(int)
@@ -176,10 +162,13 @@ class FactorOracleNavigator(FactorOracle, Navigator):
     # TODO : autres modes que random choice
     def follow_continuation_with_jump(self, authorized_indexes):
         """
-        Random selection of a continuation with jump to indexes with similar contexts direct transition from self.current_position_in_sequence.
+        Random selection of a continuation with jump to indexes with similar contexts direct transition from
+        self.current_position_in_sequence.
 
-        In the method free_generation, this method is called with authorized_indexes = possible continuations filtered to satisfy the constraints of taboos and repetitions.
-        In the method simply_guided_generation, this method is called with authorized_indexes = possible continuations **matching the required label** filtered to satisfy the constraints of taboos and repetitions.
+        In the method free_generation, this method is called with authorized_indexes = possible continuations filtered
+        to satisfy the constraints of taboos and repetitions.
+        In the method simply_guided_generation, this method is called with authorized_indexes = possible continuations
+        **matching the required label** filtered to satisfy the constraints of taboos and repetitions.
 
         :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
         :type authorized_indexes: list(int)
@@ -198,17 +187,22 @@ class FactorOracleNavigator(FactorOracle, Navigator):
     # dict_methods["follow_continuation_with_jump"] = follow_continuation_with_jump
 
     ####################
-    # TODO : QUAND ON GENERE, DEBUT OU NON ? SOIT INTEGRER DANS PARAMETRES FONCTIONS SOIT DECIDER QU'ON APPELLE reinit_navigation_param si c'est le début
-    # TODO : traiter le cas ou trop de taboos par ex... bref on ne peut plus générer. 	KEN : if len(taboo_list) > taboo_list_length: taboo_list.pop(0)
+    # TODO : QUAND ON GENERE, DEBUT OU NON ? SOIT INTEGRER DANS PARAMETRES FONCTIONS SOIT DECIDER QU'ON APPELLE
+    #  reinit_navigation_param si c'est le début
+    # TODO : traiter le cas ou trop de taboos par ex... bref on ne peut plus générer.
+    #  KEN : if len(taboo_list) > taboo_list_length: taboo_list.pop(0)
     # TODO : autoriser factor links ?
     def free_navigation(self, length, new_max_continuity=None, forward_context_length_min=0,
                         init=False,
                         equiv=None, print_info=False):
         """ Free navigation through the automaton.
-            Returns a novel sequence being consistent with the internal logic of the sequence on which the automaton is built.
+            Returns a novel sequence being consistent with the internal logic of the sequence on which the automaton
+            is built.
             (Returns a **path**, i.e., a list of indexes. Generated sequence: cf. :meth:`Navigator.free_generation`.)
 
-            "Omax-like" navigation, see **Assayag, Bloch, Chemillier, Cont, Dubnov "Omax brothers: A dynamic topology of agents for improvization learning", in Proceedings of the 1st ACM Workshop on Audio and Music Computing Multimedia** (https://hal.archives-ouvertes.fr/hal-01161351).
+            "Omax-like" navigation, see **Assayag, Bloch, Chemillier, Cont, Dubnov "Omax brothers: A dynamic topology
+            of agents for improvization learning", in Proceedings of the 1st ACM Workshop on Audio and Music Computing
+            Multimedia** (https://hal.archives-ouvertes.fr/hal-01161351).
 
             :param length: length of the generated sequence
             :type length: int
@@ -228,7 +222,8 @@ class FactorOracleNavigator(FactorOracle, Navigator):
             :see also: Tutorial in FactorOracleNavigator_tutorial.py.
 
             :!: **equiv** has to be consistent with the type of the elements in labels.
-            :!: The result **strongly depends** on the tuning of the parameters self.max_continuity, self.avoid_repetitions_mode, self.no_empty_event.
+            :!: The result **strongly depends** on the tuning of the parameters self.max_continuity,
+            self.avoid_repetitions_mode, self.no_empty_event.
 
             :Example:
 
@@ -241,8 +236,6 @@ class FactorOracleNavigator(FactorOracle, Navigator):
             >>> FON.max_continuity = 2
             >>> forward_context_length_min = 0
             >>> generated_sequence = FON.free_generation(10, forward_context_length_min = forward_context_length_min, print_info = True)
-
-
             """
 
         print("FREE GENERATION")
@@ -297,10 +290,10 @@ class FactorOracleNavigator(FactorOracle, Navigator):
                 # factor_oracle_navigator.current_position_in_sequence = s
                 else:
                     # print("FREE GENERATION 3.{}.5".format(i))
-                    # s = factor_oracle_navigator.navigate_without_continuation(factor_oracle_navigator.filter_using_history_and_taboos(init_continuations))
+                    # s = factor_oracle_navigator.navigate_without_continuation(factor_oracle_navigator
+                    #     .filter_using_history_and_taboos(init_continuations))
                     # LAST 15/10
-                    s = self.follow_continuation_with_jump(
-                        list(range(self.index_last_state())))
+                    s = self.follow_continuation_with_jump(list(range(self.index_last_state())))
                     if not s is None:
                         str_print_info += " xxnothingxx - random: {}".format(s)
                     # factor_oracle_navigator.current_position_in_sequence = s
@@ -323,14 +316,17 @@ class FactorOracleNavigator(FactorOracle, Navigator):
 
     # dict_methods["free_navigation"] = free_navigation
 
-    # TODO : QUAND ON GENERE, DEBUT OU NON ? SOIT INTEGRER DANS PARAMETRES FONCTIONS SOIT DECIDER QU'ON APPELLE reinit_navigation_param si c'est le début
-    # TODO : traiter le cas ou trop de taboos par ex... bref on ne peut plus générer. 	KEN : if len(taboo_list) > taboo_list_length: taboo_list.pop(0)
+    # TODO : QUAND ON GENERE, DEBUT OU NON ? SOIT INTEGRER DANS PARAMETRES FONCTIONS SOIT DECIDER QU'ON APPELLE
+    #  reinit_navigation_param si c'est le début
+    # TODO : traiter le cas ou trop de taboos par ex... bref on ne peut plus générer.
+    #  KEN : if len(taboo_list) > taboo_list_length: taboo_list.pop(0)
     # TODO : autoriser factor links ?
     def simply_guided_navigation(self, required_labels, new_max_continuity=None,
                                  forward_context_length_min=0, init=False, equiv=None, print_info=False, shift_index=0,
                                  break_when_none=False):
         """ Navigation through the automaton, simply guided step by step by an input sequence of label.
-            Returns a novel sequence being consistent with the internal logic of the sequence on which the automaton is built, and matching the labels in required_labels.
+            Returns a novel sequence being consistent with the internal logic of the sequence on which the automaton is
+            built, and matching the labels in required_labels.
             (Returns a **path**, i.e., a list of indexes. Generated sequence: cf. :meth:`Navigator.simply_guided_generation`.)
 
             :param required_labels: guiding sequence of labels
@@ -351,7 +347,8 @@ class FactorOracleNavigator(FactorOracle, Navigator):
             :see also: Tutorial in FactorOracleNavigator_tutorial.py.
 
             :!: **equiv** has to be consistent with the type of the elements in labels.
-            :!: The result **strongly depends** on the tuning of the parameters self.max_continuity, self.avoid_repetitions_mode, self.no_empty_event.
+            :!: The result **strongly depends** on the tuning of the parameters self.max_continuity,
+            self.avoid_repetitions_mode, self.no_empty_event.
 
 
             :Example:
@@ -367,7 +364,9 @@ class FactorOracleNavigator(FactorOracle, Navigator):
             >>> forward_context_length_min = 0
             >>>
             >>> guide = ['C','A','B','B','C', 'C', 'D']
-            >>> generated_sequence = FON.simply_guided_generation(guide, forward_context_length_min = forward_context_length_min, init = True, print_info = True)
+            >>> generated_sequence = FON.simply_guided_generation(guide,
+            >>>                                                   forward_context_length_min = forward_context_length_min,
+            >>>                                                   init = True, print_info = True)
 
 
             """
@@ -423,11 +422,12 @@ class FactorOracleNavigator(FactorOracle, Navigator):
                                                              self.direct_transitions.get(s - 1)[0],
                                                              self.direct_transitions.get(s - 1)[1])
             else:
-                # s = factor_oracle_navigator.find_matching_label_without_continuation(required_label, init_continuations_matching_label, equiv)
+                # s = factor_oracle_navigator.find_matching_label_without_continuation(required_label,
+                #                             init_continuations_matching_label, equiv)
                 s = self.find_matching_label_without_continuation(required_label,
                                                                   self.filter_using_history_and_taboos(
-                                                                                         list(range(1,
-                                                                                                    self.index_last_state()))),
+                                                                      list(range(1,
+                                                                                 self.index_last_state()))),
                                                                   equiv)
                 if not s is None:
                     str_print_info += " xxnothingxx - random matching label: {}".format(s)
@@ -448,7 +448,9 @@ class FactorOracleNavigator(FactorOracle, Navigator):
     # dict_methods["simply_guided_navigation_one_step"] = simply_guided_navigation_one_step
 
     def filtered_continuations(self, index_state, forward_context_length_min=0, equiv=None):
-        """ Continuations from the state at index index_state in the automaton (see method continuations), and filtered continuations satisfying the constraints of taboos and repetitions (cf. FactorOracleNavigator.history_and_taboos and FactorOracleNavigator.avoid_repetitions_mode).
+        """ Continuations from the state at index index_state in the automaton (see method continuations),
+        and filtered continuations satisfying the constraints of taboos and repetitions
+        (cf. FactorOracleNavigator.history_and_taboos and FactorOracleNavigator.avoid_repetitions_mode).
 
         :param index_state: start index
         :type index_state: int
@@ -457,7 +459,8 @@ class FactorOracleNavigator(FactorOracle, Navigator):
         :type forward_context_length_min: int
         :param equiv: Compararison function given as a lambda function, default: factor_oracle_navigator.equiv.
         :type equiv: function
-        :return: Indexes in the automaton of the possible continuations from the state at index index_state in the automaton.
+        :return: Indexes in the automaton of the possible continuations from the state at index index_state in the
+        automaton.
         :rtype: tuple(list (int), list (int))
         :see also: FactorOracleNavigator.continuations(...)
 
@@ -468,7 +471,11 @@ class FactorOracleNavigator(FactorOracle, Navigator):
         init_continuations = self.continuations(index_state, forward_context_length_min, equiv,
                                                 authorize_direct_transition=True)
         # print("\n\nInitial continuations from index {}: {}".format(index_state, init_continuations))
-        # filtered_continuations = [c for c in init_continuations if (not (factor_oracle_navigator.history_and_taboos[c] is None) and (factor_oracle_navigator.avoid_repetitions_mode < 2 or factor_oracle_navigator.avoid_repetitions_mode >= 2 and factor_oracle_navigator.history_and_taboos[c] == 0))]
+        # filtered_continuations = [c for c in init_continuations
+        #                           if (not (factor_oracle_navigator.history_and_taboos[c] is None)
+        #                               and (factor_oracle_navigator.avoid_repetitions_mode < 2
+        #                                    or factor_oracle_navigator.avoid_repetitions_mode >= 2
+        #                                    and factor_oracle_navigator.history_and_taboos[c] == 0))]
         filtered_continuations = self.filter_using_history_and_taboos(init_continuations)
         # print("Continuations from index {} after filtering: {}".format(index_state, filtered_continuations))
         return init_continuations, filtered_continuations
@@ -477,7 +484,9 @@ class FactorOracleNavigator(FactorOracle, Navigator):
 
     def filtered_continuations_with_label(self, index_state, required_label,
                                           forward_context_length_min=0, equiv=None):
-        """ Continuations labeled by required_label from the state at index index_state in the automaton (see method continuations), and filtered continuations satisfying the constraints of taboos and repetitions (cf. FactorOracleNavigator.history_and_taboos and FactorOracleNavigator.avoid_repetitions_mode).
+        """ Continuations labeled by required_label from the state at index index_state in the automaton (see method
+        continuations), and filtered continuations satisfying the constraints of taboos and repetitions
+        (cf. FactorOracleNavigator.history_and_taboos and FactorOracleNavigator.avoid_repetitions_mode).
 
         :param index_state: start index
         :type index_state: int
@@ -501,11 +510,6 @@ class FactorOracleNavigator(FactorOracle, Navigator):
 
     # dict_methods["filtered_continuations_with_label"] = filtered_continuations_with_label
 
+
 # TODO 2021 : PREVIOUSLY IN THE INIT METHOD USING THE META CLASS
 implemented_model_navigator_classes = {"FactorOracleNavigator": FactorOracleNavigator}
-#####################################################################################
-# CREATION OF THE CLASS
-# tuple_bases = (FactorOracle, Navigator)
-# FactorOracleNavigator = MetaModelNavigator("FactorOracleNavigator", tuple_bases, dict_methods)
-# FactorOracleNavigator.__doc__ = docstring
-#####################################################################################

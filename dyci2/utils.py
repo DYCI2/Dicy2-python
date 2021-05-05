@@ -1,6 +1,9 @@
-from model_navigator import FactorOracleGenerator
+from typing import Any
 
-IntQ = int
+from generator_new import FactorOracleGenerator
+
+DontKnow = Any  # TODO[C]
+
 
 
 def format_list_as_list_of_strings(l):

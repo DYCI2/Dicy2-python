@@ -15,7 +15,7 @@ This is based on the Knowledge/Intuition paradigm introduced in **Deguernel, Vin
 
 """
 
-from dyci2.model_navigator import *
+from dyci2.generator_new import *
 import xml.etree.ElementTree as ET
 
 

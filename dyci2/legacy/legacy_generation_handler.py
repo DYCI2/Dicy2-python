@@ -212,7 +212,7 @@ class GenerationHandlerOld(GenerationHandlerNew):
             self.process_prioritary_query("ms", print_info)
 
     # TODO: COMPARER LA PRIORITE DES QUERIES EN EVENT ET EN MS
-    def process_prioritary_query(self, unit=None, print_info=False):
+    def l_process_prioritary_query(self, unit=None, print_info=False):
         """
         Processes the prioritary query in the query pool.
         """

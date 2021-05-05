@@ -22,11 +22,9 @@ Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/Factor
 
 """
 
-import random
-from typing import List, Union, Callable
+from typing import List, Union, Callable, Optional
 
 from dyci2.label import *
-from collections import Counter
 
 
 class Model:
@@ -44,11 +42,11 @@ class Model:
     :!: **equiv** has to be consistent with the type of the elements in labels.
     """
 
-    def __init__(self, sequence=[], labels=[], equiv=(lambda x, y: x == y), label_type=None, content_type=None):
+    def __init__(self, sequence=(), labels=(), equiv=(lambda x, y: x == y), label_type=None, content_type=None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         self.sequence: List[Union[int, str]] = []
         self.content_type = content_type
-        self.labels = []    # TODO[A]: is type signature really str/int or should it be List[Label]?
+        self.labels = []  # TODO[A]: is type signature really str/int or should it be List[Label]?
         self.label_type = label_type
         self.equiv: Callable = equiv
 
@@ -64,7 +62,7 @@ class Model:
         """ Initialization method called before learning the sequence in the model."""
         pass
 
-    def learn_sequence(self, sequence, labels, equiv=None):
+    def learn_sequence(self, sequence, labels, equiv: Callable = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """
         Learns (appends) a new sequence in the model.
@@ -96,7 +94,7 @@ class Model:
             for i in range(len(labels_to_learn)):
                 self.learn_event(sequence_to_learn[i], labels_to_learn[i], equiv)
 
-    def learn_event(self, state, label, equiv=None):
+    def learn_event(self, state, label, equiv: Optional[Callable] = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """
         Learns (appends) a new state in the model.
@@ -146,7 +144,7 @@ class Model:
                 print("label_type must inherit from the class Label.", exception)
                 return None
             else:
-                self.equiv = self.label_type.__eq__
+                self.equiv: Callable = self.label_type.__eq__
         self.init_model()
         self.learn_sequence(sequence, labels, self.equiv)
 
@@ -154,4 +152,3 @@ class Model:
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         for i in range(self.index_last_state()):
             print("({}) {}:{}".format(i, self.labels[i], self.sequence[i]))
-

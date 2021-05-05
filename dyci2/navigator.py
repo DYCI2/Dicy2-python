@@ -36,6 +36,7 @@ from dyci2.intervals import *
 from utils import noneIsInfinite
 
 
+# noinspection PyUnresolvedReferences
 class Navigator:
     """
     The class :class:`~Navigator.Navigator` implements **parameters and methods that are used to navigate through a
@@ -53,7 +54,7 @@ class Navigator:
     :type sequence: list or str
     :param labels: sequence of labels chosen to describe the sequence.
     :type labels: list or str
-    :param equiv: compararison function given as a lambda function, default if no parameter is given: self.equiv.
+    :param equiv: comparison function given as a lambda function, default if no parameter is given: self.equiv.
     :type equiv: function
 
     :param current_navigation_index: current length of the navigation
@@ -84,12 +85,12 @@ class Navigator:
     :type execution_trace: dict
     """
 
-    def __init__(self, sequence=[], labels=[], max_continuity=20, control_parameters=[], execution_trace_parameters=[],
-                 equiv=(lambda x, y: x == y)):
+    def __init__(self, sequence=(), labels=(), max_continuity=20, control_parameters=(), execution_trace_parameters=(),
+                 equiv: Optional[Callable] =(lambda x, y: x == y)):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         self.sequence = sequence
         self.labels = labels
-        self.equiv = equiv
+        self.equiv:Callable = equiv
         self.no_empty_event = True
         self.max_continuity = max_continuity
         self.avoid_repetitions_mode = 0
@@ -118,6 +119,7 @@ class Navigator:
                 self.execution_trace_parameters.append(param)
 
     def __setattr__(self, name_attr, val_attr):
+        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         # super.__setattr__(self, name_attr, val_attr)
         object.__setattr__(self, name_attr, val_attr)
         # TODO : SUPPRIMER TRACE AVANT TEMPS PERFORMANCE
@@ -139,182 +141,6 @@ class Navigator:
             self._record_execution_trace(self.current_navigation_index)
             print("NEW LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
         # print("NEW EXECUTION TRACE: {}".format(self.execution_trace))
-
-    def free_navigation(self, length, new_max_continuity=None, forward_context_length_min=0,
-                        init=False, equiv=None, print_info=False):
-        # TODO[A] Complex refactorisation of inner loop
-        # FIXME[MergeState]: A[], B[], C[], D[], E[]
-        """ Free navigation through the automaton.
-            Returns a novel sequence being consistent with the internal logic of the sequence on which the automaton
-            is built.
-            (Returns a **path**, i.e., a list of indexes. Generated sequence: cf. :meth:`Navigator.free_generation`.)
-
-            "Omax-like" navigation, see **Assayag, Bloch, Chemillier, Cont, Dubnov "Omax brothers: A dynamic topology
-            of agents for improvization learning", in Proceedings of the 1st ACM Workshop on Audio and Music Computing
-            Multimedia** (https://hal.archives-ouvertes.fr/hal-01161351).
-
-            :param length: length of the generated sequence
-            :type length: int
-            :param new_max_continuity: new value for self.max_continuity (not changed if no parameter is given)
-            :type new_max_continuity: int
-            :param forward_context_length_min: minimum length of the forward common context
-            :type forward_context_length_min: int
-            :param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
-            :type init: bool
-            :param equiv: Compararison function given as a lambda function, default: self.equiv.
-            :type equiv: function
-            :param print_info: print the details of the navigation steps
-            :type print_info: bool
-            :return: list of indexes of the generated path.
-            :rtype: list (int)
-            :see also: :meth:`Navigator.free_generation`
-            :see also: Tutorial in FactorOracleNavigator_tutorial.py.
-
-            :!: **equiv** has to be consistent with the type of the elements in labels.
-            :!: The result **strongly depends** on the tuning of the parameters self.max_continuity,
-            self.avoid_repetitions_mode, self.no_empty_event.
-
-            :Example:
-
-            >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-            >>> labels = [s[0] for s in sequence]
-            >>> FON = FactorOracleGenerator(sequence, labels)
-            >>>
-            >>> FON.current_position_in_sequence = random.randint(0, FON.index_last_state())
-            >>> FON.avoid_repetitions_mode = 1
-            >>> FON.max_continuity = 2
-            >>> forward_context_length_min = 0
-            >>> generated_sequence = FON.free_generation(10, forward_context_length_min = forward_context_length_min, print_info = True)
-            """
-
-        print("FREE GENERATION")
-        print_info = True
-
-        if equiv is None:
-            equiv = self.equiv
-
-        if not new_max_continuity is None:
-            self.max_continuity = new_max_continuity
-
-        # print("FREE GENERATION 1")
-        if init:
-            self.reinit_navigation_param_old_modelnavigator()
-        # print("FREE GENERATION 2")
-
-        if self.current_position_in_sequence < 0:
-            # print("FREE GENERATION 2.1 index_last_state = {}".format(factor_oracle_navigator.index_last_state()))
-            self.current_position_in_sequence = random.randint(1, self.index_last_state())
-        # print("FREE GENERATION 2.2")
-
-        # print("FREE GENERATION 3")
-        generated_sequence_of_indexes = []
-        s = None
-        for i in range(0, length):
-            # print("FREE GENERATION 3.{}".format(i))
-            str_print_info = "{} (cont. = {}/{}): {}".format(i, self.current_continuity,
-                                                             self.max_continuity, self.current_position_in_sequence)
-
-            s = None
-            init_continuations, filtered_continuations = self.filtered_continuations(
-                self.current_position_in_sequence, forward_context_length_min, equiv)
-            # print("FREE GENERATION 3.{}.1".format(i))
-
-            s = self.navigator._follow_continuation_using_transition(filtered_continuations)
-            if not s is None:
-                # print("FREE GENERATION 3.{}.2".format(i))
-                str_print_info += " -{}-> {}".format(self.model.labels[s], s)
-            # factor_oracle_navigator.current_position_in_sequence = s
-            else:
-                # print("FREE GENERATION 3.{}.3".format(i))
-                s = self.navigator._follow_continuation_with_jump(filtered_continuations)
-                if not s is None:
-                    # print("FREE GENERATION 3.{}.4".format(i))
-                    str_print_info += " ...> {} -{}-> {}".format(s - 1,
-                                                                 self.direct_transitions.get(s - 1)[
-                                                                     0],
-                                                                 self.direct_transitions.get(s - 1)[
-                                                                     1])
-                # factor_oracle_navigator.current_position_in_sequence = s
-                else:
-                    # print("FREE GENERATION 3.{}.5".format(i))
-                    # s = factor_oracle_navigator.navigate_without_continuation(factor_oracle_navigator
-                    #     .filter_using_history_and_taboos(init_continuations))
-                    # LAST 15/10
-                    s = self._follow_continuation_with_jump(list(range(self.index_last_state())))
-                    if not s is None:
-                        str_print_info += " xxnothingxx - random: {}".format(s)
-                    # factor_oracle_navigator.current_position_in_sequence = s
-                    else:
-                        str_print_info += " xxnothingxx"
-                    # factor_oracle_navigator.current_position_in_sequence = s
-
-            generated_sequence_of_indexes.append(s)
-            if print_info:
-                print(str_print_info)
-
-            # print("FREE GENERATION 3.{}.6".format(i))
-
-            if not s is None:
-                self.current_position_in_sequence = s
-            # print("\n\n--> FREE NAVIGATION SETS POSITION IN SEQUENCE: {}<--".format(s))
-            # factor_oracle_navigator.history_and_taboos[s] += 1
-
-        return generated_sequence_of_indexes
-
-    def simply_guided_navigation(self, required_labels, new_max_continuity=None, forward_context_length_min=0,
-                                 init=False, equiv=None, print_info=False, shift_index=0, break_when_none=False):
-        """ Navigation through the sequence, simply guided step by step by an input sequence of label.
-        Naive version of the method handling the guided navigation in a sequence.
-        This method has to be overloaded by a model-dependant version when creating a **model navigator** class
-        (cf. :mod:`ModelNavigator`).
-        (Returns a **path**, i.e., a list of indexes. Generated sequence: cf. :meth:`Navigator.simply_guided_generation`.)
-
-        :param required_labels: guiding sequence of labels
-        :type required_labels: list
-        :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
-        :type new_max_continuity: int
-        :param forward_context_length_min: minimum length of the forward common context
-        :type forward_context_length_min: int
-        :param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
-        :type init: bool
-        :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        :type equiv: function
-        :param print_info: print the details of the navigation steps
-        :type print_info: bool
-        :return: list of indexes of the generated path.
-        :rtype: list (int)
-        :see also: :meth:`Navigator.simply_guided_generation`.
-        :see also: Example of overloaded method: :meth:`FactorOracleNavigator.simply_guided_navigation`.
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-        :!: The result **strongly depends** on the tuning of the parameters self.max_continuity,
-            self.avoid_repetitions_mode, self.no_empty_event.
-
-
-        """
-
-        if equiv is None:
-            equiv = self.equiv
-
-        if not new_max_continuity is None:
-            self.max_continuity = new_max_continuity
-
-        if init:
-            self.reinit_navigation_param_old_modelnavigator()
-            authorized_indexes = self.filter_using_history_and_taboos(list(range(1, self.index_last_state())))
-            self.current_position_in_sequence = authorized_indexes[random.randint(0, len(authorized_indexes) - 1)]
-
-        generated_sequence_of_indexes = []
-        s = None
-        for i in range(0, len(required_labels)):
-            s = self.find_matching_label_without_continuation(required_labels[i], authorized_indexes)
-            self.current_position_in_sequence = s
-
-            if break_when_none and s is None:
-                return generated_sequence_of_indexes
-            else:
-                generated_sequence_of_indexes.append(s)
-        return generated_sequence_of_indexes
 
     def find_prefix_matching_with_labels(self, use_intervals, labels, list_of_labels, continuity_with_future,
                                          authorized_indexes, authorized_transformations, sequence_to_interval_fun,
@@ -707,7 +533,7 @@ class Navigator:
     #   LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY   #
     ################################################################################################################
 
-    def choose_prefix_from_list(self, index_delta_prefixes, pattern=[]):
+    def choose_prefix_from_list(self, index_delta_prefixes, pattern=()):
         # TODO[A1] This needs to be stereotyped and return a list of candidates (which may be of length 1)
         s = None
         t = 0

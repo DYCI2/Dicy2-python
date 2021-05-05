@@ -15,7 +15,7 @@ see **Deguernel, "Apprentissage de structures musicales en context d'improvisati
 
 """
 
-from dyci2.model_navigator import *
+from dyci2.generator_new import *
 
 ##########
 ##### STEP 1: Define your alphabet.

@@ -13,7 +13,7 @@ Tutorial for the class :class:`~ModelNavigator.FactorOracleNavigator` defined in
 """
 
 
-from dyci2.model_navigator import *
+from dyci2.generator_new import *
 
 
 sequence = ['A1', 'B1', 'B2', 'C1', 'A2', 'B3', 'C2', 'D1', 'A3', 'B4', 'C3']

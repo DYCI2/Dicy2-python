@@ -43,6 +43,7 @@ from dyci2.query import *
 from dyci2.transforms import *
 # TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
 # TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
+from generator_new import FactorOracleGenerator
 from utils import format_list_as_list_of_strings, implemented_model_navigator_classes
 
 
@@ -51,7 +52,7 @@ def basic_equiv(x, y):
 
 
 # TODO[E]: Remove noinspection
-# noinspection PyIncorrectDocstring
+# noinspection PyIncorrectDocstring,PyUnresolvedReferences
 class GenerationHandlerNew:
     """ The class **Generator** embeds a **model navigator** as "memory" (cf. metaclass
     :class:`~MetaModelNavigator.MetaModelNavigator`) and processes **queries** (class :class:`~Query.Query`) to
@@ -118,13 +119,13 @@ class GenerationHandlerNew:
 
     """
 
-    def __init__(self, sequence=[], labels=[], model_navigator="FactorOracleNavigator", equiv=(lambda x, y: x == y),
-                 label_type=None, content_type=None, authorized_tranformations=[0], continuity_with_future=[0.0, 1.0]):
+    def __init__(self, sequence=(), labels=(), model_navigator="FactorOracleNavigator", equiv=(lambda x, y: x == y),
+                 label_type=None, content_type=None, authorized_tranformations=(0,), continuity_with_future=(0.0, 1.0)):
         # FIXME[MergeState]: A[], B[], C[], D[]
         try:
             implemented_model_navigator_classes
         except NameError:
-            print("No model navigator available. Please load model_navigator.py")
+            print("No model navigator available. Please load generator_new.py")
             return
         else:
             try:
@@ -137,11 +138,12 @@ class GenerationHandlerNew:
                 if equiv is None:
                     equiv = basic_equiv
                 self.model_navigator = model_navigator
-                self.memory = implemented_model_navigator_classes[self.model_navigator](sequence=sequence,
-                                                                                        labels=labels,
-                                                                                        label_type=label_type,
-                                                                                        content_type=content_type,
-                                                                                        equiv=equiv)
+                self.memory: FactorOracleGenerator = implemented_model_navigator_classes[self.model_navigator](
+                    sequence=sequence,
+                    labels=labels,
+                    label_type=label_type,
+                    content_type=content_type,
+                    equiv=equiv)
 
         self.label_type = label_type
         self.content_type = content_type
@@ -181,7 +183,7 @@ class GenerationHandlerNew:
         """ Learn a new sequence in the memory (model navigator)."""
         self.memory.learn_sequence(sequence=sequence, labels=labels)
 
-    def receive_query(self, query: Query, print_info: bool = False):
+    def l_receive_query(self, query: Query, print_info: bool = False) -> None:
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ DOCSTRING WAS REMOVED """
         # ## LEGACY[`Generator.receive_query`]:
@@ -195,13 +197,13 @@ class GenerationHandlerNew:
         if query.scope["unit"] == "event":
             self.query_pool_event.append(query)
             print("LEN QUERY POOL = {}".format(self.query_pool_event))
-            self.process_prioritary_query("event", print_info)
+            self.l_process_prioritary_query("event", print_info)
             print("LEN QUERY POOL = {}".format(self.query_pool_event))
         elif query.scope["unit"] == "ms":
             self.query_pool_ms.append(query)
-            self.process_prioritary_query("ms", print_info)
+            self.l_process_prioritary_query("ms", print_info)
 
-    def process_prioritary_query(self, unit: Optional[str] = None, print_info: bool = False):
+    def l_process_prioritary_query(self, unit: Optional[str] = None, print_info: bool = False) -> None:
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ Processes the prioritary query in the query pool. """
         if unit:
@@ -228,7 +230,7 @@ class GenerationHandlerNew:
             else:
                 self.genhandler_process_query(self.query_pool_event.pop(0), print_info)
 
-    def genhandler_process_query(self, query: Query, print_info: bool = False):
+    def genhandler_process_query(self, query: Query, print_info: bool = False) -> int:
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ DOCSTRING WAS REMOVED """
         print("\n--------------------")
@@ -286,6 +288,10 @@ class GenerationHandlerNew:
                     index_for_generation = self.index_previously_generated_event_date_ms(query.date["ms"])
                     self.memory.go_to_anterior_state_using_execution_trace(index_for_generation - 1)
 
+            else:
+                # TODO[C]: This was added in A for parsing reasons. Handle properly later.
+                raise RuntimeError("The 'unit' of a query must be either 'event' or 'ms'.")
+
             self.memory.current_navigation_index = index_for_generation - 1
             self.generator_process_query(query, print_info=print_info)
 
@@ -335,7 +341,7 @@ class GenerationHandlerNew:
         self.running_generation.pop()
         return query.start["date"]
 
-    def generator_process_query(self, query: Query, print_info: bool = False):
+    def generator_process_query(self, query: Query, print_info: bool = False) -> None:
         # FIXME[MergeState]: A[x], B[], C[], D[]
         """
         The key differences between :class:`~Generator.Generator` and :class:`~Generator.GenerationHandler` are:
@@ -390,7 +396,7 @@ class GenerationHandlerNew:
             if query.scope["duration"] == 1:
                 if query.handle[0] is None:
                     print("GENERATION MATCHING QUERY FREE ...")
-                    output = self.handle_free_generation(length=1, print_info=print_info)
+                    output = self._l_handle_free_generation(length=1, print_info=print_info)
                     print("... GENERATION MATCHING QUERY FREE OK")
                     self.transfo_current_generation_output = [self.current_transformation_memory] * len(output)
                 else:
@@ -399,7 +405,7 @@ class GenerationHandlerNew:
                     # print(query.handle)
                     # print("query.handle[0]")
                     # print(query.handle[0])
-                    output = self.handle_generation_matching_label(label=query.handle, print_info=print_info)
+                    output = self._l_handle_guided_generation(label=query.handle, print_info=print_info)
                     # print("output")
                     # print(output)
                     self.transfo_current_generation_output = [self.current_transformation_memory] * len(output)
@@ -407,12 +413,13 @@ class GenerationHandlerNew:
             elif query.scope["duration"] > 1:
                 if query.handle[0] is None:
                     print("GENERATION MATCHING QUERY FREE ...")
-                    output = self.handle_free_generation(length=query.scope["duration"], print_info=print_info)
+                    output = self._l_handle_free_generation(length=query.scope["duration"], print_info=print_info)
                     print("... GENERATION MATCHING QUERY FREE OK")
                     self.transfo_current_generation_output = [self.current_transformation_memory] * len(output)
                 else:
                     print("GENERATION MATCHING QUERY SCENARIO ...")
-                    output = self.handle_scenario_based_generation(list_of_labels=query.handle, print_info=print_info)
+                    output = self._l_handle_scenario_based_generation(list_of_labels=query.handle,
+                                                                      print_info=print_info)
                     print("... GENERATION MATCHING QUERY SCENARIO OK")
 
         self.current_generation_output = output
@@ -420,7 +427,7 @@ class GenerationHandlerNew:
             self.initial_query = False
 
     # TODO: Definitely not optimal to encode/decode at each iteration
-    def handle_free_generation(self, length, print_info=False):
+    def _l_handle_free_generation(self, length, print_info=False) -> List[int]:
         # TODO[A]: This one should iterate over entire length, i.e. migrate parts of Navigator/ModelNavigator
         """
         Generates a sequence using the method :meth:`~Navigator.Navigator.free_generation` of the model navigator
@@ -440,8 +447,56 @@ class GenerationHandlerNew:
         self.decode_memory_with_current_transfo()
         return result
 
+    def free_generation(self, length, new_max_continuity=None, forward_context_length_min=0, init=False, equiv=None,
+                        print_info=False):
+        # FIXME[MergeState]: A[], B[], C[], D[], E[]
+        """ Free navigation through the sequence.
+        Naive version of the method handling the free navigation in a sequence (random).
+        This method has to be overloaded by a model-dependant version when creating a **model navigator** class
+        (cf. :mod:`ModelNavigator`).
+
+        :param length: length of the generated sequence
+        :type length: int
+        :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
+        :type new_max_continuity: int
+        :param forward_context_length_min: minimum length of the forward common context
+        :type forward_context_length_min: int
+        :param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
+        :type init: bool
+        :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        :type equiv: function
+        :param print_info: print the details of the navigation steps
+        :type print_info: bool
+        :return: generated sequence
+        :rtype: list
+        :see also: Example of overloaded method: :meth:`FactorOracleNavigator.free_navigation`.
+
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+        :!: The result **strongly depends** on the tuning of the parameters self.max_continuity,
+            self.avoid_repetitions_mode, self.no_empty_event.
+        """
+
+        print_info, equiv = self.memory.l_pre_free_navigation(equiv, new_max_continuity, init)
+
+        sequence = []
+
+        generated_sequence_of_indexes = []
+        s = None
+        for i in range(0, length):
+            generated_sequence_of_indexes.append(self.memory.r_free_navigation_one_step(i, forward_context_length_min,
+                                                                                        equiv, print_info))
+
+        generated_indexes = generated_sequence_of_indexes
+
+        for generated_index in generated_indexes:
+            if generated_index is None:
+                sequence.append(None)
+            else:
+                sequence.append(self.sequence[generated_index])
+        return sequence
+
     # TODO: Definitely not optimal to encode/decode at each iteration
-    def handle_generation_matching_label(self, label, print_info=False):
+    def _l_handle_guided_generation(self, label, print_info=False):
         # TODO[A]: This one should iterate over entire length, i.e. migrate parts of Navigator/ModelNavigator
         """
         Generates a single event using the method :meth:`~Navigator.Navigator.simply_guided_generation` of the model
@@ -469,7 +524,63 @@ class GenerationHandlerNew:
         # print("...HANDLE GENERATION MATCHING LABEL")
         return result
 
-    def handle_scenario_based_generation(self, list_of_labels, print_info=False):
+    def simply_guided_generation(self, required_labels, new_max_continuity=None, forward_context_length_min=0,
+                                 init=False, equiv=None, print_info=False, shift_index=0, break_when_none=False):
+        # FIXME[MergeState]: A[], B[], C[], D[], E[]
+        """ Navigation in the sequence, simply guided step by step by an input sequence of label.
+        Naive version of the method handling the navigation in a sequence when it is guided by target labels.
+        This method has to be overloaded by a model-dependant version when creating a **model navigator** class
+        (cf. :mod:`ModelNavigator`).
+
+
+        :param required_labels: guiding sequence of labels
+        :type required_labels: list
+        :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
+        :type new_max_continuity: int
+        :param forward_context_length_min: minimum length of the forward common context
+        :type forward_context_length_min: int
+        :param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
+        :type init: bool
+        :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        :type equiv: function
+        :param print_info: print the details of the navigation steps
+        :type print_info: bool
+        :return: generated sequence
+        :rtype: list
+        :see also: Example of overloaded method: :meth:`FactorOracleNavigator.free_navigation`.
+
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+        :!: The result **strongly depends** on the tuning of the parameters self.max_continuity,
+        self.avoid_repetitions_mode, self.no_empty_event.
+        """
+
+        equiv = self.memory.l_pre_guided_navigation(required_labels, equiv, new_max_continuity, init)
+
+        sequence = []
+
+        generated_sequence_of_indexes = []
+        s = None
+        for i in range(0, len(required_labels)):
+            s = self.navigator.simply_guided_navigation_one_step(required_labels[i], new_max_continuity,
+                                                                 forward_context_length_min, equiv, print_info,
+                                                                 shift_index=i + shift_index)
+
+            if break_when_none and s is None:
+                return generated_sequence_of_indexes
+            else:
+                generated_sequence_of_indexes.append(s)
+            # print("\n\n-->SIMPLY NAVIGATION SETS POSITION: {}<--".format(s))
+            # factor_oracle_navigator.current_position_in_sequence = s
+        generated_indexes = generated_sequence_of_indexes
+
+        for generated_index in generated_indexes:
+            if generated_index is None:
+                sequence.append(None)
+            else:
+                sequence.append(self.sequence[generated_index])
+        return sequence
+
+    def _l_handle_scenario_based_generation(self, list_of_labels, print_info=False):
         """
         Generates a sequence matching a "scenario" (a list of labels). The generation process takes advantage of the
         scenario to introduce anticatory behaviour, that is, continuity with the future of the scenario.
@@ -498,9 +609,10 @@ class GenerationHandlerNew:
                 i += l
             else:
                 # print("SCENARIO BASED GENERATION 1.{}.2.1".format(i))
-                if self.memory.no_empty_event and self.memory.current_position_in_sequence < self.memory.index_last_state():
+                if self.memory.l_get_no_empty_event() and self.memory.current_position_in_sequence < self.memory.l_get_index_last_state():
                     print("NO EMPTY EVENT")
-                    generated_sequence.append(self.memory.sequence[self.memory.current_position_in_sequence + 1])
+                    generated_sequence.append(
+                        self.memory.l_get_sequence_nonmutable()[self.memory.current_position_in_sequence + 1])
                     # print("\n\n-->HANDLE WHEN NO EMPTY EVENT MODE SETS POSITION: {}<--"
                     # .format(self.memory.sequence[self.current_position_in_sequence + 1]))
                     self.memory.current_position_in_sequence = self.memory.current_position_in_sequence + 1
@@ -535,7 +647,7 @@ class GenerationHandlerNew:
         # s = Recherche prefix (current_scenario) - > Sort 1 ### TODO
         # print("self.memory.history_and_taboos = {}".format(self.memory.history_and_taboos))
         authorized_indexes = self.filter_using_history_and_taboos(
-            list(range(0, len(self.memory.labels))))  # Remember state at idx 0 is None
+            list(range(0, len(self.memory.model.labels))))  # Remember state at idx 0 is None
         # print("SCENARIO ONE PHASE 1")
 
         # 15/11/17
@@ -547,21 +659,21 @@ class GenerationHandlerNew:
 
         # print("LOOKING FOR PREFIXES OF {}".format(list_of_labels))
 
-        if not self.memory.label_type is None and self._use_intervals():
-            make_sequence_of_intervals_from_sequence_of_labels = self.memory.label_type.make_sequence_of_intervals_from_sequence_of_labels
-            equiv_mod_interval = self.memory.label_type.equiv_mod_interval
+        if not self.memory.model.label_type is None and self._use_intervals():
+            make_sequence_of_intervals_from_sequence_of_labels = self.memory.model.label_type.make_sequence_of_intervals_from_sequence_of_labels
+            equiv_mod_interval = self.memory.model.label_type.equiv_mod_interval
         else:
             make_sequence_of_intervals_from_sequence_of_labels = None
             equiv_mod_interval = None
 
-        s, t, length_selected_prefix = self.memory.find_prefix_matching_with_labels(self._use_intervals(),
-                                                                                    self.memory.labels, list_of_labels,
-                                                                                    self.continuity_with_future,
-                                                                                    authorized_indexes,
-                                                                                    self.authorized_transformations,
-                                                                                    make_sequence_of_intervals_from_sequence_of_labels,
-                                                                                    equiv_mod_interval,
-                                                                                    self.memory.equiv)
+        s, t, length_selected_prefix = self.memory.scenario_based_generation(self._use_intervals(),
+                                                                             list_of_labels,
+                                                                             self.continuity_with_future,
+                                                                             authorized_indexes,
+                                                                             self.authorized_transformations,
+                                                                             make_sequence_of_intervals_from_sequence_of_labels,
+                                                                             equiv_mod_interval,
+                                                                             self.memory.model.equiv)
 
         if s is not None:
             print("SCENARIO BASED ONE PHASE SETS POSITION: {}".format(s))
@@ -574,23 +686,23 @@ class GenerationHandlerNew:
                 # print(self.memory.sequence[s])
                 # TODO FAIRE MIEUX:
                 if self.content_type:
-                    s_content = self.current_transformation_memory.encode(self.memory.sequence[s])
+                    s_content = self.current_transformation_memory.encode(self.memory.model.sequence[s])
                 else:
-                    s_content = self.memory.sequence[s]
+                    s_content = self.memory.model.sequence[s]
 
                 if print_info:
                     print("{} NEW STARTING POINT {} (orig. {}): {}\nlength future = {} - FROM NOW {}"
                           .format(shift_index,
-                                  self.current_transformation_memory.encode(self.memory.labels[s]),
-                                  self.memory.labels[s],
+                                  self.current_transformation_memory.encode(self.memory.model.labels[s]),
+                                  self.memory.model.labels[s],
                                   self.memory.current_position_in_sequence,
                                   length_selected_prefix,
                                   self.current_transformation_memory))
             else:
-                s_content = self.memory.sequence[s]
+                s_content = self.memory.model.sequence[s]
                 if print_info:
                     print("{} NEW STARTING POINT {}: {}\nlength future = {} - FROM NOW No transformation of the memory"
-                          .format(shift_index, self.memory.labels[s], self.memory.current_position_in_sequence,
+                          .format(shift_index, self.memory.model.labels[s], self.memory.current_position_in_sequence,
                                   length_selected_prefix))
 
             # print("SCENARIO ONE PHASE 4")
@@ -692,14 +804,14 @@ class GenerationHandlerNew:
         # print(len(self.authorized_tranformations) > 0)
         # print(self.authorized_tranformations != [0])
         # print(self.authorized_tranformations)
-        return (not (self.memory.label_type is None)) and self.memory.label_type._use_intervals and len(
+        return (not (self.memory.model.label_type is None)) and self.memory.model.label_type._use_intervals and len(
             self.authorized_transformations) > 0 and self.authorized_transformations != [0]
 
     def filter_using_history_and_taboos(self, list_of_indexes):
-        return self.memory.filter_using_history_and_taboos(list_of_indexes)
+        return self.memory.navigator.filter_using_history_and_taboos(list_of_indexes)
 
     def fonction_test(self):
-        return self.memory.history_and_taboos
+        return self.memory.navigator.history_and_taboos
 
     # TODO : [NONE] au début : UNIQUEMENT POUR ORACLE ! PAS GENERIQUE !
     # TODO : A MODIFIER QUAND LES CONTENTS DANS SEQUENCE AURONT UN TYPE !

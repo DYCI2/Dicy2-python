@@ -47,7 +47,7 @@ class FactorOracle(Model):
 
     """
 
-    def __init__(self, sequence=[], labels=[], equiv=(lambda x, y: x == y), label_type=None, content_type=None):
+    def __init__(self, sequence=[], labels=[], equiv: Optional[Callable] =(lambda x, y: x == y), label_type=None, content_type=None):
         """ Constructor for the class FactorOracle.
         :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
 

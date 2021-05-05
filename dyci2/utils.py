@@ -1,6 +1,5 @@
 from typing import Any
 
-from generator_new import FactorOracleGenerator
 
 DontKnow = Any  # TODO[C]
 
@@ -30,7 +29,7 @@ def format_obj_as_string(o):
     return s
 
 
-implemented_model_navigator_classes = {"FactorOracleNavigator": FactorOracleGenerator}
+
 
 
 def noneIsInfinite(value):

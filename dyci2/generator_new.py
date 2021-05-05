@@ -17,9 +17,9 @@ Tutorial for the class :class:`~ModelNavigator.FactorOracleNavigator` in :file:`
 Tutorial in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`
 
 """
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Optional, List
 
-from dyci2.navigator import *
+from dyci2.navigator import Navigator
 from factor_oracle_model import FactorOracle
 # TODO : surchager set use_taboo pour que tous les -1 passent à 0 si on passe à FALSE
 # TODO : mode 0 : répétitions authorisées, mode 1 = on prend le min, mode 2, interdire les déjà passés
@@ -71,6 +71,7 @@ class FactorOracleGenerator:
         self.model: FactorOracle = FactorOracle(sequence, labels, equiv, label_type, content_type)
         print(self.model.labels)
         self.navigator.reinit_navigation_param_old_modelnavigator()
+        print(self.navigator.labels)
 
     def learn_event(self, state, label, equiv=None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
@@ -79,7 +80,13 @@ class FactorOracleGenerator:
 
     def learn_sequence(self, sequence, labels, equiv=None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        # TODO[D]: Due to the double inheritance in original code, learn sequence was actually called twice, resulting
+        #  in a recorded sequence of length 2N+1 given an input sequence of length N. This bug should obviously be fixed
+        #  but will in this early iteration (A1) simply be replicated to attempt to achieve consistency with original
+        #  code.
         self.model.learn_sequence(sequence, labels, equiv)
+        self.model.learn_sequence(sequence, labels, equiv)
+        self.navigator.learn_sequence(sequence, labels, equiv)
         self.navigator.learn_sequence(sequence, labels, equiv)
 
     def l_pre_free_navigation(self, equiv: Optional[Callable], new_max_continuity: int,
@@ -120,7 +127,7 @@ class FactorOracleGenerator:
         return print_info, equiv
 
     def l_pre_guided_navigation(self, required_labels: List[DontKnow], equiv: Optional[Callable],
-                                new_max_continuity: int, init: bool) -> Callable:
+                                new_max_continuity: Optional[int], init: bool) -> Callable:
         # ###########################################
         # #### From old simply_guided_generation ####
         # ###########################################
@@ -271,11 +278,36 @@ class FactorOracleGenerator:
     def l_get_no_empty_event(self) -> bool:
         return self.navigator.no_empty_event
 
+    def l_set_no_empty_event(self, v: bool) -> None:
+        self.navigator.no_empty_event = v
+
     def l_get_index_last_state(self) -> int:
         return self.model.index_last_state()
 
-    def l_get_sequence_nonmutable(self) -> List[int]:
+    def l_get_sequence_nonmutable(self) -> List[DontKnow]:
         return self.model.sequence
+
+    def l_get_sequence_maybemutable(self) -> List[DontKnow]:
+        return self.model.sequence
+
+    def l_set_sequence(self, sequence: List[DontKnow]):
+        self.model.sequence = sequence
+
+    def l_get_labels_nonmutable(self) -> List[DontKnow]:
+        return self.model.labels
+
+    def l_get_labels_maybemutable(self) -> List[DontKnow]:
+        return self.model.labels
+
+    def l_set_labels(self, labels: List[DontKnow]):
+        self.model.labels = labels
+
+    def l_get_position_in_sequence(self) -> int:
+        return self.navigator.current_position_in_sequence
+
+    def l_set_position_in_sequence(self, index: int):
+        self.navigator.current_position_in_sequence = index
+
 
     ################################################################################################################
     #   LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY   #
@@ -342,3 +374,7 @@ class FactorOracleGenerator:
                                                        authorize_direct_transition=True)
         filtered_continuations = self.navigator.filter_using_history_and_taboos(init_continuations)
         return init_continuations, filtered_continuations
+
+
+# TODO[C] Get rid of.
+implemented_model_navigator_classes = {"FactorOracleNavigator": FactorOracleGenerator}

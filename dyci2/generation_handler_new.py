@@ -37,14 +37,14 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 
 
 # TODO : SUPPRIMER DANS LA DOC LES FONCTIONS "EQUIV-MOD..." "SEQUENCE TO INTERVAL..."
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 from dyci2.query import *
 from dyci2.transforms import *
 # TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
 # TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
-from generator_new import FactorOracleGenerator
-from utils import format_list_as_list_of_strings, implemented_model_navigator_classes
+from generator_new import FactorOracleGenerator, implemented_model_navigator_classes
+from utils import format_list_as_list_of_strings
 
 
 def basic_equiv(x, y):
@@ -246,7 +246,7 @@ class GenerationHandlerNew:
         if len(self.running_generation) < 0:
             print("NO PROCESS RUNNING")
         else:
-            print(" !!!!! Already {} processes running !!!!!".format((self.running_generation)))
+            print(" !!!!! Already {} processes running !!!!!".format(self.running_generation))
 
         self.running_generation.append("Proc")
 
@@ -255,7 +255,7 @@ class GenerationHandlerNew:
                 query.start["type"] == "absolute":
             print("PROCESS QUERY")
             print(query)
-            print("Now, {} processes running".format((self.running_generation)))
+            print("Now, {} processes running".format(self.running_generation))
             if query.start["type"] == "relative":
                 # print("QUERY RELATIVE")
                 # print(query)
@@ -492,7 +492,7 @@ class GenerationHandlerNew:
             if generated_index is None:
                 sequence.append(None)
             else:
-                sequence.append(self.sequence[generated_index])
+                sequence.append(self.memory.model.sequence[generated_index])
         return sequence
 
     # TODO: Definitely not optimal to encode/decode at each iteration
@@ -525,7 +525,8 @@ class GenerationHandlerNew:
         return result
 
     def simply_guided_generation(self, required_labels, new_max_continuity=None, forward_context_length_min=0,
-                                 init=False, equiv=None, print_info=False, shift_index=0, break_when_none=False):
+                                 init=False, equiv: Optional[Callable] = None, print_info=False, shift_index=0,
+                                 break_when_none=False):
         # FIXME[MergeState]: A[], B[], C[], D[], E[]
         """ Navigation in the sequence, simply guided step by step by an input sequence of label.
         Naive version of the method handling the navigation in a sequence when it is guided by target labels.
@@ -561,9 +562,9 @@ class GenerationHandlerNew:
         generated_sequence_of_indexes = []
         s = None
         for i in range(0, len(required_labels)):
-            s = self.navigator.simply_guided_navigation_one_step(required_labels[i], new_max_continuity,
-                                                                 forward_context_length_min, equiv, print_info,
-                                                                 shift_index=i + shift_index)
+            s = self.memory.simply_guided_navigation_one_step(required_labels[i], new_max_continuity,
+                                                              forward_context_length_min, equiv, print_info,
+                                                              shift_index=i + shift_index)
 
             if break_when_none and s is None:
                 return generated_sequence_of_indexes
@@ -577,7 +578,7 @@ class GenerationHandlerNew:
             if generated_index is None:
                 sequence.append(None)
             else:
-                sequence.append(self.sequence[generated_index])
+                sequence.append(self.memory.model.sequence[generated_index])
         return sequence
 
     def _l_handle_scenario_based_generation(self, list_of_labels, print_info=False):
@@ -609,20 +610,20 @@ class GenerationHandlerNew:
                 i += l
             else:
                 # print("SCENARIO BASED GENERATION 1.{}.2.1".format(i))
-                if self.memory.l_get_no_empty_event() and self.memory.current_position_in_sequence < self.memory.l_get_index_last_state():
+                if self.memory.l_get_no_empty_event() and self.memory.l_get_position_in_sequence() < self.memory.l_get_index_last_state():
                     print("NO EMPTY EVENT")
                     generated_sequence.append(
-                        self.memory.l_get_sequence_nonmutable()[self.memory.current_position_in_sequence + 1])
+                        self.memory.l_get_sequence_nonmutable()[self.memory.l_get_position_in_sequence() + 1])
                     # print("\n\n-->HANDLE WHEN NO EMPTY EVENT MODE SETS POSITION: {}<--"
                     # .format(self.memory.sequence[self.current_position_in_sequence + 1]))
-                    self.memory.current_position_in_sequence = self.memory.current_position_in_sequence + 1
+                    self.memory.l_set_position_in_sequence(self.memory.l_get_position_in_sequence() + 1)
 
                 # TODO : + TRANSFORMATION POUR TRANSPO SI NECESSAIRE
                 else:
                     print("EMPTY EVENT")
                     generated_sequence.append(None)
                     ###### RELEASE
-                    self.memory.current_position_in_sequence = 0
+                    self.memory.l_set_position_in_sequence(0)
                 ###### RELEASE
                 i += 1
         # print("SCENARIO BASED GENERATION 1.{}.3".format(i))
@@ -646,8 +647,9 @@ class GenerationHandlerNew:
         generated_sequence = []
         # s = Recherche prefix (current_scenario) - > Sort 1 ### TODO
         # print("self.memory.history_and_taboos = {}".format(self.memory.history_and_taboos))
+        # Remember state at idx 0 is None
         authorized_indexes = self.filter_using_history_and_taboos(
-            list(range(0, len(self.memory.model.labels))))  # Remember state at idx 0 is None
+            list(range(0, len(self.memory.l_get_labels_nonmutable()))))
         # print("SCENARIO ONE PHASE 1")
 
         # 15/11/17
@@ -660,7 +662,8 @@ class GenerationHandlerNew:
         # print("LOOKING FOR PREFIXES OF {}".format(list_of_labels))
 
         if not self.memory.model.label_type is None and self._use_intervals():
-            make_sequence_of_intervals_from_sequence_of_labels = self.memory.model.label_type.make_sequence_of_intervals_from_sequence_of_labels
+            make_sequence_of_intervals_from_sequence_of_labels = \
+                self.memory.model.label_type.make_sequence_of_intervals_from_sequence_of_labels
             equiv_mod_interval = self.memory.model.label_type.equiv_mod_interval
         else:
             make_sequence_of_intervals_from_sequence_of_labels = None
@@ -677,7 +680,7 @@ class GenerationHandlerNew:
 
         if s is not None:
             print("SCENARIO BASED ONE PHASE SETS POSITION: {}".format(s))
-            self.memory.current_position_in_sequence = s
+            self.memory.l_set_position_in_sequence(s)
             print("current_position_in_sequence: {}".format(s))
             # PLUS BESOIN CAR FAIT TOUT SEUL
             # self.memory.history_and_taboos[s] += 1
@@ -686,24 +689,24 @@ class GenerationHandlerNew:
                 # print(self.memory.sequence[s])
                 # TODO FAIRE MIEUX:
                 if self.content_type:
-                    s_content = self.current_transformation_memory.encode(self.memory.model.sequence[s])
+                    s_content = self.current_transformation_memory.encode(self.memory.l_get_sequence_maybemutable()[s])
                 else:
-                    s_content = self.memory.model.sequence[s]
+                    s_content = self.memory.l_get_sequence_maybemutable()[s]
 
                 if print_info:
                     print("{} NEW STARTING POINT {} (orig. {}): {}\nlength future = {} - FROM NOW {}"
                           .format(shift_index,
-                                  self.current_transformation_memory.encode(self.memory.model.labels[s]),
-                                  self.memory.model.labels[s],
-                                  self.memory.current_position_in_sequence,
+                                  self.current_transformation_memory.encode(self.memory.l_get_labels_maybemutable()[s]),
+                                  self.memory.l_get_labels_nonmutable()[s],
+                                  self.memory.l_get_position_in_sequence(),
                                   length_selected_prefix,
                                   self.current_transformation_memory))
             else:
-                s_content = self.memory.model.sequence[s]
+                s_content = self.memory.l_get_sequence_maybemutable()[s]
                 if print_info:
                     print("{} NEW STARTING POINT {}: {}\nlength future = {} - FROM NOW No transformation of the memory"
-                          .format(shift_index, self.memory.model.labels[s], self.memory.current_position_in_sequence,
-                                  length_selected_prefix))
+                          .format(shift_index, self.memory.l_get_labels_nonmutable()[s],
+                                  self.memory.l_get_position_in_sequence(), length_selected_prefix))
 
             # print("SCENARIO ONE PHASE 4")
 
@@ -713,13 +716,16 @@ class GenerationHandlerNew:
             # self.memory.current_continuity = 0
             # Navigation simple current_scenario jusqua plus rien- > sort l --> faire
             self.encode_memory_with_current_transfo()
-            aux = self.memory.no_empty_event
-            self.memory.no_empty_event = False  # In order to begin a new navigation phase when this method returns a "None" event
-            seq = self.memory.simply_guided_generation(required_labels=list_of_labels[1::], init=False,
-                                                       print_info=print_info,
-                                                       shift_index=len(self.current_generation_query.handle) - len(
-                                                           list_of_labels) + 1, break_when_none=True)
-            self.memory.no_empty_event = aux
+            aux = self.memory.l_get_no_empty_event()
+            # In order to begin a new navigation phase when this method returns a "None" event
+            self.memory.l_set_no_empty_event(False)
+            equiv = self.memory.l_pre_guided_navigation(list_of_labels[1::], equiv=None,
+                                                        new_max_continuity=None, init=False)
+            seq = self.simply_guided_generation(required_labels=list_of_labels[1::], init=False,
+                                                print_info=print_info,
+                                                shift_index=len(self.current_generation_query.handle) - len(list_of_labels) + 1,
+                                                break_when_none=True, equiv=equiv)
+            self.memory.l_set_no_empty_event(aux)
             # self.decode_memory_with_current_transfo()
             # print("SCENARIO ONE PHASE 5")
             i = 0
@@ -804,8 +810,8 @@ class GenerationHandlerNew:
         # print(len(self.authorized_tranformations) > 0)
         # print(self.authorized_tranformations != [0])
         # print(self.authorized_tranformations)
-        return (not (self.memory.model.label_type is None)) and self.memory.model.label_type._use_intervals and len(
-            self.authorized_transformations) > 0 and self.authorized_transformations != [0]
+        return (not (self.memory.model.label_type is None)) and self.memory.model.label_type._use_intervals \
+               and len(self.authorized_transformations) > 0 and self.authorized_transformations != [0]
 
     def filter_using_history_and_taboos(self, list_of_indexes):
         return self.memory.navigator.filter_using_history_and_taboos(list_of_indexes)
@@ -827,8 +833,8 @@ class GenerationHandlerNew:
         # print(self.memory.sequence[1::])
         # TODO : Faire mieux
         if self.content_type:
-            self.memory.sequence = [None] + transform.encode_sequence(self.memory.sequence[1::])
-        self.memory.labels = [None] + transform.encode_sequence(self.memory.labels[1::])
+            self.memory.l_set_sequence([None] + transform.encode_sequence(self.memory.l_get_sequence_nonmutable()[1::]))
+        self.memory.l_set_sequence([None] + transform.encode_sequence(self.memory.l_get_labels_nonmutable()[1::]))
 
     # TODO : [NONE] au début : UNIQUEMENT POUR ORACLE ! PAS GENERIQUE !
     # TODO : SERA CERTAINEMENT A MODIFIER QUAND LES CONTENTS DANS SEQUENCE AURONT UN TYPE !
@@ -843,8 +849,8 @@ class GenerationHandlerNew:
         """
         # TODO : Faire mieux
         if self.content_type:
-            self.memory.sequence = [None] + transform.decode_sequence(self.memory.sequence[1::])
-        self.memory.labels = [None] + transform.decode_sequence(self.memory.labels[1::])
+            self.memory.l_set_sequence([None] + transform.decode_sequence(self.memory.l_get_sequence_nonmutable()[1::]))
+        self.memory.l_set_labels([None] + transform.decode_sequence(self.memory.l_get_labels_nonmutable()[1::]))
 
     # TODO PLUS GENERAL FAIRE SLOT "POIGNEE" DANS CLASSE TRANSFORM
     # OU METTRE CETTE METHODE DANS CLASSE TRANSFORM

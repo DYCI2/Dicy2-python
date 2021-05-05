@@ -21,7 +21,7 @@ The classes defined in this module are used in association with models (cf. :mod
 """
 
 import random
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 from dyci2.intervals import *
 # POUR SEQUENCE ET LABELS :
@@ -86,11 +86,11 @@ class Navigator:
     """
 
     def __init__(self, sequence=(), labels=(), max_continuity=20, control_parameters=(), execution_trace_parameters=(),
-                 equiv: Optional[Callable] =(lambda x, y: x == y)):
+                 equiv: Optional[Callable] = (lambda x, y: x == y)):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         self.sequence = sequence
         self.labels = labels
-        self.equiv:Callable = equiv
+        self.equiv: Callable = equiv
         self.no_empty_event = True
         self.max_continuity = max_continuity
         self.avoid_repetitions_mode = 0
@@ -275,9 +275,10 @@ class Navigator:
     def filter_using_history_and_taboos(self, list_of_indexes):
         # FIXME[MergeState]: A[], B[], C[], D[], E[]
         # TODO[A2] This one probably has to remain public until filtering is moved to GH
-        filtered_list = [i for i in list_of_indexes if (not (self.history_and_taboos[i] is None) and (
-                self.avoid_repetitions_mode < 2 or self.avoid_repetitions_mode >= 2 and self.history_and_taboos[
-            i] == 0))]
+        filtered_list = [i for i in list_of_indexes
+                         if (not (self.history_and_taboos[i] is None)
+                             and (self.avoid_repetitions_mode < 2 or self.avoid_repetitions_mode >= 2
+                                  and self.history_and_taboos[i] == 0))]
         # print("Possible next indexes = {}, filtered list = {}".format(list_of_indexes, filtered_list))
         return filtered_list
 

@@ -29,7 +29,6 @@ from label import Label
 from utils import DontKnow
 
 
-# noinspection
 class FactorOracleGenerator:
     """
         **Factor Oracle Navigator class**.
@@ -71,6 +70,7 @@ class FactorOracleGenerator:
 
         self.model: FactorOracle = FactorOracle(sequence, labels, equiv, label_type, content_type)
         print(self.model.labels)
+        self.navigator.labels = self.model.labels  # MergeState[A]: Added for consistency with old behaviour
         self.navigator.reinit_navigation_param_old_modelnavigator()
         print(self.navigator.labels)
 
@@ -81,14 +81,10 @@ class FactorOracleGenerator:
 
     def learn_sequence(self, sequence, labels, equiv=None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        # TODO[D]: Due to the double inheritance in original code, learn sequence was actually called twice, resulting
-        #  in a recorded sequence of length 2N+1 given an input sequence of length N. This bug should obviously be fixed
-        #  but will in this early iteration (A1) simply be replicated to attempt to achieve consistency with original
-        #  code.
+        # TODO[D]: This is never called! In original code it is called from Model.__init__, which obviously isn't
+        #  possible. Need to call this from outside when simplifying calls
         self.model.learn_sequence(sequence, labels, equiv)
-        self.model.learn_sequence(sequence, labels, equiv)
-        self.navigator.learn_sequence(sequence, labels, equiv)
-        self.navigator.learn_sequence(sequence, labels, equiv)
+        # self.navigator.learn_sequence(sequence, labels, equiv) # MergeState[A] This was a bug introduced in py3 ver.
 
     def l_pre_free_navigation(self, equiv: Optional[Callable], new_max_continuity: int,
                               init: bool) -> Tuple[bool, Callable]:
@@ -195,7 +191,8 @@ class FactorOracleGenerator:
                 # s = factor_oracle_navigator.navigate_without_continuation(factor_oracle_navigator
                 #     .filter_using_history_and_taboos(init_continuations))
                 # LAST 15/10
-                s = self.navigator._follow_continuation_with_jump(list(range(self.model.index_last_state())), self.model.direct_transitions)
+                s = self.navigator._follow_continuation_with_jump(list(range(self.model.index_last_state())),
+                                                                  self.model.direct_transitions)
                 if not s is None:
                     str_print_info += " xxnothingxx - random: {}".format(s)
                 # factor_oracle_navigator.current_position_in_sequence = s
@@ -233,7 +230,8 @@ class FactorOracleGenerator:
         if not s is None:
             str_print_info += " -{}-> {}".format(self.model.labels[s], s)
         else:
-            s = self.navigator._follow_continuation_with_jump(filtered_continuations_matching_label, self.model.direct_transitions)
+            s = self.navigator._follow_continuation_with_jump(filtered_continuations_matching_label,
+                                                              self.model.direct_transitions)
             if not s is None:
                 str_print_info += " ...> {} -{}-> {}".format(s - 1,
                                                              self.model.direct_transitions.get(s - 1)[0],
@@ -312,7 +310,6 @@ class FactorOracleGenerator:
 
     def l_set_position_in_sequence(self, index: int):
         self.navigator.set_current_position_in_sequence_with_sideeffects(index)
-
 
     ################################################################################################################
     #   LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY   #

@@ -567,7 +567,8 @@ class GenerationHandlerNew:
                                                               shift_index=i + shift_index)
 
             if break_when_none and s is None:
-                return generated_sequence_of_indexes
+                break
+                # return generated_sequence_of_indexes
             else:
                 generated_sequence_of_indexes.append(s)
             # print("\n\n-->SIMPLY NAVIGATION SETS POSITION: {}<--".format(s))

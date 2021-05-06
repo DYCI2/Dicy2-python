@@ -17,6 +17,7 @@ Tutorial for the class :class:`~ModelNavigator.FactorOracleNavigator` in :file:`
 Tutorial in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`
 
 """
+import random
 from typing import Callable, Tuple, Optional, List
 
 from dyci2.navigator import Navigator
@@ -28,7 +29,7 @@ from label import Label
 from utils import DontKnow
 
 
-# noinspection PyUnresolvedReferences
+# noinspection
 class FactorOracleGenerator:
     """
         **Factor Oracle Navigator class**.
@@ -101,7 +102,7 @@ class FactorOracleGenerator:
             self.navigator.max_continuity = new_max_continuity
 
         if init:
-            self.navigator.reinit_navigation_param_old_navigator()
+            self.navigator.reinit_navigation_param_old_modelnavigator()
 
         # ##################################
         # #### From old free_navigation ####
@@ -122,7 +123,8 @@ class FactorOracleGenerator:
 
         if self.navigator.current_position_in_sequence < 0:
             # print("FREE GENERATION 2.1 index_last_state = {}".format(factor_oracle_navigator.index_last_state()))
-            self.navigator.current_position_in_sequence = random.randint(1, self.model.index_last_state())
+            self.navigator.set_current_position_in_sequence_with_sideeffects(
+                random.randint(1, self.model.index_last_state()))
         # print("FREE GENERATION 2.2")
         return print_info, equiv
 
@@ -138,7 +140,7 @@ class FactorOracleGenerator:
             self.navigator.max_continuity = new_max_continuity
 
         if init:
-            self.navigator.reinit_navigation_param_old_navigator()
+            self.navigator.reinit_navigation_param_old_modelnavigator()
         # ###########################################
         # #### From old simply_guided_navigation ####
         # ###########################################
@@ -153,7 +155,8 @@ class FactorOracleGenerator:
             init_states = [i for i in range(1, self.model.index_last_state()) if
                            self.model.direct_transitions.get(i) and equiv(
                                self.model.direct_transitions.get(i)[0], required_labels[0])]
-            self.navigator.current_position_in_sequence = init_states[random.randint(0, len(init_states) - 1)]
+            self.navigator.set_current_position_in_sequence_with_sideeffects(
+                init_states[random.randint(0, len(init_states) - 1)])
 
         return equiv
 
@@ -171,14 +174,14 @@ class FactorOracleGenerator:
             forward_context_length_min, equiv)
         # print("FREE GENERATION 3.{}.1".format(i))
 
-        s = self.navigator._follow_continuation_using_transition(filtered_continuations)
+        s = self.navigator._follow_continuation_using_transition(filtered_continuations, self.model.direct_transitions)
         if not s is None:
             # print("FREE GENERATION 3.{}.2".format(i))
             str_print_info += " -{}-> {}".format(self.model.labels[s], s)
         # factor_oracle_navigator.current_position_in_sequence = s
         else:
             # print("FREE GENERATION 3.{}.3".format(i))
-            s = self.navigator._follow_continuation_with_jump(filtered_continuations)
+            s = self.navigator._follow_continuation_with_jump(filtered_continuations, self.model.direct_transitions)
             if not s is None:
                 # print("FREE GENERATION 3.{}.4".format(i))
                 str_print_info += " ...> {} -{}-> {}".format(s - 1,
@@ -192,7 +195,7 @@ class FactorOracleGenerator:
                 # s = factor_oracle_navigator.navigate_without_continuation(factor_oracle_navigator
                 #     .filter_using_history_and_taboos(init_continuations))
                 # LAST 15/10
-                s = self.navigator._follow_continuation_with_jump(list(range(self.model.index_last_state())))
+                s = self.navigator._follow_continuation_with_jump(list(range(self.model.index_last_state())), self.model.direct_transitions)
                 if not s is None:
                     str_print_info += " xxnothingxx - random: {}".format(s)
                 # factor_oracle_navigator.current_position_in_sequence = s
@@ -206,7 +209,7 @@ class FactorOracleGenerator:
         # print("FREE GENERATION 3.{}.6".format(i))
 
         if not s is None:
-            self.navigator.current_position_in_sequence = s
+            self.navigator.set_current_position_in_sequence_with_sideeffects(s)
         # print("\n\n--> FREE NAVIGATION SETS POSITION IN SEQUENCE: {}<--".format(s))
         # factor_oracle_navigator.history_and_taboos[s] += 1
         return s
@@ -225,11 +228,12 @@ class FactorOracleGenerator:
             self.filtered_continuations_with_label(self.navigator.current_position_in_sequence, required_label,
                                                    forward_context_length_min, equiv)
 
-        s = self.navigator._follow_continuation_using_transition(filtered_continuations_matching_label)
+        s = self.navigator._follow_continuation_using_transition(filtered_continuations_matching_label,
+                                                                 self.model.direct_transitions)
         if not s is None:
             str_print_info += " -{}-> {}".format(self.model.labels[s], s)
         else:
-            s = self.navigator._follow_continuation_with_jump(filtered_continuations_matching_label)
+            s = self.navigator._follow_continuation_with_jump(filtered_continuations_matching_label, self.model.direct_transitions)
             if not s is None:
                 str_print_info += " ...> {} -{}-> {}".format(s - 1,
                                                              self.model.direct_transitions.get(s - 1)[0],
@@ -248,7 +252,7 @@ class FactorOracleGenerator:
 
         if not s is None:
             # print("\n\n-->SIMPLY NAVIGATION SETS POSITION: {}<--".format(s))
-            self.navigator.current_position_in_sequence = s
+            self.navigator.set_current_position_in_sequence_with_sideeffects(s)
         # factor_oracle_navigator.current_position_in_sequence = s
         # factor_oracle_navigator.history_and_taboos[s] += 1
 
@@ -292,6 +296,7 @@ class FactorOracleGenerator:
 
     def l_set_sequence(self, sequence: List[DontKnow]):
         self.model.sequence = sequence
+        print("Test")
 
     def l_get_labels_nonmutable(self) -> List[DontKnow]:
         return self.model.labels
@@ -306,7 +311,7 @@ class FactorOracleGenerator:
         return self.navigator.current_position_in_sequence
 
     def l_set_position_in_sequence(self, index: int):
-        self.navigator.current_position_in_sequence = index
+        self.navigator.set_current_position_in_sequence_with_sideeffects(index)
 
 
     ################################################################################################################
@@ -321,7 +326,7 @@ class FactorOracleGenerator:
 
         :param index_state: start index
         :type index_state: int
-        :param required_label: label to read (optional)
+        #:param required_label: label to read (optional)
         :param forward_context_length_min: minimum length of the forward common context
         :type forward_context_length_min: int
         :param equiv: Compararison function given as a lambda function, default: factor_oracle_navigator.equiv.

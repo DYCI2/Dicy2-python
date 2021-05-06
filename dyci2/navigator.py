@@ -21,7 +21,7 @@ The classes defined in this module are used in association with models (cf. :mod
 """
 
 import random
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Dict
 
 from dyci2.intervals import *
 # POUR SEQUENCE ET LABELS :
@@ -33,10 +33,9 @@ from dyci2.intervals import *
 # TODO : SURCHARGER POUR INTERDIRE LES AUTRES
 # TODO : QUAND ON GENERE, DEBUT OU NON ? SOIT INTEGRER DANS PARAMETRES FONCTIONS SOIT DECIDER QU'ON APPELLE
 #  reinit_navigation_param si c'est le début
-from utils import noneIsInfinite
+from utils import noneIsInfinite, DontKnow
 
 
-# noinspection PyUnresolvedReferences
 class Navigator:
     """
     The class :class:`~Navigator.Navigator` implements **parameters and methods that are used to navigate through a
@@ -60,18 +59,18 @@ class Navigator:
     :param current_navigation_index: current length of the navigation
     :type current_navigation_index: int
 
-    :param current_position_in_sequence: current position of the readhead in the model. ** When this attribute receives
+    #:param current_position_in_sequence: current position of the readhead in the model. ** When this attribute receives
     a new value, :meth:`Navigator.record_execution_trace` is called to update :attr:`self.execution_trace`, and
     :meth:`Navigator.update_history_and_taboos` is called to update :attr:`self.history_and_taboos`.**
     :type current_position_in_sequence: int
-    :param current_continuity: current number of consecutive elements retrieved in the sequence at the current step of
+    #:param current_continuity: current number of consecutive elements retrieved in the sequence at the current step of
     generation
     :type current_continuity: int
     :param max_continuity: limitation of the length of the sub-sequences that can be retrieved from the sequence.
     :type max_continuity: int
-    :param no_empty_event: authorize or not to output empty events.
+    #:param no_empty_event: authorize or not to output empty events.
     :type no_empty_event: bool
-    :param avoid_repetitions_mode: 0: authorize repetitions; 1: favor less previously retrieved events;
+    #:param avoid_repetitions_mode: 0: authorize repetitions; 1: favor less previously retrieved events;
     2: forbid repetitions.
     :type avoid_repetitions_mode: int
     :param control_parameters: list of the slots of the class that are considered as "control parameters" i.e. that can
@@ -80,7 +79,7 @@ class Navigator:
     :param execution_trace_parameters: list of the slots of the class that are stored in the execution trace used in
     :meth:`Generator.go_to_anterior_state_using_execution_trace`.
     :type control_parameters: list(str)
-    :param execution_trace: History of the previous runs of the generation model. The list of the parameters of the
+    #:param execution_trace: History of the previous runs of the generation model. The list of the parameters of the
     model whose values are stored in the execution trace is defined in :attr:`self.execution_trace_parameters`.
     :type execution_trace: dict
     """
@@ -100,7 +99,7 @@ class Navigator:
         self.current_continuity = -1
         self.current_position_in_sequence = -1
         self.current_navigation_index = - 1
-        self.reinit_navigation_param_old_navigator()  # TODO[B] Should it call _old_navigatormodel afterwards?
+        self.reinit_navigation_param_old_modelnavigator()  # TODO[B] Should it call _old_navigatormodel afterwards?
 
         self.control_parameters = ["avoid_repetitions_mode", "max_continuity"]
         if type(control_parameters) != type(None):
@@ -123,24 +122,7 @@ class Navigator:
         # super.__setattr__(self, name_attr, val_attr)
         object.__setattr__(self, name_attr, val_attr)
         # TODO : SUPPRIMER TRACE AVANT TEMPS PERFORMANCE
-        if name_attr == "current_position_in_sequence" and not val_attr is None and val_attr > -1:
-            self.current_navigation_index += 1
-            print("\nNEW POSITION IN SEQUENCE: {}".format(val_attr))
-            print("NEW NAVIGATION INDEX: {}".format(self.current_navigation_index))
-            print("OLD LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
 
-            if self.current_navigation_index > 0 and val_attr == \
-                    self.execution_trace[self.current_navigation_index - 1]["current_position_in_sequence"] + 1:
-                self.current_continuity += 1
-                print("Continuity + 1 = {}".format(self.current_continuity))
-            else:
-                self.current_continuity = 0
-                print("Continuity set to 0")
-
-            self._update_history_and_taboos(val_attr)
-            self._record_execution_trace(self.current_navigation_index)
-            print("NEW LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
-        # print("NEW EXECUTION TRACE: {}".format(self.execution_trace))
 
     def find_prefix_matching_with_labels(self, use_intervals, labels, list_of_labels, continuity_with_future,
                                          authorized_indexes, authorized_transformations, sequence_to_interval_fun,
@@ -203,22 +185,24 @@ class Navigator:
         for name_slot, value_slot in history_after_generating_prev.items():
             self.__dict__[name_slot] = value_slot
 
-    def reinit_navigation_param_old_navigator(self):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        """ (Re)initializes the navigation parameters (current navigation index, history of retrieved indexes,
-        current continuity,...)."""
-        self.history_and_taboos = [0] * (len(self.sequence))
-        self.current_continuity = -1
-        self.current_position_in_sequence = -1
-        self.current_navigation_index = - 1
-        self._forbid_indexes([len(self.labels) - 1])
+    # This function is supposedly never called as it is overwritten
+    # def reinit_navigation_param_old_navigator(self):
+    #     # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+    #     """ (Re)initializes the navigation parameters (current navigation index, history of retrieved indexes,
+    #     current continuity,...)."""
+    #     self.history_and_taboos = [0] * (len(self.sequence))
+    #     self.current_continuity = -1
+    #     self.current_position_in_sequence = -1
+    #     self.current_navigation_index = - 1
+    #     self._forbid_indexes([len(self.labels) - 1])
 
     # TODO[B]: Why are those two so different?
     def reinit_navigation_param_old_modelnavigator(self):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ (Re)initializes the navigation parameters (current navigation index, history of retrieved indexes,
         current continuity,...). """
-        self.history_and_taboos = [None] + [0] * (len(self.sequence) - 1)
+        # self.history_and_taboos = [None] + [0] * (len(self.sequence) - 1)   # TODO[A] Breaking change, old on this line
+        self.history_and_taboos = [None] + [0] * len(self.sequence)
         self.current_continuity = 0
         self.current_position_in_sequence = -1
         self.current_navigation_index = - 1
@@ -306,7 +290,7 @@ class Navigator:
 
         self.execution_trace[index_in_navigation] = trace_index
 
-    def _follow_continuation_using_transition(self, authorized_indexes):
+    def _follow_continuation_using_transition(self, authorized_indexes, direct_transitions: Dict[int, DontKnow]):
         # FIXME[MergeState]: A[], B[], C[], D[], E[]
         # TODO[A] This should return a list of candidates (that for stage A1 may be of length 1)
         """
@@ -325,8 +309,7 @@ class Navigator:
         """
 
         s = None
-        direct_transition = self.direct_transitions.get(
-            self.current_position_in_sequence)
+        direct_transition = direct_transitions.get(self.current_position_in_sequence)
 
         if direct_transition:
             # print(direct_transition)
@@ -338,7 +321,7 @@ class Navigator:
             # factor_oracle_navigator.current_continuity += 1
         return s
 
-    def _continuations_with_jump(self, authorized_indexes):
+    def _continuations_with_jump(self, authorized_indexes, direct_transitions: Dict[int, DontKnow]):
         # FIXME[MergeState]: A[], B[], C[], D[], E[]
         # TODO[A] This should return a list of candidates (that for stage A1 may be of length 1)
         """
@@ -358,7 +341,7 @@ class Navigator:
         """
         possible_continuations = None
         # print(self.direct_transitions)
-        direct_transition = self.direct_transitions.get(self.current_position_in_sequence)
+        direct_transition = direct_transitions.get(self.current_position_in_sequence)
         # print(direct_transition)
         filtered_continuations = authorized_indexes
 
@@ -375,7 +358,7 @@ class Navigator:
         return possible_continuations
 
     # TODO : autres modes que random choice
-    def _follow_continuation_with_jump(self, authorized_indexes):
+    def _follow_continuation_with_jump(self, authorized_indexes, direct_transitions: Dict[int, DontKnow]):
         # FIXME[MergeState]: A[], B[], C[], D[], E[]
         # TODO[A] This should return a list of candidates (that for stage A1 may be of length 1)
         """
@@ -394,7 +377,7 @@ class Navigator:
 
         """
         s = None
-        filtered_continuations = self._continuations_with_jump(authorized_indexes)
+        filtered_continuations = self._continuations_with_jump(authorized_indexes, direct_transitions)
         if (not (filtered_continuations is None)) and len(filtered_continuations) > 0:
             random_choice = random.randint(0, len(filtered_continuations) - 1)
             s = filtered_continuations[random_choice]
@@ -564,3 +547,29 @@ class Navigator:
             print("No prefix found")
 
         return s, t, length_selected_prefix
+
+    def index_last_state(self):
+        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        """ Index of the last state in the model."""
+        return len(self.labels) - 1
+
+    def set_current_position_in_sequence_with_sideeffects(self, val_attr: Optional[int]):
+        self.current_position_in_sequence = val_attr
+        if val_attr is not None and val_attr > -1:
+            self.current_navigation_index += 1
+            print("\nNEW POSITION IN SEQUENCE: {}".format(val_attr))
+            print("NEW NAVIGATION INDEX: {}".format(self.current_navigation_index))
+            print("OLD LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
+
+            if self.current_navigation_index > 0 and val_attr == \
+                    self.execution_trace[self.current_navigation_index - 1]["current_position_in_sequence"] + 1:
+                self.current_continuity += 1
+                print("Continuity + 1 = {}".format(self.current_continuity))
+            else:
+                self.current_continuity = 0
+                print("Continuity set to 0")
+
+            self._update_history_and_taboos(val_attr)
+            self._record_execution_trace(self.current_navigation_index)
+            print("NEW LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
+        # print("NEW EXECUTION TRACE: {}".format(self.execution_trace))

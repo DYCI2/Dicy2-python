@@ -52,7 +52,7 @@ def basic_equiv(x, y):
 
 
 # TODO[E]: Remove noinspection
-# noinspection PyIncorrectDocstring,PyUnresolvedReferences
+# noinspection PyIncorrectDocstring
 class GenerationHandlerNew:
     """ The class **Generator** embeds a **model navigator** as "memory" (cf. metaclass
     :class:`~MetaModelNavigator.MetaModelNavigator`) and processes **queries** (class :class:`~Query.Query`) to
@@ -73,31 +73,31 @@ class GenerationHandlerNew:
     :param model_navigator:
     :type model_navigator: str
 
-    :param memory: "Model navigator" inheriting from (a subclass of) :class:`~Model.Model` and (a subclass of)
+    #:param memory: "Model navigator" inheriting from (a subclass of) :class:`~Model.Model` and (a subclass of)
     :class:`~Navigator.Navigator`.
     :type memory: cf. :mod:`ModelNavigator` and :mod:`MetaModelNavigator`
 
-    :param initial_query:
+    #:param initial_query:
     :type initial_query: bool
-    :param current_generation_query:
+    #:param current_generation_query:
     :type current_generation_query: :class:`~Query.Query`
 
-    :param current_generation_output:
+    #:param current_generation_output:
     :type current_generation_output: list
-    :param transfo_current_generation_output:
+    #:param transfo_current_generation_output:
     :type transfo_current_generation_output: list
 
     :param continuity_with_future:
     :type continuity_with_future: list
 
-    :param current_transformation_memory:
+    #:param current_transformation_memory:
     :type current_transformation_memory: cf. :mod:`Transforms`
     :param authorized_tranformations:
     :type authorized_tranformations: list(int)
-    :param sequence_to_interval_fun:
-    :type sequence_to_interval_fun: function
-    :param equiv_mod_interval:
-    :type equiv_mod_interval: function
+    #:param sequence_to_interval_fun:
+    #:type sequence_to_interval_fun: function
+    #:param equiv_mod_interval:
+    #:type equiv_mod_interval: function
 
 
     :see also: :mod:`GeneratorBuilder`, automatic instanciation of Generator objects and GenerationHandler objects from
@@ -107,14 +107,14 @@ class GenerationHandlerNew:
 
     :Example:
 
-    >>> sequence_1 = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-    >>> labels_1 = [s[0] for s in sequence_1]
-    >>> generator_1 = GenerationHandlerNew(sequence=sequence_1, labels=labels_1, model_navigator = "FactorOracleNavigator")
-    >>>
-    >>> sequence_2 = make_sequence_of_chord_labels(["d m7(1)", "d m7(2)", "g 7(3)", "g 7(4)", "c maj7(5)","c maj7(6)","c# maj7(7)","c# maj7(8)", "d# m7(9)", "d# m7(10)", "g# 7(11)", "g# 7(12)", "c# maj7(13)", "c# maj7(14)"])
-    >>> labels_2 = make_sequence_of_chord_labels(["d m7", "d m7", "g 7", "g 7", "c maj7","c maj7","c# maj7","c# maj7", "d# m7", "d# m7", "g# 7", "g# 7", "c# maj7", "c# maj7"])
-    >>> authorized_intervals = list(range(-2,6))
-    >>> generator_2 = GenerationHandlerNew(sequence = sequence_2, labels = labels_2, model_navigator = "FactorOracleNavigator", authorized_tranformations = authorized_intervals, sequence_to_interval_fun = chord_labels_sequence_to_interval)
+    >>> #sequence_1 = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
+    >>> #labels_1 = [s[0] for s in sequence_1]
+    >>> #generator_1 = GenerationHandlerNew(sequence=sequence_1, labels=labels_1, model_navigator = "FactorOracleNavigator")
+    >>> #
+    >>> #sequence_2 = make_sequence_of_chord_labels(["d m7(1)", "d m7(2)", "g 7(3)", "g 7(4)", "c maj7(5)","c maj7(6)","c# maj7(7)","c# maj7(8)", "d# m7(9)", "d# m7(10)", "g# 7(11)", "g# 7(12)", "c# maj7(13)", "c# maj7(14)"])
+    >>> #labels_2 = make_sequence_of_chord_labels(["d m7", "d m7", "g 7", "g 7", "c maj7","c maj7","c# maj7","c# maj7", "d# m7", "d# m7", "g# 7", "g# 7", "c# maj7", "c# maj7"])
+    >>> #authorized_intervals = list(range(-2,6))
+    >>> #generator_2 = GenerationHandlerNew(sequence = sequence_2, labels = labels_2, model_navigator = "FactorOracleNavigator", authorized_tranformations = authorized_intervals, sequence_to_interval_fun = chord_labels_sequence_to_interval)
 
 
     """
@@ -443,7 +443,7 @@ class GenerationHandlerNew:
         :see also: :mod:`MetaModelNavigator`
         """
         self.encode_memory_with_current_transfo()
-        result = self.memory.free_generation(length=length, init=self.initial_query, print_info=print_info)
+        result = self.free_generation(length=length, init=self.initial_query, print_info=print_info)
         self.decode_memory_with_current_transfo()
         return result
 
@@ -516,7 +516,7 @@ class GenerationHandlerNew:
         self.encode_memory_with_current_transfo()
         # print("label")
         # print(label)
-        result = self.memory.simply_guided_generation(required_labels=list(label), init=self.initial_query,
+        result = self.simply_guided_generation(required_labels=list(label), init=self.initial_query,
                                                       print_info=print_info)
         self.decode_memory_with_current_transfo()
         # print("result")
@@ -719,12 +719,10 @@ class GenerationHandlerNew:
             aux = self.memory.l_get_no_empty_event()
             # In order to begin a new navigation phase when this method returns a "None" event
             self.memory.l_set_no_empty_event(False)
-            equiv = self.memory.l_pre_guided_navigation(list_of_labels[1::], equiv=None,
-                                                        new_max_continuity=None, init=False)
             seq = self.simply_guided_generation(required_labels=list_of_labels[1::], init=False,
                                                 print_info=print_info,
                                                 shift_index=len(self.current_generation_query.handle) - len(list_of_labels) + 1,
-                                                break_when_none=True, equiv=equiv)
+                                                break_when_none=True)
             self.memory.l_set_no_empty_event(aux)
             # self.decode_memory_with_current_transfo()
             # print("SCENARIO ONE PHASE 5")
@@ -810,7 +808,7 @@ class GenerationHandlerNew:
         # print(len(self.authorized_tranformations) > 0)
         # print(self.authorized_tranformations != [0])
         # print(self.authorized_tranformations)
-        return (not (self.memory.model.label_type is None)) and self.memory.model.label_type._use_intervals \
+        return (not (self.memory.model.label_type is None)) and self.memory.model.label_type.use_intervals \
                and len(self.authorized_transformations) > 0 and self.authorized_transformations != [0]
 
     def filter_using_history_and_taboos(self, list_of_indexes):
@@ -834,7 +832,7 @@ class GenerationHandlerNew:
         # TODO : Faire mieux
         if self.content_type:
             self.memory.l_set_sequence([None] + transform.encode_sequence(self.memory.l_get_sequence_nonmutable()[1::]))
-        self.memory.l_set_sequence([None] + transform.encode_sequence(self.memory.l_get_labels_nonmutable()[1::]))
+        self.memory.l_set_labels([None] + transform.encode_sequence(self.memory.l_get_labels_nonmutable()[1::]))
 
     # TODO : [NONE] au début : UNIQUEMENT POUR ORACLE ! PAS GENERIQUE !
     # TODO : SERA CERTAINEMENT A MODIFIER QUAND LES CONTENTS DANS SEQUENCE AURONT UN TYPE !

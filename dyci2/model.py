@@ -42,7 +42,7 @@ class Model:
     :!: **equiv** has to be consistent with the type of the elements in labels.
     """
 
-    def __init__(self, sequence=(), labels=(), equiv=(lambda x, y: x == y), label_type=None, content_type=None):
+    def __init__(self, sequence=(), labels=(), equiv: Callable=(lambda x, y: x == y), label_type=None, content_type=None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         self.sequence: List[Union[int, str]] = []
         self.content_type = content_type

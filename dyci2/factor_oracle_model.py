@@ -15,13 +15,13 @@ class FactorOracle(Model):
     :type sequence: list or str
     :param labels: sequence of labels chosen to describe the sequence
     :type labels: list or str
-    :param direct_transitions: direct transitions in the automaton (key = index state 1, value = tuple: label, index state 2)
+    #:param direct_transitions: direct transitions in the automaton (key = index state 1, value = tuple: label, index state 2)
     :type direct_transitions: dict
-    :param factor_links: factor links in the automaton (key = index state 1, value = list of tuples: (label, index state 2)
+    #:param factor_links: factor links in the automaton (key = index state 1, value = list of tuples: (label, index state 2)
     :type factor_links: dict
-    :param suffix_links: suffix links in the automaton (key = index state 1, value = index state 2)
+    #:param suffix_links: suffix links in the automaton (key = index state 1, value = index state 2)
     :type suffix_links: dict
-    :param reverse_suffix_links: reverse suffix links in the automaton (key = index state 1, value = list of index state 2)
+    #:param reverse_suffix_links: reverse suffix links in the automaton (key = index state 1, value = list of index state 2)
     :type reverse_suffix_links: dict
     :param equiv: compararison function given as a lambda function, default: (lambda x,y : x == y).
     :type equiv: function
@@ -38,16 +38,17 @@ class FactorOracle(Model):
     >>> FO = FactorOracle(sequence, sequence)
     >>>
     >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-    >>> labels = [s[0] for s in sequence]
-    >>> FO_2 = FactorOracle(sequence, labels)
+    >>> #labels = [s[0] for s in sequence]
+    >>> #FO_2 = FactorOracle(sequence, labels)
     >>>
-    >>> equiv_AC_BD = (lambda x,y: set([x,y]).issubset(set(['A','C'])) or set([x,y]).issubset(set(['B','D'])))
-    >>> FO_3 = FactorOracle(sequence, labels, equiv_AC_BD)
+    >>> #equiv_AC_BD = (lambda x,y: set([x,y]).issubset(set(['A','C'])) or set([x,y]).issubset(set(['B','D'])))
+    >>> #FO_3 = FactorOracle(sequence, labels, equiv_AC_BD)
 
 
     """
 
-    def __init__(self, sequence=[], labels=[], equiv: Optional[Callable] =(lambda x, y: x == y), label_type=None, content_type=None):
+    def __init__(self, sequence=(), labels=(), equiv: Optional[Callable] = (lambda x, y: x == y), label_type=None,
+                 content_type=None):
         """ Constructor for the class FactorOracle.
         :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
 
@@ -60,11 +61,11 @@ class FactorOracle(Model):
         >>> FO = FactorOracle(sequence, sequence)
         >>>
         >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-        >>> labels = [s[0] for s in sequence]
-        >>> FO_2 = FactorOracle(sequence, labels)
+        >>> #labels = [s[0] for s in sequence]
+        >>> #FO_2 = FactorOracle(sequence, labels)
         >>>
-        >>> equiv_AC_BD = (lambda x,y: set([x,y]).issubset(set(['A','C'])) or set([x,y]).issubset(set(['B','D'])))
-        >>> FO = FactorOracle(sequence, labels, equiv_AC_BD)
+        >>> #equiv_AC_BD = (lambda x,y: set([x,y]).issubset(set(['A','C'])) or set([x,y]).issubset(set(['B','D'])))
+        >>> #FO = FactorOracle(sequence, labels, equiv_AC_BD)
         """
 
         # self.sequence = []
@@ -375,12 +376,12 @@ class FactorOracle(Model):
         :Example:
 
         >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-        >>> labels = [s[0] for s in sequence]
-        >>> FON = FactorOracleNavigator(sequence, labels)
+        >>> #labels = [s[0] for s in sequence]
+        >>> #FON = FactorOracleNavigator(sequence, labels)
         >>>
         >>> index = 6
-        >>> similar_backward_context = FON._similar_backward_context(index)
-        >>> print("Some states with backward context similar to that of state at index {}: {}".format(index, similar_backward_context))
+        >>> #similar_backward_context = FON._similar_backward_context(index)
+        >>> #print("Some states with backward context similar to that of state at index {}: {}".format(index, similar_backward_context))
 
 
         """
@@ -392,7 +393,7 @@ class FactorOracle(Model):
             result.remove(index_state)
         return result
 
-    def _similar_contexts(self, index_state, forward_context_length_min=1, equiv=None):
+    def _similar_contexts(self, index_state, forward_context_length_min=1, equiv: Optional[Callable] = None):
         """ Some states sharing a common backward context and a common forward context with the state at index
         index_state in the automaton.
         The lengths of the common backward contexts are given by the Factor Oracle automaton, the forward context is
@@ -414,14 +415,14 @@ class FactorOracle(Model):
         :Example:
 
         >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-        >>> labels = [s[0] for s in sequence]
-        >>> FON = FactorOracleNavigator(sequence, labels)
+        >>> #labels = [s[0] for s in sequence]
+        >>> #FON = FactorOracleNavigator(sequence, labels)
         >>>
         >>> index = 6
         >>> forward_context_length_min = 1
-        >>> similar_contexts = FON._similar_contexts(index, forward_context_length_min)
-        >>> print("Some states with similar contexts (with minimum forward context length = {}) to that of state at index"
-        >>>       "{}: {}".format(forward_context_length_min, index, similar_contexts))
+        >>> #similar_contexts = FON._similar_contexts(index, forward_context_length_min)
+        >>> #print("Some states with similar contexts (with minimum forward context length = {}) to that of state at index"
+        >>> #      "{}: {}".format(forward_context_length_min, index, similar_contexts))
 
         """
 
@@ -435,7 +436,8 @@ class FactorOracle(Model):
         #                     if self.direct_transitions.get(index)
         #                     and self.length_common_forward_context(index_state, index, equiv) >= forward_context_length_min]
         similar_contexts = [index for index in self._similar_backward_context(index_state) if
-                            self._length_common_forward_context(index_state, index, equiv) >= forward_context_length_min]
+                            self._length_common_forward_context(index_state, index,
+                                                                equiv) >= forward_context_length_min]
 
         return similar_contexts
 
@@ -472,14 +474,14 @@ class FactorOracle(Model):
         :Example:
 
         >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-        >>> labels = [s[0] for s in sequence]
-        >>> FON = FactorOracleNavigator(sequence, labels)
+        >>> #labels = [s[0] for s in sequence]
+        >>> #FON = FactorOracleNavigator(sequence, labels)
         >>>
         >>> index = 6
-        >>> forward_context_length_min = 1
-        >>> continuations = FON._continuations(index, forward_context_length_min)
-        >>> print("Possible continuations from state at index {} (with minimum forward context length = {}): {}"
-        >>>       .format(index, forward_context_length_min, continuations))
+        >>> #forward_context_length_min = 1
+        >>> #continuations = FON._continuations(index, forward_context_length_min)
+        >>> #print("Possible continuations from state at index {} (with minimum forward context length = {}): {}"
+        >>> #      .format(index, forward_context_length_min, continuations))
 
 
         """
@@ -533,7 +535,7 @@ class FactorOracle(Model):
         return len(self.sequence)
 
     # TODO : Use prefix indexing algo
-    def _length_common_forward_context(self, index_state1, index_state2, equiv=None):
+    def _length_common_forward_context(self, index_state1, index_state2, equiv: Optional[Callable] = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ Length of the forward context shared by two states in the sequence.
 
@@ -587,4 +589,3 @@ class FactorOracle(Model):
             i_s1 -= 1
             i_s2 -= 1
         return length
-

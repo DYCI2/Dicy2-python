@@ -53,7 +53,7 @@ print("\n**NEW PERFORMANCE TIME : BEAT {}**\n**PLAYING CORRESPONDING GENERATED E
     generation_handler.current_performance_time["event"],
     generation_handler.generation_trace[generation_handler.current_performance_time["event"]]))
 
-time.sleep(1)
+# time.sleep(1)
 # generation_handler.current_performance_time["event"] += 1
 # generation_handler.current_performance_time["ms"] += 1000
 # generation_handler.current_performance_time["last_update_event_in_ms"] = generation_handler.current_performance_time["ms"]
@@ -65,13 +65,13 @@ print("\n**NEW PERFORMANCE TIME : BEAT {}**\n**PLAYING CORRESPONDING GENERATED E
 
 query = new_temporal_query_free_sequence_of_events(length=3, start_date=4, start_type="absolute")
 print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
-generation_handler.receive_query(query=query, print_info=False)
+generation_handler.l_receive_query(query=query, print_info=False)
 print("Output of the run: {}".format(generation_handler.current_generation_output))
 print("With transforfmation: {}".format(generation_handler.formatted_output_couple_content_transfo()))
 print("/!\ Updated buffered improvisation: {} /!\ ".format(generation_handler.generation_trace))
 
 for i in range(0, 2):
-    time.sleep(1)
+    # time.sleep(1)
     # generation_handler.current_performance_time["event"] += 1
     # generation_handler.current_performance_time["ms"] += 1000
     # generation_handler.current_performance_time["last_update_event_in_ms"] = generation_handler.current_performance_time["ms"]
@@ -86,12 +86,12 @@ list_for_scenario = ["d m7", "d m7", "d m7"]
 query = new_temporal_query_sequence_of_events(handle=list_for_scenario, label_type=ChordLabel, start_date=2,
                                               start_type="relative", behaviour="replace")
 print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
-generation_handler.receive_query(query=query, print_info=False)
+generation_handler.l_receive_query(query=query, print_info=False)
 print("Output of the run: {}".format(generation_handler.current_generation_output))
 print("/!\ Updated buffered improvisation: {} /!\ ".format(generation_handler.generation_trace))
 
 for i in range(0, 4):
-    time.sleep(1)
+    # time.sleep(1)
     # generation_handler.current_performance_time["event"] += 1
     # generation_handler.current_performance_time["ms"] += 1000
     # generation_handler.current_performance_time["last_update_event_in_ms"] = generation_handler.current_performance_time["ms"]

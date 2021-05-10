@@ -31,7 +31,7 @@ from pythonosc.osc_server import BlockingOSCUDPServer
 
 from dyci2 import label, query
 from dyci2 import generator_builder, save_send_format
-from generation_handler_new import GenerationHandlerNew
+from generation_engine import GenerationEngine
 from dyci2.legacy.Temporary_parse_file import TemporaryParser
 
 # TODO[JB]: This is a placeholder for all places where you're expected to specify the real type of the input value!
@@ -123,9 +123,9 @@ class OSCAgent(Server):
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0),
                  max_length_osc_mess: int = DEFAULT_OSC_MAX_LEN, *args, **kwargs):
         Server.__init__(self, inport=inport, outport=outport, *args, **kwargs)
-        self.generation_handler: GenerationHandlerNew = GenerationHandlerNew(sequence, labels, model_type, equiv, label_type,
-                                                                             content_type, authorized_transformations,
-                                                                             continuity_with_future)
+        self.generation_handler: GenerationEngine = GenerationEngine(sequence, labels, model_type, equiv, label_type,
+                                                                     content_type, authorized_transformations,
+                                                                     continuity_with_future)
         self.max_length_osc_mess: int = max_length_osc_mess
 
     def run(self) -> None:
@@ -238,7 +238,7 @@ class OSCAgent(Server):
             content_type = label.from_string(str(keys_content))
             #exec("%s = %s" % ("content_type", keys_content))
 
-        self.generation_handler: GenerationHandlerNew = GenerationHandlerNew(label_type=label_type, content_type=content_type)
+        self.generation_handler: GenerationEngine = GenerationEngine(label_type=label_type, content_type=content_type)
         self._client.send("/new_empty_memory", keys_label)
         self.send_init_control_parameters()
 

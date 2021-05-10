@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 #############################################################################
-# generation_handler_new.py
+# generation_engine.py
 # Classes Generator and GenerationHandler
 # Generate new sequences from a model of sequence and a query.
 # Jérôme Nika, Dimitri Bouche, Jean Bresson, Ken Déguernel - IRCAM STMS Lab
@@ -37,12 +37,14 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 
 
 # TODO : SUPPRIMER DANS LA DOC LES FONCTIONS "EQUIV-MOD..." "SEQUENCE TO INTERVAL..."
+import itertools
 from typing import List, Optional, Callable
 
 from dyci2.query import *
 from dyci2.transforms import *
 # TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
 # TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
+from generation_process import GenerationProcess
 from generator_new import FactorOracleGenerator, implemented_model_navigator_classes
 from utils import format_list_as_list_of_strings
 
@@ -53,7 +55,7 @@ def basic_equiv(x, y):
 
 # TODO[E]: Remove noinspection
 # noinspection PyIncorrectDocstring
-class GenerationHandlerNew:
+class GenerationEngine:
     """ The class **Generator** embeds a **model navigator** as "memory" (cf. metaclass
     :class:`~MetaModelNavigator.MetaModelNavigator`) and processes **queries** (class :class:`~Query.Query`) to
     generate new sequences. This class uses pattern matching techniques (cf. :mod:`PrefixIndexing`) to enrich the
@@ -148,7 +150,7 @@ class GenerationHandlerNew:
         self.label_type = label_type
         self.content_type = content_type
         self.initial_query = True
-        self.current_generation_query = None
+        # self.current_generation_query = None
         self.current_generation_output = []
         self.transfo_current_generation_output = []
 
@@ -159,14 +161,16 @@ class GenerationHandlerNew:
         # self.sequence_to_interval_fun = sequence_to_interval_fun
         self.continuity_with_future = continuity_with_future
 
-        self.current_performance_time = {"event": -1, "ms": -1, "last_update_event_in_ms": -1}
-        self.generation_trace = []
-        self.current_generation_time = {"event": -1, "ms": -1}
-        self.current_duration_event_ms = 60000 / 60
-        # self.pulsed = True
-        self.running_generation = []
-        self.query_pool_event = []
-        self.query_pool_ms = []
+        self.generation_process: GenerationProcess = GenerationProcess()
+
+        # self.current_performance_time = {"event": -1, "ms": -1, "last_update_event_in_ms": -1}
+        # self.generation_trace = []
+        # self.current_generation_time = {"event": -1, "ms": -1}
+        # self.current_duration_event_ms = 60000 / 60
+        # # self.pulsed = True
+        # self.running_generation = []
+        # self.query_pool_event = []
+        # self.query_pool_ms = []
 
     def __setattr__(self, name_attr, val_attr):
         object.__setattr__(self, name_attr, val_attr)
@@ -183,163 +187,41 @@ class GenerationHandlerNew:
         """ Learn a new sequence in the memory (model navigator)."""
         self.memory.learn_sequence(sequence=sequence, labels=labels)
 
-    def l_receive_query(self, query: Query, print_info: bool = False) -> None:
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        """ DOCSTRING WAS REMOVED """
-        # ## LEGACY[`Generator.receive_query`]:
-        # print("************************************")
-        # print("RECEIVE QUERY: QUERY = ")
-        # print("************************************")
-        # print(query)
-        # query.start["type"] = "absolute"
-        # self.process_query(query, print_info)
-        # ## END LEGACY
-        if query.scope["unit"] == "event":
-            self.query_pool_event.append(query)
-            print("LEN QUERY POOL = {}".format(self.query_pool_event))
-            self.l_process_prioritary_query("event", print_info)
-            print("LEN QUERY POOL = {}".format(self.query_pool_event))
-        elif query.scope["unit"] == "ms":
-            self.query_pool_ms.append(query)
-            self.l_process_prioritary_query("ms", print_info)
-
-    def l_process_prioritary_query(self, unit: Optional[str] = None, print_info: bool = False) -> None:
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        """ Processes the prioritary query in the query pool. """
-        if unit:
-            if unit == "event":
-                try:
-                    assert len(self.query_pool_event) > 0
-                except AssertionError as exception:
-                    print(""" No "event" query to process""", exception)
-                else:
-                    self.genhandler_process_query(self.query_pool_event.pop(0), print_info)
-            elif unit == "ms":
-                try:
-                    assert len(self.query_pool_ms) > 0
-                except AssertionError as exception:
-                    print(""" No "ms" query to process""", exception)
-                else:
-                    self.genhandler_process_query(self.query_pool_ms.pop(0), print_info)
-        # TODO : Dessous: temporaire
-        else:
-            try:
-                assert len(self.query_pool_event) > 0
-            except AssertionError as exception:
-                print(""" No "event" query to process""", exception)
-            else:
-                self.genhandler_process_query(self.query_pool_event.pop(0), print_info)
-
-    def genhandler_process_query(self, query: Query, print_info: bool = False) -> int:
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        """ DOCSTRING WAS REMOVED """
+    def process_query(self, query: Query, performance_time: int):
+        """ raises: """
         print("\n--------------------")
-        # print("current navigation index:")
-        # print(self.memory.current_position_in_sequence)
-        print("""current_performance_time: {}""".format(self.current_performance_time["event"]))
-        print("""current_generation_time: {}""".format(self.current_generation_time["event"]))
+        print(f"current_performance_time: {performance_time}")
+        print(f"current_generation_time: {self.generation_process.generation_time}")
 
-        # print("""self.memory.execution_trace:""")
-        # print(self.memory.execution_trace)
+        if not self.initial_query and performance_time < 0 and query.time_mode == TimeMode.RELATIVE:
+            # TODO[JEROME]: Throw error? What is the purpose of this invariant? For reference: old statement was
+            #  if self.initial_query or performance_time >= 0 or query.time_mode == TimeMode.ABSOLUTE
+            return query.start_date
 
-        # TODO
-        if len(self.running_generation) < 0:
-            print("NO PROCESS RUNNING")
-        else:
-            print(" !!!!! Already {} processes running !!!!!".format(self.running_generation))
+        print("PROCESS QUERY\n", query)
+        if query.time_mode == TimeMode.RELATIVE:
+            query.to_absolute(performance_time)
+            print("QUERY ABSOLUTE\n", query)
 
-        self.running_generation.append("Proc")
+        if self.initial_query:
+            # TODO[B] UNSOLVED! Handle with inheritance or find workaround solution
+            self.current_performance_time["event"] = 0
+        generation_index: int = query.start_date
+        print(f"generation_index: {generation_index}")
+        if 0 < generation_index < self.generation_process.generation_time:
+            print(f"USING EXECUTION TRACE : generation_index = {generation_index} : "
+                  f"generation_time = {self.generation_process.generation_time}")
+            self.memory.go_to_anterior_state_using_execution_trace(generation_index - 1)
 
-        if self.initial_query or (
-                self.current_performance_time["event"] >= 0 and self.current_performance_time["ms"] >= 0) or \
-                query.start["type"] == "absolute":
-            print("PROCESS QUERY")
-            print(query)
-            print("Now, {} processes running".format(self.running_generation))
-            if query.start["type"] == "relative":
-                # print("QUERY RELATIVE")
-                # print(query)
-                query.relative_to_absolute(current_performance_time_event=self.current_performance_time["event"],
-                                           current_performance_time_ms=self.current_performance_time["ms"])
-                # #### Release 09/18 #####
-                if query.start["unit"] == "event" and query.start["date"] < self.current_performance_time["event"]:
-                    query.start["date"] = self.current_performance_time["event"]
-                if query.start["unit"] == "ms" and query.start["date"] < self.current_performance_time["ms"]:
-                    query.start["date"] = self.current_performance_time["ms"]
-                # #### Release 09/18 #####
-                print("QUERY ABSOLUTE")
-                print(query)
+        # TODO[B] UNSOLVED! Massive side-effect. Exactly what is current_navigation_index?
+        self.memory.current_navigation_index = generation_index - 1
+        # TODO[B]: UNSOLVED! generator_process_query should return output, not store it in current_generation_output
+        self.generator_process_query(query)
 
-            if query.start["unit"] == "event":
-                if self.initial_query:
-                    self.current_performance_time["event"] = 0
-                index_for_generation = query.start["date"]
-                print("index_for_generation: {}".format(index_for_generation))
-                if index_for_generation > 0 and index_for_generation < self.current_generation_time["event"]:
-                    # print("PROCESS 0.0")
-                    print("""USING EXECUTION TRACE : index_for_generation = {} / self.current_generation_time["event"] 
-                                  = {}""".format(index_for_generation, self.current_generation_time["event"]))
-                    self.memory.go_to_anterior_state_using_execution_trace(index_for_generation - 1)
+        print(f"self.current_generation_output {self.current_generation_output}")
+        self.generation_process.add_output(generation_index, self.current_generation_output)
 
-            elif query.start["unit"] == "ms":
-                if query.start["date"] >= self.current_generation_time["ms"]:
-                    index_for_generation = len(self.generation_trace)
-                else:
-                    index_for_generation = self.index_previously_generated_event_date_ms(query.date["ms"])
-                    self.memory.go_to_anterior_state_using_execution_trace(index_for_generation - 1)
-
-            else:
-                # TODO[C]: This was added in A for parsing reasons. Handle properly later.
-                raise RuntimeError("The 'unit' of a query must be either 'event' or 'ms'.")
-
-            self.memory.current_navigation_index = index_for_generation - 1
-            self.generator_process_query(query, print_info=print_info)
-
-            l = 0
-            if not self.current_generation_output is None:
-                print("self.current_generation_output {}".format(self.current_generation_output))
-                l = len(self.current_generation_output)
-                # print("length output = {}".format(l))
-                k = 0
-                while k < l and not self.current_generation_output[k] is None:
-                    k += 1
-                l = k
-                print("corrected length output = {}".format(l))
-
-            old_gen_time = self.current_generation_time["event"]
-
-            if query.start["unit"] == "event":
-                if index_for_generation > len(self.generation_trace):
-                    for i in range(len(self.generation_trace), index_for_generation):
-                        self.generation_trace.append(None)
-
-                for i in range(0, l):
-                    if i + index_for_generation < len(self.generation_trace):
-                        self.generation_trace[index_for_generation + i] = self.current_generation_output[i]
-                    else:
-                        self.generation_trace.append(self.current_generation_output[i])
-
-                self.generation_trace = self.generation_trace[:(index_for_generation + l)]
-                self.current_generation_time["event"] = index_for_generation + l
-                self.current_generation_time["ms"] = self.estimation_date_ms_of_event(
-                    self.current_generation_time["event"])
-
-            if query.start["unit"] == "ms":
-
-                for i in range(0, l):
-                    if index_for_generation + i < len(self.generation_trace):
-                        self.generation_trace[index_for_generation + i] = self.current_generation_output[i]
-                    else:
-                        self.generation_trace.append(self.current_generation_output[i])
-                self.generation_trace = self.generation_trace[:index_for_generation + l]
-                self.current_generation_time["ms"] = index_for_generation + l
-                self.current_generation_time["event"] = self.estimation_date_event_of_ms(
-                    self.current_generation_time["ms"])
-
-            print("""generation time: {} --> {}""".format(old_gen_time, self.current_generation_time["event"]))
-
-        self.running_generation.pop()
-        return query.start["date"]
+        return query.start_date
 
     def generator_process_query(self, query: Query, print_info: bool = False) -> None:
         # FIXME[MergeState]: A[x], B[], C[], D[]
@@ -517,7 +399,7 @@ class GenerationHandlerNew:
         # print("label")
         # print(label)
         result = self.simply_guided_generation(required_labels=list(label), init=self.initial_query,
-                                                      print_info=print_info)
+                                               print_info=print_info)
         self.decode_memory_with_current_transfo()
         # print("result")
         # print(result)
@@ -722,7 +604,8 @@ class GenerationHandlerNew:
             self.memory.l_set_no_empty_event(False)
             seq = self.simply_guided_generation(required_labels=list_of_labels[1::], init=False,
                                                 print_info=print_info,
-                                                shift_index=len(self.current_generation_query.handle) - len(list_of_labels) + 1,
+                                                shift_index=len(self.current_generation_query.handle) - len(
+                                                    list_of_labels) + 1,
                                                 break_when_none=True)
             self.memory.l_set_no_empty_event(aux)
             # self.decode_memory_with_current_transfo()

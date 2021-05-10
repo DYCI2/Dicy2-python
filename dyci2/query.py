@@ -41,4 +41,4 @@ class LabelQuery(Query):
     def __init__(self, labels: List[Label], start_date: int, time_mode: TimeMode = TimeMode.RELATIVE):
         super().__init__(start_date=start_date, time_mode=time_mode)
         self.labels: List[Label] = labels
-        assert len(self.labels) > 0, f"A {self.__class__.__name__} must contain at least one label"
+        assert len(self.labels) > 0, f"{self.__class__.__name__} must contain at least one label"

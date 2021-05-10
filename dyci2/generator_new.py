@@ -88,40 +88,21 @@ class FactorOracleGenerator:
 
     def l_pre_free_navigation(self, equiv: Optional[Callable], new_max_continuity: int,
                               init: bool) -> Tuple[bool, Callable]:
-        # ##################################
-        # #### From old free_generation ####
-        # ##################################
         if equiv is None:
             equiv = self.model.equiv
 
-        if not new_max_continuity is None:
+        if new_max_continuity is not None:
             self.navigator.max_continuity = new_max_continuity
 
         if init:
             self.navigator.reinit_navigation_param_old_modelnavigator()
 
-        # ##################################
-        # #### From old free_navigation ####
-        # ##################################
         print("FREE GENERATION")
-        print_info = True
-
-        if equiv is None:
-            equiv = self.model.equiv
-
-        if not new_max_continuity is None:
-            self.navigator.max_continuity = new_max_continuity
-
-        # print("FREE GENERATION 1")
-        if init:
-            self.navigator.reinit_navigation_param_old_modelnavigator()
-        # print("FREE GENERATION 2")
+        print_info: bool = True
 
         if self.navigator.current_position_in_sequence < 0:
-            # print("FREE GENERATION 2.1 index_last_state = {}".format(factor_oracle_navigator.index_last_state()))
             self.navigator.set_current_position_in_sequence_with_sideeffects(
                 random.randint(1, self.model.index_last_state()))
-        # print("FREE GENERATION 2.2")
         return print_info, equiv
 
     def l_pre_guided_navigation(self, required_labels: List[DontKnow], equiv: Optional[Callable],
@@ -159,12 +140,10 @@ class FactorOracleGenerator:
     def r_free_navigation_one_step(self, iteration_index: int, forward_context_length_min: int = 0,
                                    equiv: Optional[Callable] = None,
                                    print_info: bool = False) -> Optional[int]:
-        # print("FREE GENERATION 3.{}".format(i))
         str_print_info = "{} (cont. = {}/{}): {}".format(iteration_index, self.navigator.current_continuity,
                                                          self.navigator.max_continuity,
                                                          self.navigator.current_position_in_sequence)
 
-        s = None
         init_continuations, filtered_continuations = self.filtered_continuations(
             self.navigator.current_position_in_sequence,
             forward_context_length_min, equiv)

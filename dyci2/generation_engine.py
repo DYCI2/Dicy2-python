@@ -36,9 +36,10 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 # TODO S'OCCUPER D'UNE CLASSE CONTENT !!
 
 
+from typing import Optional, Callable, Tuple
+
 # TODO : SUPPRIMER DANS LA DOC LES FONCTIONS "EQUIV-MOD..." "SEQUENCE TO INTERVAL..."
-import itertools
-from typing import List, Optional, Callable
+from
 
 from dyci2.query import *
 from dyci2.transforms import *
@@ -46,7 +47,7 @@ from dyci2.transforms import *
 # TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
 from generation_process import GenerationProcess
 from generator_new import FactorOracleGenerator, implemented_model_navigator_classes
-from utils import format_list_as_list_of_strings
+from utils import format_list_as_list_of_strings, DontKnow
 
 
 def basic_equiv(x, y):
@@ -147,30 +148,17 @@ class GenerationEngine:
                     content_type=content_type,
                     equiv=equiv)
 
-        self.label_type = label_type
         self.content_type = content_type
-        self.initial_query = True
-        # self.current_generation_query = None
+        self.initial_query = True  # TODO[B] Rename: `restart_generation`? `generation_initialized`?
         self.current_generation_output = []
         self.transfo_current_generation_output = []
 
         self.authorized_transformations = authorized_tranformations
         # TODO: Rather NoTransform?
         self.current_transformation_memory = None
-        # self.equiv_mod_interval = equiv_mod_interval
-        # self.sequence_to_interval_fun = sequence_to_interval_fun
         self.continuity_with_future = continuity_with_future
 
         self.generation_process: GenerationProcess = GenerationProcess()
-
-        # self.current_performance_time = {"event": -1, "ms": -1, "last_update_event_in_ms": -1}
-        # self.generation_trace = []
-        # self.current_generation_time = {"event": -1, "ms": -1}
-        # self.current_duration_event_ms = 60000 / 60
-        # # self.pulsed = True
-        # self.running_generation = []
-        # self.query_pool_event = []
-        # self.query_pool_ms = []
 
     def __setattr__(self, name_attr, val_attr):
         object.__setattr__(self, name_attr, val_attr)
@@ -188,6 +176,9 @@ class GenerationEngine:
         self.memory.learn_sequence(sequence=sequence, labels=labels)
 
     def process_query(self, query: Query, performance_time: int):
+        # TODO[B]: This entire function is basically a long list of side effects to distribute all over the system given
+        #   various cases. A better solution would be to clean most of these up and pass along. The only important thing
+        #   here is go_to_anterior_state_using_execution_trace
         """ raises: """
         print("\n--------------------")
         print(f"current_performance_time: {performance_time}")
@@ -198,6 +189,7 @@ class GenerationEngine:
             #  if self.initial_query or performance_time >= 0 or query.time_mode == TimeMode.ABSOLUTE
             return query.start_date
 
+        # TODO[B] If invariant above is useless or if we can handle this elsewhere, handle query.to_absolute in scheduler instead
         print("PROCESS QUERY\n", query)
         if query.time_mode == TimeMode.RELATIVE:
             query.to_absolute(performance_time)
@@ -205,6 +197,8 @@ class GenerationEngine:
 
         if self.initial_query:
             # TODO[B] UNSOLVED! Handle with inheritance or find workaround solution
+            #  Also, this is strongly related to `init` parameter in almost all function calls. Ideally handle
+            #  everything here instead of parsing it inside free_generation/navigation stuff
             self.current_performance_time["event"] = 0
         generation_index: int = query.start_date
         print(f"generation_index: {generation_index}")
@@ -223,122 +217,49 @@ class GenerationEngine:
 
         return query.start_date
 
-    def generator_process_query(self, query: Query, print_info: bool = False) -> None:
-        # FIXME[MergeState]: A[x], B[], C[], D[]
-        """
-        The key differences between :class:`~Generator.Generator` and :class:`~Generator.GenerationHandler` are:
-            * :meth:`Generator.receive_query` / :meth:`GenerationHandler.receive_query`
-            * :meth:`Generator.process_query` / :meth:`GenerationHandler.process_query`
-
-        This methods stores the query given in argument in :attr:`self.current_generation_query` and calls
-        :meth:`Generator.generation_matching_query` to run the execution of a generation process adapted to
-        :attr:`Query.handle` and :attr:`Query.scope`.
-
-        :param query:
-        :type query: :class:`~Query.Query`
-
-
-        """
-        print("************************************")
-        print("PROCESS QUERY: QUERY = ")
-        print("************************************")
-        print(query)
-        self.current_generation_query = deepcopy(query)
-        # print("PROCESS GENERATOR 1")
-        self._l_generation_matching_query(query=self.current_generation_query, print_info=print_info)
-        # print("PROCESS GENERATOR 2")
-        self.current_generation_query.status = "processed"
-
-    # TODO: Manage if query.scope["unit"] == "ms"
-    def _l_generation_matching_query(self, query: Query, print_info: bool = False) -> None:
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        """
-        Launches the run of a generation process corresponding to :attr:`self.current_generation_query` (more precisely
-        its attributes :attr:`Query.handle` and :attr:`Query.scope`):
-            * :meth:`Generator.handle_free_generation`, or
-            * :meth:`Generator.handle_generation_matching_label`, or
-            * :meth:`Generator.handle_scenario_based_generation`.
-
-        The generated sequence is stored in :attr:`self.current_generation_output`.
-
-        :param query:
-        :type query: :class:`~Query.Query`
-        :param print_info:
-        :type query: `bool`
-        """
-        print("************************************")
-        print("GENERATION MATCHING QUERY: QUERY = ")
-        print("************************************")
-        print(query)
-
-        output = None
+    def _process_query(self, query: Query):
+        print("**********************************\nPROCESS QUERY: QUERY = \n**********************************", query)
+        print("**********************************\nGENERATION MATCHING QUERY: QUERY = \n**********************", query)
+        output: Optional[DontKnow]
+        # TODO[B]: UNSOLVED! probably unnecessary side-effect but discuss w/ Jerome before removing
         self.transfo_current_generation_output = []
-        # print("Generator : generation_matching_query")
-        if query.scope["unit"] == "event":
-            if query.scope["duration"] == 1:
-                if query.handle[0] is None:
-                    print("GENERATION MATCHING QUERY FREE ...")
-                    output = self._l_handle_free_generation(length=1, print_info=print_info)
-                    print("... GENERATION MATCHING QUERY FREE OK")
-                    self.transfo_current_generation_output = [self.current_transformation_memory] * len(output)
-                else:
-                    print("GENERATION MATCHING QUERY LABEL ...")
-                    # print("query.handle")
-                    # print(query.handle)
-                    # print("query.handle[0]")
-                    # print(query.handle[0])
-                    output = self._l_handle_guided_generation(label=query.handle, print_info=print_info)
-                    # print("output")
-                    # print(output)
-                    self.transfo_current_generation_output = [self.current_transformation_memory] * len(output)
-                    print("... GENERATION MATCHING QUERY LABEL OK")
-            elif query.scope["duration"] > 1:
-                if query.handle[0] is None:
-                    print("GENERATION MATCHING QUERY FREE ...")
-                    output = self._l_handle_free_generation(length=query.scope["duration"], print_info=print_info)
-                    print("... GENERATION MATCHING QUERY FREE OK")
-                    self.transfo_current_generation_output = [self.current_transformation_memory] * len(output)
-                else:
-                    print("GENERATION MATCHING QUERY SCENARIO ...")
-                    output = self._l_handle_scenario_based_generation(list_of_labels=query.handle,
-                                                                      print_info=print_info)
-                    print("... GENERATION MATCHING QUERY SCENARIO OK")
+        if isinstance(query, FreeQuery):
+            print("GENERATION MATCHING QUERY FREE ...")
+            output = self.free_generation(num_events=query.num_events, init=self.initial_query,
+                                          print_info=query.print_info)
+            print("... GENERATION MATCHING QUERY FREE OK")
+            self.transfo_current_generation_output = [self.current_transformation_memory] * len(output)
 
+        elif isinstance(query, LabelQuery) and len(query.labels) == 1:
+            print("GENERATION MATCHING QUERY LABEL ...")
+            output = result = self.simply_guided_generation(required_labels=query.labels, init=self.initial_query,
+                                                            print_info=query.print_info)
+            self.transfo_current_generation_output = [self.current_transformation_memory] * len(output)
+            print("... GENERATION MATCHING QUERY LABEL OK")
+
+        elif isinstance(query, LabelQuery) and len(query.labels) > 1:
+            print("GENERATION MATCHING QUERY SCENARIO ...")
+            output = self._l_handle_scenario_based_generation(list_of_labels=query.labels, print_info=query.print_info)
+            print("... GENERATION MATCHING QUERY SCENARIO OK")
+
+        else:
+            raise RuntimeError(f"Invalid query type: {query.__class__.__name__}")
+
+        # TODO[B] Again with the side effects...
         self.current_generation_output = output
         if len(self.current_generation_output) > 0:
             self.initial_query = False
 
-    # TODO: Definitely not optimal to encode/decode at each iteration
-    def _l_handle_free_generation(self, length, print_info=False) -> List[int]:
-        # TODO[A]: This one should iterate over entire length, i.e. migrate parts of Navigator/ModelNavigator
-        """
-        Generates a sequence using the method :meth:`~Navigator.Navigator.free_generation` of the model navigator
-        (cf. :mod:`ModelNavigator`) in :attr:`self.memory`. :meth:`Generator.encode_memory_with_current_transfo` and
-        :meth:`Generator.decode_memory_with_current_transfo` are respectively called before and after this generation.
-
-        :param length: required length of the sequence
-        :type length: int
-        :return: generated sequence
-        :rtype: list
-
-        :see also: :meth:`~Navigator.Navigator.free_generation`
-        :see also: :mod:`MetaModelNavigator`
-        """
-        self.encode_memory_with_current_transfo()
-        result = self.free_generation(length=length, init=self.initial_query, print_info=print_info)
-        self.decode_memory_with_current_transfo()
-        return result
-
-    def free_generation(self, length, new_max_continuity=None, forward_context_length_min=0, init=False, equiv=None,
-                        print_info=False):
-        # FIXME[MergeState]: A[], B[], C[], D[], E[]
+    def free_generation(self, num_events: int, new_max_continuity: Optional[DontKnow] = None,
+                        forward_context_length_min: int = 0, init: bool = False, equiv: Callable = None,
+                        print_info: bool = False) -> List[Optional[DontKnow]]:
         """ Free navigation through the sequence.
         Naive version of the method handling the free navigation in a sequence (random).
         This method has to be overloaded by a model-dependant version when creating a **model navigator** class
         (cf. :mod:`ModelNavigator`).
 
-        :param length: length of the generated sequence
-        :type length: int
+        :param num_events: length of the generated sequence
+        :type num_events: int
         :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
         :type new_max_continuity: int
         :param forward_context_length_min: minimum length of the forward common context
@@ -357,59 +278,31 @@ class GenerationEngine:
         :!: The result **strongly depends** on the tuning of the parameters self.max_continuity,
             self.avoid_repetitions_mode, self.no_empty_event.
         """
-
+        # TODO[B] Discuss this with Jerome: how does encoding/decoding impact the actual memory? Is the return value
+        #  here (`sequence`) really referring to something else than what's decoded in line below?
+        self.encode_memory_with_current_transfo()
+        # TODO[B]: Is it possible to get rid of these pre_ functions? Can we pass these parameters
+        #  along all the way instead?
         print_info, equiv = self.memory.l_pre_free_navigation(equiv, new_max_continuity, init)
-
-        sequence = []
-
-        generated_sequence_of_indexes = []
-        s = None
-        for i in range(0, length):
-            generated_sequence_of_indexes.append(self.memory.r_free_navigation_one_step(i, forward_context_length_min,
-                                                                                        equiv, print_info))
-
-        generated_indexes = generated_sequence_of_indexes
-
-        for generated_index in generated_indexes:
+        sequence: List[Optional[DontKnow]] = []
+        generated_indices: List[Optional[int]] = []
+        for i in range(num_events):
+            generated_indices.append(self.memory.r_free_navigation_one_step(i, forward_context_length_min,
+                                                                            equiv, print_info))
+        for generated_index in generated_indices:
             if generated_index is None:
                 sequence.append(None)
             else:
                 sequence.append(self.memory.model.sequence[generated_index])
+
+        self.decode_memory_with_current_transfo()
         return sequence
 
-    # TODO: Definitely not optimal to encode/decode at each iteration
-    def _l_handle_guided_generation(self, label, print_info=False):
-        # TODO[A]: This one should iterate over entire length, i.e. migrate parts of Navigator/ModelNavigator
-        """
-        Generates a single event using the method :meth:`~Navigator.Navigator.simply_guided_generation` of the model
-        navigator (cf. :mod:`ModelNavigator`) in :attr:`self.memory`.
-        :meth:`Generator.encode_memory_with_current_transfo` and :meth:`Generator.decode_memory_with_current_transfo`
-        are respectively called before and after this generation.
-
-        :param label: required label
-        :type label: type of the elements in :attr:`self.memory.label`
-        :return: generated event
-        :rtype: type of the elements in :attr:`self.memory.sequence`
-
-        :see also: :meth:`~Navigator.Navigator.simply_generation`
-        :see also: :mod:`MetaModelNavigator`
-        """
-        print("HANDLE GENERATION MATCHING LABEL...")
-        self.encode_memory_with_current_transfo()
-        # print("label")
-        # print(label)
-        result = self.simply_guided_generation(required_labels=list(label), init=self.initial_query,
-                                               print_info=print_info)
-        self.decode_memory_with_current_transfo()
-        # print("result")
-        # print(result)
-        # print("...HANDLE GENERATION MATCHING LABEL")
-        return result
-
-    def simply_guided_generation(self, required_labels, new_max_continuity=None, forward_context_length_min=0,
-                                 init=False, equiv: Optional[Callable] = None, print_info=False, shift_index=0,
-                                 break_when_none=False):
-        # FIXME[MergeState]: A[], B[], C[], D[], E[]
+    def simply_guided_generation(self, required_labels: List[Label],
+                                 new_max_continuity: Optional[Tuple[float, float]] = None,
+                                 forward_context_length_min: int = 0, init: bool = False,
+                                 equiv: Optional[Callable] = None, print_info: bool = False, shift_index: int = 0,
+                                 break_when_none: bool = False):
         """ Navigation in the sequence, simply guided step by step by an input sequence of label.
         Naive version of the method handling the navigation in a sequence when it is guided by target labels.
         This method has to be overloaded by a model-dependant version when creating a **model navigator** class
@@ -437,31 +330,26 @@ class GenerationEngine:
         self.avoid_repetitions_mode, self.no_empty_event.
         """
 
+        print("HANDLE GENERATION MATCHING LABEL...")
+        self.encode_memory_with_current_transfo()
+
         equiv = self.memory.l_pre_guided_navigation(required_labels, equiv, new_max_continuity, init)
 
-        sequence = []
-
-        generated_sequence_of_indexes = []
-        s = None
-        for i in range(0, len(required_labels)):
-            s = self.memory.simply_guided_navigation_one_step(required_labels[i], new_max_continuity,
-                                                              forward_context_length_min, equiv, print_info,
-                                                              shift_index=i + shift_index)
+        generated_indices: List[Optional[int]] = []
+        for i in range(len(required_labels)):
+            s: Optional[int] = self.memory.simply_guided_navigation_one_step(required_labels[i], new_max_continuity,
+                                                                             forward_context_length_min, equiv,
+                                                                             print_info, shift_index=i + shift_index)
 
             if break_when_none and s is None:
                 break
-                # return generated_sequence_of_indexes
             else:
-                generated_sequence_of_indexes.append(s)
-            # print("\n\n-->SIMPLY NAVIGATION SETS POSITION: {}<--".format(s))
-            # factor_oracle_navigator.current_position_in_sequence = s
-        generated_indexes = generated_sequence_of_indexes
+                generated_indices.append(s)
 
-        for generated_index in generated_indexes:
-            if generated_index is None:
-                sequence.append(None)
-            else:
-                sequence.append(self.memory.model.sequence[generated_index])
+        sequence: List[Optional[DontKnow]] = [self.memory.model.sequence[i] if i is not None else None
+                                              for i in generated_indices]
+
+        self.decode_memory_with_current_transfo()
         return sequence
 
     def _l_handle_scenario_based_generation(self, list_of_labels, print_info=False):
@@ -686,13 +574,7 @@ class GenerationEngine:
         self.update_performance_time(date_event=new_event, date_ms=new_ms)
 
     def _use_intervals(self):
-        # print("----------------")
-        # print(not (self.memory.label_type is None))
-        # print(self.memory.label_type.use_intervals)
-        # print(len(self.authorized_tranformations) > 0)
-        # print(self.authorized_tranformations != [0])
-        # print(self.authorized_tranformations)
-        return (not (self.memory.model.label_type is None)) and self.memory.model.label_type.use_intervals \
+        return self.memory.model.label_type is not None and self.memory.model.label_type.use_intervals \
                and len(self.authorized_transformations) > 0 and self.authorized_transformations != [0]
 
     def filter_using_history_and_taboos(self, list_of_indexes):
@@ -737,12 +619,6 @@ class GenerationEngine:
     # TODO PLUS GENERAL FAIRE SLOT "POIGNEE" DANS CLASSE TRANSFORM
     # OU METTRE CETTE METHODE DANS CLASSE TRANSFORM
     def formatted_output_couple_content_transfo(self):
-
-        # print("FORMATTED")
-        # print(self.current_generation_output)
-        # print(len(self.current_generation_output))
-        # print(self.transfo_current_generation_output)
-        # print(len(self.transfo_current_generation_output))
         result = []
         for i in range(0, len(self.current_generation_output)):
             # TODO faire plus générique
@@ -767,69 +643,13 @@ class GenerationEngine:
         return format_list_as_list_of_strings(self.generation_trace)
 
     def encode_memory_with_current_transfo(self):
+        # FIXME[MergeState]: A[X], B[], C[], D[], E[]
         current_transfo = self.current_transformation_memory
-        # print("ENCODING WITH CURRENT TRANSFO = {}".format(current_transfo))
-        if not current_transfo is None:
+        if current_transfo is not None:
             self.encode_memory_with_transfo(current_transfo)
 
     def decode_memory_with_current_transfo(self):
+        # FIXME[MergeState]: A[X], B[], C[], D[], E[]
         current_transfo = self.current_transformation_memory
-        # print("DECODING WITH CURRENT TRANSFO = {}".format(current_transfo))
-        if not current_transfo is None:
+        if current_transfo is not None:
             self.decode_memory_with_transfo(current_transfo)
-
-    def estimation_date_ms_of_event(self, num_event):
-        """
-        If all the events have (more or less) a same duration (e.g. a clock, pulsed music, non timed sequences...),
-        :attr:`self.current_duration_event_ms` is not None. It is then used to convert indexes of events into dates in ms.
-
-        :param num_event: index of event to convert
-        :type num_event: int
-
-        :return: estimated corresponding date in ms (or None)
-        :rtype: int
-        """
-
-        if not self.current_duration_event_ms is None:
-            return (num_event - self.current_performance_time["event"]) * (self.current_duration_event_ms) - (
-                    self.current_performance_time["ms"] - self.current_performance_time["last_update_event_in_ms"])
-        else:
-            return None
-
-    def estimation_date_event_of_ms(self, date_ms):
-        """
-        If all the events have (more or less) a same duration (e.g. a clock, pulsed music, non timed sequences...),
-        :attr:`self.current_duration_event_ms` is not None. It is then used to convert dates in ms into indexes of events.
-
-        :param date_ms: date in ms to convert
-        :type date_ms: int
-
-        :return: estimated corresponding index of event (or None)
-        :rtype: int
-        """
-        if not self.current_duration_event_ms is None:
-            last_known_event = self.current_performance_time["event"]
-            last_known_event_date = self.current_performance_time["last_update_event_in_ms"]
-            delta = date_ms - last_known_event_date
-            return last_known_event + int(delta) / int(self.current_duration_event_ms)
-        else:
-            return None
-
-    # TODO
-    def index_previously_generated_event_date_ms(self, date_query):
-
-        # TODO : voir dans code lisp DIMITRI : additionner les durées potentiellement différentes des éléments générés.
-        # ET QUE FAIRE SI TOMBE AU MILIEU D'UN EVENT ??? LE TRONQUER ???? REPRENDRE AU DEBUT
-        duration_from_start = 0
-        i = 0
-
-        while i < len(self.generation_trace) and duration_from_start < date_query:
-            # VRAI TRUC A FAIRE QUAND ON AURA DES EVENTS / CONTENTS AVEC DUREE !!
-            # duration_from_start += duration(self.generation_trace[i])
-            duration_from_start += self.current_duration_event_ms
-            i += 1
-
-        if i < len(self.generation_trace):
-            return i - 1
-        else:
-            return i

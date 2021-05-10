@@ -239,7 +239,7 @@ class GenerationEngine:
 
         elif isinstance(query, LabelQuery) and len(query.labels) > 1:
             print("GENERATION MATCHING QUERY SCENARIO ...")
-            output = self._l_handle_scenario_based_generation(list_of_labels=query.labels, print_info=query.print_info)
+            output = self.scenario_based_generation(list_of_labels=query.labels, print_info=query.print_info)
             print("... GENERATION MATCHING QUERY SCENARIO OK")
 
         else:
@@ -293,6 +293,7 @@ class GenerationEngine:
             if generated_index is None:
                 sequence.append(None)
             else:
+                # TODO[B] Handle with proper location of Memory
                 sequence.append(self.memory.model.sequence[generated_index])
 
         self.decode_memory_with_current_transfo()
@@ -346,13 +347,14 @@ class GenerationEngine:
             else:
                 generated_indices.append(s)
 
+        # TODO[B] Handle with proper location of Memory
         sequence: List[Optional[DontKnow]] = [self.memory.model.sequence[i] if i is not None else None
                                               for i in generated_indices]
 
         self.decode_memory_with_current_transfo()
         return sequence
 
-    def _l_handle_scenario_based_generation(self, list_of_labels, print_info=False):
+    def scenario_based_generation(self, list_of_labels: List[Label], print_info: bool = False):
         """
         Generates a sequence matching a "scenario" (a list of labels). The generation process takes advantage of the
         scenario to introduce anticatory behaviour, that is, continuity with the future of the scenario.
@@ -365,29 +367,26 @@ class GenerationEngine:
         :rtype: list
 
         """
-        i = 0
+        # TODO[C] Way too much manipulation and access of `memory` (i.e. Generator) here
+        i: int = 0
         generated_sequence = []
         print("SCENARIO BASED GENERATION 0")
         while i < len(list_of_labels):
-            # print("SCENARIO BASED GENERATION 1.{}.0".format(i))
+            # TODO[B]: Handle so that it doesn't return Optional[List[...
+            seq: Optional[List[Optional[DontKnow]]]
             seq = self.handle_scenario_based_generation_one_phase(list_of_labels=list_of_labels[i::],
                                                                   print_info=print_info, shift_index=i)
-            # print("SCENARIO BASED GENERATION 1.{}.1".format(i))
 
-            if not seq is None and len(seq) > 0:
+            if seq is not None and len(seq) > 0:
                 l = len(seq)
-                # print("SCENARIO BASED GENERATION 1.{}.2.1".format(i))
                 generated_sequence += seq
                 i += l
             else:
-                # print("SCENARIO BASED GENERATION 1.{}.2.1".format(i))
                 if self.memory.l_get_no_empty_event() and self.memory.l_get_position_in_sequence() < self.memory.l_get_index_last_state():
                     print("NO EMPTY EVENT")
-                    generated_sequence.append(
-                        self.memory.l_get_sequence_nonmutable()[self.memory.l_get_position_in_sequence() + 1])
-                    # print("\n\n-->HANDLE WHEN NO EMPTY EVENT MODE SETS POSITION: {}<--"
-                    # .format(self.memory.sequence[self.current_position_in_sequence + 1]))
-                    self.memory.l_set_position_in_sequence(self.memory.l_get_position_in_sequence() + 1)
+                    next_index: int = self.memory.l_get_position_in_sequence() + 1
+                    generated_sequence.append(self.memory.l_get_sequence_nonmutable()[next_index])
+                    self.memory.l_set_position_in_sequence(next_index)
 
                 # TODO : + TRANSFORMATION POUR TRANSPO SI NECESSAIRE
                 else:
@@ -401,7 +400,8 @@ class GenerationEngine:
         return generated_sequence
 
     # TODO : PAS OPTIMAL DU TOUT D'ENCODER DECODER A CHAQUE ETAPE !!!!!!!!
-    def handle_scenario_based_generation_one_phase(self, list_of_labels, print_info=False, shift_index=0):
+    def handle_scenario_based_generation_one_phase(self, list_of_labels: List[Label], print_info: bool = False,
+                                                   shift_index: int = 0):
         """
 
         :param list_of_labels: "current scenario", suffix of the scenario given in argument to
@@ -420,32 +420,24 @@ class GenerationEngine:
         # print("self.memory.history_and_taboos = {}".format(self.memory.history_and_taboos))
         # Remember state at idx 0 is None
         authorized_indexes = self.filter_using_history_and_taboos(
-            list(range(0, len(self.memory.l_get_labels_nonmutable()))))
-        # print("SCENARIO ONE PHASE 1")
+            list(range(len(self.memory.l_get_labels_nonmutable()))))
 
-        # 15/11/17
         self.decode_memory_with_current_transfo()
         self.current_transformation_memory = None
 
-        # print("BEGINNING PREFIX")
-        # print(self.current_transformation_memory)
-
-        # print("LOOKING FOR PREFIXES OF {}".format(list_of_labels))
-
-        if not self.memory.model.label_type is None and self._use_intervals():
-            make_sequence_of_intervals_from_sequence_of_labels = \
+        if self.memory.model.label_type is not None and self._use_intervals():
+            func_intervals_to_labels: Optional[Callable] = \
                 self.memory.model.label_type.make_sequence_of_intervals_from_sequence_of_labels
-            equiv_mod_interval = self.memory.model.label_type.equiv_mod_interval
+            equiv_mod_interval: Optional[Callable] = self.memory.model.label_type.equiv_mod_interval
         else:
-            make_sequence_of_intervals_from_sequence_of_labels = None
+            func_intervals_to_labels = None
             equiv_mod_interval = None
 
-        s, t, length_selected_prefix = self.memory.scenario_based_generation(self._use_intervals(),
-                                                                             list_of_labels,
+        s, t, length_selected_prefix = self.memory.scenario_based_generation(self._use_intervals(), list_of_labels,
                                                                              self.continuity_with_future,
                                                                              authorized_indexes,
                                                                              self.authorized_transformations,
-                                                                             make_sequence_of_intervals_from_sequence_of_labels,
+                                                                             func_intervals_to_labels,
                                                                              equiv_mod_interval,
                                                                              self.memory.model.equiv)
 

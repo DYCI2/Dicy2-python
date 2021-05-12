@@ -15,7 +15,7 @@ Example of the required json / dict format: :file:`_Tutorial_/ExamplesCorpus/Exa
 
 """
 
-from dyci2.generation_engine import *
+from dyci2.generation_scheduler import *
 from dyci2.corpus_builder import *
 
 
@@ -119,10 +119,10 @@ def new_generator_from_dict_memory(dict_memory, keys_labels, keys_contents, mode
 
 	"""
     labels, contents = extract_labels_and_contents_from_dict_memory(dict_memory, keys_labels, keys_contents)
-    return GenerationEngine(sequence=contents, labels=labels, model_navigator=model_navigator, equiv=equiv,
-                            label_type=label_type, content_type=content_type,
-                            authorized_tranformations=authorized_tranformations,
-                            continuity_with_future=continuity_with_future)
+    return GenerationScheduler(sequence=contents, labels=labels, model_navigator=model_navigator, equiv=equiv,
+                               label_type=label_type, content_type=content_type,
+                               authorized_tranformations=authorized_tranformations,
+                               continuity_with_future=continuity_with_future)
 
 
 def new_generation_handler_from_dict_memory(dict_memory, keys_labels, keys_contents,

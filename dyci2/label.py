@@ -207,7 +207,7 @@ class ChordLabel(Label):
     @classmethod
     def make_sequence_of_labels_from_list(cls, list_of_labels, init_first_chord_label=None,
                                           init_previous_chord_label=None, **kwargs):
-        # METTRE DANS LES RECOMMANDATIONS DE RAPPELER PREMIER ET PRECEDENT ? OU BIEN DANS learn_event ligne environ 85 de generation_engine.py
+        # METTRE DANS LES RECOMMANDATIONS DE RAPPELER PREMIER ET PRECEDENT ? OU BIEN DANS learn_event ligne environ 85 de generation_scheduler.py
         sequence = []
         if not init_first_chord_label is None:
             first_label = init_first_chord_label
@@ -451,7 +451,7 @@ def from_list_to_contents(sequence=[], content_type=None):
 
 # # MAINTENANT METHODE DE CLASSE
 # def make_sequence_of_chord_labels(list_of_labels, init_first_chord_label = None, init_previous_chord_label = None):
-# # METTRE DANS LES RECOMMANDATIONS DE RAPPELER PREMIER ET PRECEDENT ? OU BIEN DANS learn_event ligne environ 85 de generation_engine.py
+# # METTRE DANS LES RECOMMANDATIONS DE RAPPELER PREMIER ET PRECEDENT ? OU BIEN DANS learn_event ligne environ 85 de generation_scheduler.py
 # 	sequence =[]
 # 	if not init_first_chord_label is None:
 # 		first_label = init_first_chord_label

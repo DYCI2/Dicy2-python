@@ -13,7 +13,7 @@ sequence = [60, 60, 60, 62, 64, 62, 60, 64, 62, 62, 60]
 
 # labels for each item in the memory (needed only for query 1)
 labels = ['C', 'C', 'C', 'C', 'E', 'E', 'C', 'E', 'C', 'C', 'C']
-generator = GenerationEngine(sequence=sequence, labels=labels, label_type = Label, model_navigator ="FactorOracleNavigator")
+generator = GenerationScheduler(sequence=sequence, labels=labels, label_type = Label, model_navigator ="FactorOracleNavigator")
 #generator.memory.print_model()
 
 # SETTINGS PARAMETERS OF THE GENERATION MODEL

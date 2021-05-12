@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 #############################################################################
-# generation_engine.py
+# generation_scheduler.py
 # Classes Generator and GenerationHandler
 # Generate new sequences from a model of sequence and a query.
 # Jérôme Nika, Dimitri Bouche, Jean Bresson, Ken Déguernel - IRCAM STMS Lab
@@ -39,14 +39,13 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 from typing import Optional, Callable, Tuple
 
 # TODO : SUPPRIMER DANS LA DOC LES FONCTIONS "EQUIV-MOD..." "SEQUENCE TO INTERVAL..."
-from
 
 from dyci2.query import *
 from dyci2.transforms import *
 # TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
 # TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
 from generation_process import GenerationProcess
-from generator_new import FactorOracleGenerator, implemented_model_navigator_classes
+from prospector import FactorOracleProspector, implemented_model_navigator_classes
 from utils import format_list_as_list_of_strings, DontKnow
 
 
@@ -56,7 +55,7 @@ def basic_equiv(x, y):
 
 # TODO[E]: Remove noinspection
 # noinspection PyIncorrectDocstring
-class GenerationEngine:
+class GenerationScheduler:
     """ The class **Generator** embeds a **model navigator** as "memory" (cf. metaclass
     :class:`~MetaModelNavigator.MetaModelNavigator`) and processes **queries** (class :class:`~Query.Query`) to
     generate new sequences. This class uses pattern matching techniques (cf. :mod:`PrefixIndexing`) to enrich the
@@ -128,7 +127,7 @@ class GenerationEngine:
         try:
             implemented_model_navigator_classes
         except NameError:
-            print("No model navigator available. Please load generator_new.py")
+            print("No model navigator available. Please load prospector.py")
             return
         else:
             try:
@@ -141,7 +140,7 @@ class GenerationEngine:
                 if equiv is None:
                     equiv = basic_equiv
                 self.model_navigator = model_navigator
-                self.memory: FactorOracleGenerator = implemented_model_navigator_classes[self.model_navigator](
+                self.memory: FactorOracleProspector = implemented_model_navigator_classes[self.model_navigator](
                     sequence=sequence,
                     labels=labels,
                     label_type=label_type,
@@ -157,6 +156,7 @@ class GenerationEngine:
         # TODO: Rather NoTransform?
         self.current_transformation_memory = None
         self.continuity_with_future = continuity_with_future
+        self.performance_time: int = 0
 
         self.generation_process: GenerationProcess = GenerationProcess()
 
@@ -196,10 +196,7 @@ class GenerationEngine:
             print("QUERY ABSOLUTE\n", query)
 
         if self.initial_query:
-            # TODO[B] UNSOLVED! Handle with inheritance or find workaround solution
-            #  Also, this is strongly related to `init` parameter in almost all function calls. Ideally handle
-            #  everything here instead of parsing it inside free_generation/navigation stuff
-            self.current_performance_time["event"] = 0
+            self.performance_time = 0
         generation_index: int = query.start_date
         print(f"generation_index: {generation_index}")
         if 0 < generation_index < self.generation_process.generation_time:
@@ -215,6 +212,7 @@ class GenerationEngine:
         print(f"self.current_generation_output {self.current_generation_output}")
         self.generation_process.add_output(generation_index, self.current_generation_output)
 
+        # TODO[B] Can this return generation_index instead? Or is query.start_date changed somewhere along the line?
         return query.start_date
 
     def _process_query(self, query: Query):

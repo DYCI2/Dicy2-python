@@ -1,7 +1,7 @@
 # -*-coding:Utf-8 -*
 
 ####################################################################################
-# generator_new.py
+# prospector.py
 # Definition of "model navigators" using the metaclass MetaModelNavigator
 # Jérôme Nika, IRCAM STMS LAB
 # copyleft 2016 - 2017
@@ -29,7 +29,7 @@ from label import Label
 from utils import DontKnow
 
 
-class FactorOracleGenerator:
+class FactorOracleProspector:
     """
         **Factor Oracle Navigator class**.
         This class implements heuristics of navigation through a Factor Oracle automaton for creative applications:
@@ -358,4 +358,4 @@ class FactorOracleGenerator:
 
 
 # TODO[C] Get rid of.
-implemented_model_navigator_classes = {"FactorOracleNavigator": FactorOracleGenerator}
+implemented_model_navigator_classes = {"FactorOracleNavigator": FactorOracleProspector}

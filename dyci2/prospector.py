@@ -18,6 +18,7 @@ Tutorial in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`
 
 """
 import random
+from abc import ABC
 from typing import Callable, Tuple, Optional, List
 
 from dyci2.navigator import Navigator
@@ -26,6 +27,7 @@ from factor_oracle_model import FactorOracle
 # TODO : mode 0 : répétitions authorisées, mode 1 = on prend le min, mode 2, interdire les déjà passés
 # TODO : SURCHARGER POUR INTERDIRE LES AUTRES
 from label import Label
+from memory import MemoryEvent
 from utils import DontKnow
 
 
@@ -74,17 +76,17 @@ class FactorOracleProspector:
         self.navigator.reinit_navigation_param_old_modelnavigator()
         print(self.navigator.labels)
 
-    def learn_event(self, state, label, equiv=None):
+    def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        self.model.learn_event(state, label, equiv)
-        self.navigator.learn_event(state, label, equiv)
+        self.model.learn_event(event, equiv)
+        self.navigator.learn_event(event, equiv)
 
-    def learn_sequence(self, sequence, labels, equiv=None):
+    def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         # TODO[D]: This is never called! In original code it is called from Model.__init__, which obviously isn't
         #  possible. Need to call this from outside when simplifying calls
-        self.model.learn_sequence(sequence, labels, equiv)
-        # self.navigator.learn_sequence(sequence, labels, equiv) # MergeState[A] This was a bug introduced in py3 ver.
+        self.model.learn_sequence(sequence, equiv)
+        self.navigator.learn_sequence(sequence, equiv)
 
     def l_pre_free_navigation(self, equiv: Optional[Callable], new_max_continuity: int,
                               init: bool) -> Tuple[bool, Callable]:

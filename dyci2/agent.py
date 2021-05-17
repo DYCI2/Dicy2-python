@@ -153,8 +153,8 @@ class OSCAgent(Server):
     def send_init_control_parameters(self):
         message: list = []
         count_types: dict = {}
-        for slot in self.generation_handler.memory.control_parameters:
-            value = self.generation_handler.memory.__dict__[slot]
+        for slot in self.generation_handler.prospector.control_parameters:
+            value = self.generation_handler.prospector.__dict__[slot]
             type_param: str = str(type(value))
             if type_param in count_types.keys():
                 count_types[type_param] += 1
@@ -166,7 +166,7 @@ class OSCAgent(Server):
 
     def set_control_parameters(self, slot: TODO_INSERTTYPE, value: TODO_INSERTTYPE):
         slot = str(slot)
-        self.generation_handler.memory.__dict__[slot] = value
+        self.generation_handler.prospector.__dict__[slot] = value
 
     def set_delta_transformation(self, delta: int):
         self.generation_handler.authorized_transformations = range(-delta, delta)
@@ -259,9 +259,9 @@ class OSCAgent(Server):
             #exec("%s = %s" % ("content_type", keys_content))
 
         self.generation_handler.learn_event(state=value_content, label=value_label)
-        index_last_state: TODO_INSERTTYPE = self.generation_handler.memory.index_last_state()
-        label_last_state: TODO_INSERTTYPE = self.generation_handler.memory.labels[index_last_state]
-        content_last_state: TODO_INSERTTYPE = self.generation_handler.memory.sequence[index_last_state]
+        index_last_state: TODO_INSERTTYPE = self.generation_handler.prospector.index_last_state()
+        label_last_state: TODO_INSERTTYPE = self.generation_handler.prospector.labels[index_last_state]
+        content_last_state: TODO_INSERTTYPE = self.generation_handler.prospector.sequence[index_last_state]
         print(f"self.generation_handler.memory.index_last_state() = {index_last_state}")
         print(f"associated label = {label_last_state} ({type(label_last_state)})")
         print(f"associated content = {content_last_state} ({type(content_last_state)}")

@@ -45,6 +45,7 @@ from dyci2.transforms import *
 # TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
 # TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
 from generation_process import GenerationProcess
+from memory import MemoryEvent
 from prospector import FactorOracleProspector, implemented_model_navigator_classes
 from utils import format_list_as_list_of_strings, DontKnow
 
@@ -77,7 +78,7 @@ class GenerationScheduler:
 
     #:param memory: "Model navigator" inheriting from (a subclass of) :class:`~Model.Model` and (a subclass of)
     :class:`~Navigator.Navigator`.
-    :type memory: cf. :mod:`ModelNavigator` and :mod:`MetaModelNavigator`
+    :type prospector: cf. :mod:`ModelNavigator` and :mod:`MetaModelNavigator`
 
     #:param initial_query:
     :type initial_query: bool
@@ -140,7 +141,7 @@ class GenerationScheduler:
                 if equiv is None:
                     equiv = basic_equiv
                 self.model_navigator = model_navigator
-                self.memory: FactorOracleProspector = implemented_model_navigator_classes[self.model_navigator](
+                self.prospector: FactorOracleProspector = implemented_model_navigator_classes[self.model_navigator](
                     sequence=sequence,
                     labels=labels,
                     label_type=label_type,
@@ -165,15 +166,15 @@ class GenerationScheduler:
         if name_attr == "current_performance_time":
             print("New value of current performance time: {}".format(self.current_performance_time))
 
-    def learn_event(self, state: int, label: Label) -> None:
+    def learn_event(self, event: MemoryEvent) -> None:
         # FIXME[MergeState]: A[x], B[], C[], D[]
         """ Learn a new event in the memory (model navigator)."""
-        self.memory.learn_event(state=state, label=label)
+        self.prospector.learn_event(event=event)
 
-    def learn_sequence(self, sequence: List[int], labels: List[Label]) -> None:
+    def learn_sequence(self, sequence: List[MemoryEvent]) -> None:
         # FIXME[MergeState]: A[x], B[], C[], D[]
         """ Learn a new sequence in the memory (model navigator)."""
-        self.memory.learn_sequence(sequence=sequence, labels=labels)
+        self.prospector.learn_sequence(sequence=sequence)
 
     def process_query(self, query: Query, performance_time: int):
         # TODO[B]: This entire function is basically a long list of side effects to distribute all over the system given
@@ -202,10 +203,10 @@ class GenerationScheduler:
         if 0 < generation_index < self.generation_process.generation_time:
             print(f"USING EXECUTION TRACE : generation_index = {generation_index} : "
                   f"generation_time = {self.generation_process.generation_time}")
-            self.memory.go_to_anterior_state_using_execution_trace(generation_index - 1)
+            self.prospector.go_to_anterior_state_using_execution_trace(generation_index - 1)
 
         # TODO[B] UNSOLVED! Massive side-effect. Exactly what is current_navigation_index?
-        self.memory.current_navigation_index = generation_index - 1
+        self.prospector.current_navigation_index = generation_index - 1
         # TODO[B]: UNSOLVED! generator_process_query should return output, not store it in current_generation_output
         self.generator_process_query(query)
 
@@ -281,18 +282,18 @@ class GenerationScheduler:
         self.encode_memory_with_current_transfo()
         # TODO[B]: Is it possible to get rid of these pre_ functions? Can we pass these parameters
         #  along all the way instead?
-        print_info, equiv = self.memory.l_pre_free_navigation(equiv, new_max_continuity, init)
+        print_info, equiv = self.prospector.l_pre_free_navigation(equiv, new_max_continuity, init)
         sequence: List[Optional[DontKnow]] = []
         generated_indices: List[Optional[int]] = []
         for i in range(num_events):
-            generated_indices.append(self.memory.r_free_navigation_one_step(i, forward_context_length_min,
-                                                                            equiv, print_info))
+            generated_indices.append(self.prospector.r_free_navigation_one_step(i, forward_context_length_min,
+                                                                                equiv, print_info))
         for generated_index in generated_indices:
             if generated_index is None:
                 sequence.append(None)
             else:
                 # TODO[B] Handle with proper location of Memory
-                sequence.append(self.memory.model.sequence[generated_index])
+                sequence.append(self.prospector.model.sequence[generated_index])
 
         self.decode_memory_with_current_transfo()
         return sequence
@@ -332,13 +333,13 @@ class GenerationScheduler:
         print("HANDLE GENERATION MATCHING LABEL...")
         self.encode_memory_with_current_transfo()
 
-        equiv = self.memory.l_pre_guided_navigation(required_labels, equiv, new_max_continuity, init)
+        equiv = self.prospector.l_pre_guided_navigation(required_labels, equiv, new_max_continuity, init)
 
         generated_indices: List[Optional[int]] = []
         for i in range(len(required_labels)):
-            s: Optional[int] = self.memory.simply_guided_navigation_one_step(required_labels[i], new_max_continuity,
-                                                                             forward_context_length_min, equiv,
-                                                                             print_info, shift_index=i + shift_index)
+            s: Optional[int] = self.prospector.simply_guided_navigation_one_step(required_labels[i], new_max_continuity,
+                                                                                 forward_context_length_min, equiv,
+                                                                                 print_info, shift_index=i + shift_index)
 
             if break_when_none and s is None:
                 break
@@ -346,7 +347,7 @@ class GenerationScheduler:
                 generated_indices.append(s)
 
         # TODO[B] Handle with proper location of Memory
-        sequence: List[Optional[DontKnow]] = [self.memory.model.sequence[i] if i is not None else None
+        sequence: List[Optional[DontKnow]] = [self.prospector.model.sequence[i] if i is not None else None
                                               for i in generated_indices]
 
         self.decode_memory_with_current_transfo()
@@ -380,18 +381,18 @@ class GenerationScheduler:
                 generated_sequence += seq
                 i += l
             else:
-                if self.memory.l_get_no_empty_event() and self.memory.l_get_position_in_sequence() < self.memory.l_get_index_last_state():
+                if self.prospector.l_get_no_empty_event() and self.prospector.l_get_position_in_sequence() < self.prospector.l_get_index_last_state():
                     print("NO EMPTY EVENT")
-                    next_index: int = self.memory.l_get_position_in_sequence() + 1
-                    generated_sequence.append(self.memory.l_get_sequence_nonmutable()[next_index])
-                    self.memory.l_set_position_in_sequence(next_index)
+                    next_index: int = self.prospector.l_get_position_in_sequence() + 1
+                    generated_sequence.append(self.prospector.l_get_sequence_nonmutable()[next_index])
+                    self.prospector.l_set_position_in_sequence(next_index)
 
                 # TODO : + TRANSFORMATION POUR TRANSPO SI NECESSAIRE
                 else:
                     print("EMPTY EVENT")
                     generated_sequence.append(None)
                     ###### RELEASE
-                    self.memory.l_set_position_in_sequence(0)
+                    self.prospector.l_set_position_in_sequence(0)
                 ###### RELEASE
                 i += 1
         # print("SCENARIO BASED GENERATION 1.{}.3".format(i))
@@ -418,30 +419,30 @@ class GenerationScheduler:
         # print("self.memory.history_and_taboos = {}".format(self.memory.history_and_taboos))
         # Remember state at idx 0 is None
         authorized_indexes = self.filter_using_history_and_taboos(
-            list(range(len(self.memory.l_get_labels_nonmutable()))))
+            list(range(len(self.prospector.l_get_labels_nonmutable()))))
 
         self.decode_memory_with_current_transfo()
         self.current_transformation_memory = None
 
-        if self.memory.model.label_type is not None and self._use_intervals():
+        if self.prospector.model.label_type is not None and self._use_intervals():
             func_intervals_to_labels: Optional[Callable] = \
-                self.memory.model.label_type.make_sequence_of_intervals_from_sequence_of_labels
-            equiv_mod_interval: Optional[Callable] = self.memory.model.label_type.equiv_mod_interval
+                self.prospector.model.label_type.make_sequence_of_intervals_from_sequence_of_labels
+            equiv_mod_interval: Optional[Callable] = self.prospector.model.label_type.equiv_mod_interval
         else:
             func_intervals_to_labels = None
             equiv_mod_interval = None
 
-        s, t, length_selected_prefix = self.memory.scenario_based_generation(self._use_intervals(), list_of_labels,
-                                                                             self.continuity_with_future,
-                                                                             authorized_indexes,
-                                                                             self.authorized_transformations,
-                                                                             func_intervals_to_labels,
-                                                                             equiv_mod_interval,
-                                                                             self.memory.model.equiv)
+        s, t, length_selected_prefix = self.prospector.scenario_based_generation(self._use_intervals(), list_of_labels,
+                                                                                 self.continuity_with_future,
+                                                                                 authorized_indexes,
+                                                                                 self.authorized_transformations,
+                                                                                 func_intervals_to_labels,
+                                                                                 equiv_mod_interval,
+                                                                                 self.prospector.model.equiv)
 
         if s is not None:
             print("SCENARIO BASED ONE PHASE SETS POSITION: {}".format(s))
-            self.memory.l_set_position_in_sequence(s)
+            self.prospector.l_set_position_in_sequence(s)
             print("current_position_in_sequence: {}".format(s))
             # PLUS BESOIN CAR FAIT TOUT SEUL
             # self.memory.history_and_taboos[s] += 1
@@ -450,24 +451,24 @@ class GenerationScheduler:
                 # print(self.memory.sequence[s])
                 # TODO FAIRE MIEUX:
                 if self.content_type:
-                    s_content = self.current_transformation_memory.encode(self.memory.l_get_sequence_maybemutable()[s])
+                    s_content = self.current_transformation_memory.encode(self.prospector.l_get_sequence_maybemutable()[s])
                 else:
-                    s_content = self.memory.l_get_sequence_maybemutable()[s]
+                    s_content = self.prospector.l_get_sequence_maybemutable()[s]
 
                 if print_info:
                     print("{} NEW STARTING POINT {} (orig. {}): {}\nlength future = {} - FROM NOW {}"
                           .format(shift_index,
-                                  self.current_transformation_memory.encode(self.memory.l_get_labels_maybemutable()[s]),
-                                  self.memory.l_get_labels_nonmutable()[s],
-                                  self.memory.l_get_position_in_sequence(),
+                                  self.current_transformation_memory.encode(self.prospector.l_get_labels_maybemutable()[s]),
+                                  self.prospector.l_get_labels_nonmutable()[s],
+                                  self.prospector.l_get_position_in_sequence(),
                                   length_selected_prefix,
                                   self.current_transformation_memory))
             else:
-                s_content = self.memory.l_get_sequence_maybemutable()[s]
+                s_content = self.prospector.l_get_sequence_maybemutable()[s]
                 if print_info:
                     print("{} NEW STARTING POINT {}: {}\nlength future = {} - FROM NOW No transformation of the memory"
-                          .format(shift_index, self.memory.l_get_labels_nonmutable()[s],
-                                  self.memory.l_get_position_in_sequence(), length_selected_prefix))
+                          .format(shift_index, self.prospector.l_get_labels_nonmutable()[s],
+                                  self.prospector.l_get_position_in_sequence(), length_selected_prefix))
 
             # print("SCENARIO ONE PHASE 4")
 
@@ -477,15 +478,15 @@ class GenerationScheduler:
             # self.memory.current_continuity = 0
             # Navigation simple current_scenario jusqua plus rien- > sort l --> faire
             self.encode_memory_with_current_transfo()
-            aux = self.memory.l_get_no_empty_event()
+            aux = self.prospector.l_get_no_empty_event()
             # In order to begin a new navigation phase when this method returns a "None" event
-            self.memory.l_set_no_empty_event(False)
+            self.prospector.l_set_no_empty_event(False)
             seq = self.simply_guided_generation(required_labels=list_of_labels[1::], init=False,
                                                 print_info=print_info,
                                                 shift_index=len(self.current_generation_query.handle) - len(
                                                     list_of_labels) + 1,
                                                 break_when_none=True)
-            self.memory.l_set_no_empty_event(aux)
+            self.prospector.l_set_no_empty_event(aux)
             # self.decode_memory_with_current_transfo()
             # print("SCENARIO ONE PHASE 5")
             i = 0
@@ -564,14 +565,14 @@ class GenerationScheduler:
         self.update_performance_time(date_event=new_event, date_ms=new_ms)
 
     def _use_intervals(self):
-        return self.memory.model.label_type is not None and self.memory.model.label_type.use_intervals \
+        return self.prospector.model.label_type is not None and self.prospector.model.label_type.use_intervals \
                and len(self.authorized_transformations) > 0 and self.authorized_transformations != [0]
 
     def filter_using_history_and_taboos(self, list_of_indexes):
-        return self.memory.navigator.filter_using_history_and_taboos(list_of_indexes)
+        return self.prospector.navigator.filter_using_history_and_taboos(list_of_indexes)
 
     def fonction_test(self):
-        return self.memory.navigator.history_and_taboos
+        return self.prospector.navigator.history_and_taboos
 
     # TODO : [NONE] au début : UNIQUEMENT POUR ORACLE ! PAS GENERIQUE !
     # TODO : A MODIFIER QUAND LES CONTENTS DANS SEQUENCE AURONT UN TYPE !
@@ -587,8 +588,8 @@ class GenerationScheduler:
         # print(self.memory.sequence[1::])
         # TODO : Faire mieux
         if self.content_type:
-            self.memory.l_set_sequence([None] + transform.encode_sequence(self.memory.l_get_sequence_nonmutable()[1::]))
-        self.memory.l_set_labels([None] + transform.encode_sequence(self.memory.l_get_labels_nonmutable()[1::]))
+            self.prospector.l_set_sequence([None] + transform.encode_sequence(self.prospector.l_get_sequence_nonmutable()[1::]))
+        self.prospector.l_set_labels([None] + transform.encode_sequence(self.prospector.l_get_labels_nonmutable()[1::]))
 
     # TODO : [NONE] au début : UNIQUEMENT POUR ORACLE ! PAS GENERIQUE !
     # TODO : SERA CERTAINEMENT A MODIFIER QUAND LES CONTENTS DANS SEQUENCE AURONT UN TYPE !
@@ -603,8 +604,8 @@ class GenerationScheduler:
         """
         # TODO : Faire mieux
         if self.content_type:
-            self.memory.l_set_sequence([None] + transform.decode_sequence(self.memory.l_get_sequence_nonmutable()[1::]))
-        self.memory.l_set_labels([None] + transform.decode_sequence(self.memory.l_get_labels_nonmutable()[1::]))
+            self.prospector.l_set_sequence([None] + transform.decode_sequence(self.prospector.l_get_sequence_nonmutable()[1::]))
+        self.prospector.l_set_labels([None] + transform.decode_sequence(self.prospector.l_get_labels_nonmutable()[1::]))
 
     # TODO PLUS GENERAL FAIRE SLOT "POIGNEE" DANS CLASSE TRANSFORM
     # OU METTRE CETTE METHODE DANS CLASSE TRANSFORM

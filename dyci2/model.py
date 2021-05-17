@@ -21,13 +21,14 @@ Main classes: :class:`~Model.Model`, :class:`~Model.FactorOracle`.
 Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
 
 """
-
+from abc import ABC
 from typing import List, Union, Callable, Optional
 
 from dyci2.label import *
+from memory import MemoryEvent
 
 
-class Model:
+class Model(ABC):
     # FIXME[MergeState]: A[x], B[], C[], D[], E[]
     """The class :class:`~Model.Model` is an **abstract class**.
     Any new model of sequence must inherit from this class.
@@ -62,7 +63,7 @@ class Model:
         """ Initialization method called before learning the sequence in the model."""
         pass
 
-    def learn_sequence(self, sequence, labels, equiv: Callable = None):
+    def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """
         Learns (appends) a new sequence in the model.
@@ -77,24 +78,24 @@ class Model:
         :!: **equiv** has to be consistent with the type of the elements in labels.
 
         """
-        if equiv is None:
-            equiv = self.equiv
-        try:
-            assert len(labels) == len(sequence)
-        except AssertionError as exception:
-            print("Sequence and sequence of labels have different lengths.", exception)
-            return None
-        else:
-            # TODO POUR CONTENTS QUAND LA CLASSE EXISTERA
-            labels_to_learn = from_list_to_labels(labels, self.label_type)
-            sequence_to_learn = from_list_to_contents(sequence, self.content_type)
-            # print("LABELS TO LEARN = {}".format(labels_to_learn))
-            print(self.content_type)
-            # print("CONTENTS TO LEARN = {}".format(sequence_to_learn))
-            for i in range(len(labels_to_learn)):
-                self.learn_event(sequence_to_learn[i], labels_to_learn[i], equiv)
+        # if equiv is None:
+        #     equiv = self.equiv
+        # try:
+        #     assert len(labels) == len(sequence)
+        # except AssertionError as exception:
+        #     print("Sequence and sequence of labels have different lengths.", exception)
+        #     return None
+        # else:
+        #     # TODO POUR CONTENTS QUAND LA CLASSE EXISTERA
+        #     labels_to_learn = from_list_to_labels(labels, self.label_type)
+        #     sequence_to_learn = from_list_to_contents(sequence, self.content_type)
+        #     # print("LABELS TO LEARN = {}".format(labels_to_learn))
+        #     print(self.content_type)
+        #     # print("CONTENTS TO LEARN = {}".format(sequence_to_learn))
+        #     for i in range(len(labels_to_learn)):
+        #         self.learn_event(sequence_to_learn[i], labels_to_learn[i], equiv)
 
-    def learn_event(self, state, label, equiv: Optional[Callable] = None):
+    def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """
         Learns (appends) a new state in the model.

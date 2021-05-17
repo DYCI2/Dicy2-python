@@ -33,6 +33,8 @@ from dyci2.intervals import *
 # TODO : SURCHARGER POUR INTERDIRE LES AUTRES
 # TODO : QUAND ON GENERE, DEBUT OU NON ? SOIT INTEGRER DANS PARAMETRES FONCTIONS SOIT DECIDER QU'ON APPELLE
 #  reinit_navigation_param si c'est le début
+from label import Label
+from memory import MemoryEvent
 from utils import noneIsInfinite, DontKnow
 
 
@@ -122,7 +124,6 @@ class Navigator:
         # super.__setattr__(self, name_attr, val_attr)
         object.__setattr__(self, name_attr, val_attr)
         # TODO : SUPPRIMER TRACE AVANT TEMPS PERFORMANCE
-
 
     def find_prefix_matching_with_labels(self, use_intervals, labels, list_of_labels, continuity_with_future,
                                          authorized_indexes, authorized_transformations, sequence_to_interval_fun,
@@ -223,24 +224,25 @@ class Navigator:
         :!: **equiv** has to be consistent with the type of the elements in labels.
 
         """
-        if equiv is None:
-            equiv = self.equiv
-        try:
-            assert len(labels) == len(sequence)
-        except AssertionError as exception:
-            print("Sequence and sequence of labels have different lengths.", exception)
-            return None
-        else:
-            # IN CLASS MODEL :
-            # 	labels_to_learn = from_list_to_labels(labels, self.label_type)
-            # 	sequence_to_learn = from_list_to_contents(sequence, self.content_type)
-            # 	print(self.content_type)
-            # 	for i in range(len(labels_to_learn)):
-            #         self.learn_event(sequence_to_learn[i], labels_to_learn[i], equiv)
-            for i in range(len(labels)):
-                self.learn_event(sequence[i], labels[i], equiv)
+        # TODO: This caused bugs with sequence being learned twice in early 2021 update of dyci2
+        # if equiv is None:
+        #     equiv = self.equiv
+        # try:
+        #     assert len(labels) == len(sequence)
+        # except AssertionError as exception:
+        #     print("Sequence and sequence of labels have different lengths.", exception)
+        #     return None
+        # else:
+        #     # IN CLASS MODEL :
+        #     # 	labels_to_learn = from_list_to_labels(labels, self.label_type)
+        #     # 	sequence_to_learn = from_list_to_contents(sequence, self.content_type)
+        #     # 	print(self.content_type)
+        #     # 	for i in range(len(labels_to_learn)):
+        #     #         self.learn_event(sequence_to_learn[i], labels_to_learn[i], equiv)
+        #     for i in range(len(labels)):
+        #         self.learn_event(sequence[i], labels[i], equiv)
 
-    def learn_event(self, state, label, equiv=None):
+    def learn_event(self, event: MemoryEvent, equiv: Callable = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         if equiv is None:
             equiv = self.equiv

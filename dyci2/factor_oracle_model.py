@@ -1,9 +1,11 @@
 from typing import Optional, Callable, List
 
 from label import Label
+from memory import MemoryEvent
 from model import Model
 
 
+# noinspection PyIncorrectDocstring
 class FactorOracle(Model):
     """
     **Factor Oracle automaton class.**
@@ -87,12 +89,11 @@ class FactorOracle(Model):
         self.reverse_suffix_links[self.index_last_state()] = []
 
     # TODO : COMPUTE THE LRS, AND THEN USE IT !!!!
-    def learn_event(self, state, label, equiv=None):
+    def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
         """
         Learns (appends) a new state in the Factor Oracle automaton.
 
-        :param state:
-        :param label:
+        :param event:
         :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
         :type equiv: function
 

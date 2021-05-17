@@ -19,7 +19,7 @@ Class defining transformations on labels and contents.
 # TODO : TUTO
 
 
-from dyci2.label import *
+from dyci2.label import ChordLabel, Label, ListLabel
 
 # from numpy import roll
 

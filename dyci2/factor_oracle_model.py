@@ -91,8 +91,8 @@ class FactorOracle(Model):
         :type memory: list or str
         # :param labels: sequence of labels chosen to describe the sequence
         # :type labels: list or str
-        :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-        :type equiv: function
+        #:param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
+        # :type equiv: function
 
         :!: **equiv** has to be consistent with the type of the elements in labels.
 
@@ -156,7 +156,7 @@ class FactorOracle(Model):
         if equiv is None:
             equiv = self.equiv
 
-        self.sequence.append(event.value())
+        self.sequence.append(event.event())
         self.labels.append(event.label())
 
         index = self.index_last_state()

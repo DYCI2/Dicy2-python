@@ -148,7 +148,7 @@ class OSCAgent(Server):
         # 	time_in_event = None
         # if type(time_in_ms) == int:
         # 	time_in_ms = None
-        self.generation_handler.update_performance_time(date_event=time_in_event, date_ms=time_in_ms)
+        self.generation_handler.update_performance_time(new_time=time_in_event, date_ms=time_in_ms)
 
     def send_init_control_parameters(self):
         message: list = []

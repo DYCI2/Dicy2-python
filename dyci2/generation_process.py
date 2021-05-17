@@ -7,7 +7,7 @@ from utils import DontKnow
 class GenerationProcess:
     def __init__(self):
         self._generation_trace: List[Optional[DontKnow]] = []
-        self._generation_time: int = 0
+        self._generation_time: int = -1
 
     def add_output(self, generation_index: int, generation_output: List[Optional[DontKnow]]):
         generated_output_length: int = len(list(itertools.takewhile(lambda e: e is not None, generation_output)))
@@ -31,7 +31,10 @@ class GenerationProcess:
 
     @property
     def generation_time(self):
-        return self.generation_time
+        return self._generation_time
+
+    def update_generation_time(self, new_time: int):
+        self._generation_time = new_time
 
     @property
     def generation_trace(self):

@@ -65,7 +65,7 @@ class Navigator(ABC):
         """ TODO """
 
 
-class FactorOracleNavigator:
+class FactorOracleNavigator(Navigator):
     """
     The class :class:`~Navigator.Navigator` implements **parameters and methods that are used to navigate through a
     model of sequence**.
@@ -78,14 +78,14 @@ class FactorOracleNavigator:
     This class is not supposed to be used alone, only in association with a model within a model navigator. Therefore
     its attributes are only "flags" that can be used when defining a model navigator.
 
-    :param sequence: sequence learnt in the model.
+    # :param sequence: sequence learnt in the model.
     :type sequence: list or str
-    :param labels: sequence of labels chosen to describe the sequence.
+    # :param labels: sequence of labels chosen to describe the sequence.
     :type labels: list or str
     :param equiv: comparison function given as a lambda function, default if no parameter is given: self.equiv.
     :type equiv: function
 
-    :param current_navigation_index: current length of the navigation
+    # :param current_navigation_index: current length of the navigation
     :type current_navigation_index: int
 
     #:param current_position_in_sequence: current position of the readhead in the model. ** When this attribute receives
@@ -113,11 +113,12 @@ class FactorOracleNavigator:
     :type execution_trace: dict
     """
 
-    def __init__(self, sequence=(), labels=(), max_continuity=20, control_parameters=(), execution_trace_parameters=(),
-                 equiv: Optional[Callable] = (lambda x, y: x == y)):
+    def __init__(self, memory: Memory, equiv: Optional[Callable] = (lambda x, y: x == y), max_continuity=20,
+                 control_parameters=(), execution_trace_parameters=()):
+        super().__init__(memory, equiv)
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        self.sequence = sequence
-        self.labels = labels
+        self.sequence: List[MemoryEvent] = memory.events
+        self.labels: List[Label] = [e.label() for e in memory.events]
         self.equiv: Callable = equiv
         self.no_empty_event = True
         self.max_continuity = max_continuity
@@ -125,10 +126,10 @@ class FactorOracleNavigator:
         self.execution_trace = {}
 
         self.history_and_taboos: List[Optional[int]] = [0] * (len(self.sequence))
-        self.current_continuity = -1
-        self.current_position_in_sequence = -1
-        self.current_navigation_index = - 1
-        self.reinit_navigation_param_old_modelnavigator()  # TODO[B] Should it call _old_navigatormodel afterwards?
+        self.current_continuity: int = -1
+        self.current_position_in_sequence: int = -1
+        self.current_navigation_index: int = -1
+        self.reinit_navigation_param_old_modelnavigator()
 
         self.control_parameters = ["avoid_repetitions_mode", "max_continuity"]
         if type(control_parameters) != type(None):
@@ -151,6 +152,12 @@ class FactorOracleNavigator:
         # super.__setattr__(self, name_attr, val_attr)
         object.__setattr__(self, name_attr, val_attr)
         # TODO : SUPPRIMER TRACE AVANT TEMPS PERFORMANCE
+
+    def rewind_generation(self, index_state: int):
+        self._go_to_anterior_state_using_execution_trace(index_in_navigation=index_state)
+
+    def weight_candidates(self):
+        raise NotImplementedError("weight candidates is not implemented")
 
     def find_prefix_matching_with_labels(self, use_intervals, labels, list_of_labels, continuity_with_future,
                                          authorized_indexes, authorized_transformations, sequence_to_interval_fun,
@@ -193,7 +200,7 @@ class FactorOracleNavigator:
         s, t, length_selected_prefix = self.choose_prefix_from_list(index_delta_prefixes, pattern=list_of_labels)
         return s, t, length_selected_prefix
 
-    def go_to_anterior_state_using_execution_trace(self, index_in_navigation):
+    def _go_to_anterior_state_using_execution_trace(self, index_in_navigation):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """
         This method is called when the run of a new query rewrites previously generated anticipations.
@@ -236,38 +243,26 @@ class FactorOracleNavigator:
         self.current_navigation_index = - 1
         self.no_empty_event = True
 
-    def learn_sequence(self, sequence, labels, equiv=None):
+    def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """
         Learns (appends) a new sequence in the model.
 
         :param sequence: sequence learnt in the Factor Oracle automaton
         :type sequence: list or str
-        :param labels: sequence of labels chosen to describe the sequence
-        :type labels: list or str
+        # :param labels: sequence of labels chosen to describe the sequence
+        # :type labels: list or str
         :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
         :type equiv: function
 
         :!: **equiv** has to be consistent with the type of the elements in labels.
 
         """
-        # TODO: This caused bugs with sequence being learned twice in early 2021 update of dyci2
-        # if equiv is None:
-        #     equiv = self.equiv
-        # try:
-        #     assert len(labels) == len(sequence)
-        # except AssertionError as exception:
-        #     print("Sequence and sequence of labels have different lengths.", exception)
-        #     return None
-        # else:
-        #     # IN CLASS MODEL :
-        #     # 	labels_to_learn = from_list_to_labels(labels, self.label_type)
-        #     # 	sequence_to_learn = from_list_to_contents(sequence, self.content_type)
-        #     # 	print(self.content_type)
-        #     # 	for i in range(len(labels_to_learn)):
-        #     #         self.learn_event(sequence_to_learn[i], labels_to_learn[i], equiv)
-        #     for i in range(len(labels)):
-        #         self.learn_event(sequence[i], labels[i], equiv)
+        if equiv is None:
+            equiv = self.equiv
+
+        for event in sequence:
+            self.learn_event(event, equiv)
 
     def learn_event(self, event: MemoryEvent, equiv: Callable = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
@@ -278,12 +273,6 @@ class FactorOracleNavigator:
         current_last_idx = len(self.history_and_taboos) - 1
         self._authorize_indexes([current_last_idx])
         self.history_and_taboos.append(None)
-
-    # self.history_and_taboos.append(0)
-
-    # IN CLASS MODEL :
-    # self.sequence.append(state)
-    # self.labels.append(from_list_to_labels([label], self.label_type)[0])
 
     def filter_using_history_and_taboos(self, list_of_indexes):
         # FIXME[MergeState]: A[], B[], C[], D[], E[]

@@ -23,8 +23,9 @@ Definition of alphabets of labels to build sequences and use them in creative ap
 # **Tutorial in** :file:`_Tutorials_/Label_tutorial.py`.
 
 # TODO 2021 : imports circulaires Label <-> Transforms regles temporairement en supprimant les "available transforms" des labels
-#from dyci2.Transforms import *
+# from dyci2.Transforms import *
 from copy import deepcopy, copy
+from typing import List, Optional, Type
 
 
 class Label(object):
@@ -157,7 +158,7 @@ class ChordLabel(Label):
             self.interval_within_sequence["first_chord_label"] = None
         if not previous_chord_label is None and issubclass(type(previous_chord_label), ChordLabel):
             self.interval_within_sequence["previous_chord_label"] = (
-            previous_chord_label.delta_root(self), previous_chord_label)
+                previous_chord_label.delta_root(self), previous_chord_label)
         else:
             self.interval_within_sequence["previous_chord_label"] = None
 
@@ -375,13 +376,14 @@ class ListLabel(Label):
     def equiv_mod_interval(cls, x, y):
         return cls.__eq__(x, y)
 
+
 # TODO 2021 : imports circulaires Label <-> Transforms regles temporairement en supprimant les "available transforms" des labels
 # @classmethod
 # def get_label_from_data(cls, data, *args, **kwargs):
 # (defmacro TransposeNote (root int) `(nth (mod ,int 12) (member (NormalizeNote ,root) '(c c# d eb e f f# g g# a bb b c c# d eb e f f# g g# a bb b))))
 
 
-def from_list_to_labels(labels=[], label_type=None):
+def from_list_to_labels(labels: List[str], label_type: Optional[Type[Label]] = None):
     labels_to_learn = labels
     # TODO 2021: No ! SHOULD BE INSTANCES OF SUBCLASSES OF LABEL !
     if label_type is None:
@@ -404,7 +406,7 @@ def from_list_to_labels(labels=[], label_type=None):
                         return labels
                 else:
                     labels_to_learn = label_type.make_sequence_of_labels_from_list(labels)
-                    #print(labels_to_learn)
+                    # print(labels_to_learn)
         return labels_to_learn
 
 

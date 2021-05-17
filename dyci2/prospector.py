@@ -51,7 +51,7 @@ class Prospector:
         >>> #FON = FactorOracleGenerator(sequence, labels)
     """
 
-    def __init__(self, sequence=(), labels=(), max_continuity=20,
+    def __init__(self, model_class: Type[Model], navigator_class: Type[Navigator], memory: Memory, max_continuity=20,
                  control_parameters=(), history_parameters=(), equiv: Callable = (lambda x, y: x == y),
                  label_type=None, content_type=None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
@@ -66,16 +66,15 @@ class Prospector:
         >>> #FON = FactorOracleGenerator(sequence, labels)
 
         """
+        # TODO: Assert compatbility between model_class and navigator_class
 
-        self.navigator: Navigator = Navigator(sequence, labels, max_continuity, control_parameters,
-                                              history_parameters, equiv)
-        print(self.navigator.labels)
+        self.model: Model = model_class(memory, equiv)
+        self.navigator: Navigator = navigator_class(memory, equiv, max_continuity, control_parameters,
+                                                    history_parameters)
+        self.content_type: Type[MemoryEvent] = memory.content_type
+        self.label_type: Type[Label] = memory.label_type
 
-        self.model: FactorOracle = FactorOracle(sequence, labels, equiv, label_type, content_type)
-        print(self.model.labels)
-        self.navigator.labels = self.model.labels  # MergeState[A]: Added for consistency with old behaviour
         self.navigator.reinit_navigation_param_old_modelnavigator()
-        print(self.navigator.labels)
 
     def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
@@ -258,9 +257,9 @@ class Prospector:
                                                                authorized_transformations, sequence_to_interval_fun,
                                                                equiv_interval, equiv)
 
-    def go_to_anterior_state_using_execution_trace(self, index_in_navigation: int) -> None:
+    def rewind_generation(self, index_in_navigation: int) -> None:
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        self.navigator.go_to_anterior_state_using_execution_trace(index_in_navigation)
+        self.navigator.rewind_generation(index_in_navigation)
 
     ################################################################################################################
     #   TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP   #

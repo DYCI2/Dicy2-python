@@ -48,7 +48,7 @@ class Model(ABC):
              `init_memory` from constructor) but it may be empty. """
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         self.memory: Memory = memory
-        self.equiv: Callable = equiv
+        self.equiv: Callable[[Label, Label], Label] = equiv
 
     @abstractmethod
     def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):

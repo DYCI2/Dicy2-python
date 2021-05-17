@@ -39,14 +39,14 @@ class BasicEvent(MemoryEvent):
 
 class Memory:
     def __init__(self, events: List[MemoryEvent], content_type: Type[MemoryEvent], label_type: Type[Label]):
-        self._events: List[MemoryEvent] = events
-        self._content_type: Type[MemoryEvent] = content_type
+        self.events: List[MemoryEvent] = events
+        self.content_type: Type[MemoryEvent] = content_type
         self.label_type: Type[Label] = label_type
+        self._validate()
 
     @classmethod
     def new_empty(cls, content_type: Type[MemoryEvent], label_type: Type[Label]):
         return cls([], content_type, label_type)
 
     def append(self, event: MemoryEvent):
-        self._events.append(event)
-
+        self.events.append(event)

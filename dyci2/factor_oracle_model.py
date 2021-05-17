@@ -1,7 +1,7 @@
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Type
 
 from label import Label
-from memory import MemoryEvent
+from memory import MemoryEvent, Memory
 from model import Model
 
 
@@ -13,9 +13,9 @@ class FactorOracle(Model):
     Convention: since the all the transitions arriving in a same state have the same label,
     the labels are not carried by the transitions but by the states.
 
-    :param sequence: sequence learnt in the Factor Oracle automaton
+    #:param sequence: sequence learnt in the Factor Oracle automaton
     :type sequence: list or str
-    :param labels: sequence of labels chosen to describe the sequence
+    #:param labels: sequence of labels chosen to describe the sequence
     :type labels: list or str
     #:param direct_transitions: direct transitions in the automaton (key = index state 1, value = tuple: label, index state 2)
     :type direct_transitions: dict
@@ -37,7 +37,7 @@ class FactorOracle(Model):
     :Example:
 
     >>> sequence = ['A','B','B','C','A','B','C','D','A','B','C']
-    >>> FO = FactorOracle(sequence, sequence)
+    #>>> FO = FactorOracle(sequence, sequence)
     >>>
     >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
     >>> #labels = [s[0] for s in sequence]
@@ -49,8 +49,7 @@ class FactorOracle(Model):
 
     """
 
-    def __init__(self, sequence=(), labels=(), equiv: Optional[Callable] = (lambda x, y: x == y), label_type=None,
-                 content_type=None):
+    def __init__(self, memory: Memory, equiv: Callable = (lambda x, y: x == y)):
         """ Constructor for the class FactorOracle.
         :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
 
@@ -60,7 +59,7 @@ class FactorOracle(Model):
         :Example:
 
         >>> sequence = ['A','B','B','C','A','B','C','D','A','B','C']
-        >>> FO = FactorOracle(sequence, sequence)
+        #>>> FO = FactorOracle(sequence, sequence)
         >>>
         >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
         >>> #labels = [s[0] for s in sequence]
@@ -70,41 +69,40 @@ class FactorOracle(Model):
         >>> #FO = FactorOracle(sequence, labels, equiv_AC_BD)
         """
 
-        # self.sequence = []
-        # self.labels = []
+        self.sequence: List[Optional[MemoryEvent]] = []
+        self.labels: List[Optional[Label]] = []
+        self.content_type: Type[MemoryEvent] = memory.content_type
+        self.label_type: Type[Label] = memory.label_type
         self.direct_transitions = {}
         self.factor_links = {}
         self.suffix_links = {}
         self.reverse_suffix_links = {}
 
-        Model.__init__(self, sequence, labels, equiv, label_type, content_type)
-        self.build(sequence, labels)
+        Model.__init__(self, memory, equiv)
+        # TODO[C] OBS! equiv is always overwritten by label type, so is it really necessary to use equiv???
+        self.build(memory)
 
-    def build(self, sequence, labels):
+    def build(self, memory: Memory):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """
         Builds the model.
 
-        :param sequence: sequence learnt in the model.
-        :type sequence: list or str
-        :param labels: sequence of labels chosen to describe the sequence
-        :type labels: list or str
+        :param memory: sequence learnt in the model.
+        :type memory: list or str
+        # :param labels: sequence of labels chosen to describe the sequence
+        # :type labels: list or str
         :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
         :type equiv: function
 
         :!: **equiv** has to be consistent with the type of the elements in labels.
 
         """
-        if not self.label_type is None:
-            try:
-                assert issubclass(self.label_type, Label)
-            except AssertionError as exception:
-                print("label_type must inherit from the class Label.", exception)
-                return None
-            else:
-                self.equiv: Callable = self.label_type.__eq__
+        # TODO: Not a good place to overwrite the equiv function - hidden side effect
+        #   Also - this condition is always true as memory.label_type must be valid.
+        if self.memory.label_type is not None:
+            self.equiv: Callable = self.memory.label_type.__eq__
         self.init_model()
-        self.learn_sequence(sequence, labels, self.equiv)
+        self.learn_sequence(memory.events, self.equiv)
 
     def init_model(self):
         """
@@ -137,20 +135,10 @@ class FactorOracle(Model):
         """
         if equiv is None:
             equiv = self.equiv
-        try:
-            assert len(labels) == len(sequence)
-        except AssertionError as exception:
-            print("Sequence and sequence of labels have different lengths.", exception)
-            return None
-        else:
-            # TODO POUR CONTENTS QUAND LA CLASSE EXISTERA
-            labels_to_learn = from_list_to_labels(labels, self.label_type)
-            sequence_to_learn = from_list_to_contents(sequence, self.content_type)
-            # print("LABELS TO LEARN = {}".format(labels_to_learn))
-            print(self.content_type)
-            # print("CONTENTS TO LEARN = {}".format(sequence_to_learn))
-            for i in range(len(labels_to_learn)):
-                self.learn_event(sequence_to_learn[i], labels_to_learn[i], equiv)
+
+        print(self.content_type)
+        for event in sequence:
+            self.learn_event(event, equiv)
 
     # TODO : COMPUTE THE LRS, AND THEN USE IT !!!!
     def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
@@ -168,7 +156,8 @@ class FactorOracle(Model):
         if equiv is None:
             equiv = self.equiv
 
-        Model.learn_event(self, state, label, equiv)
+        self.sequence.append(event.value())
+        self.labels.append(event.label())
 
         index = self.index_last_state()
 
@@ -177,13 +166,13 @@ class FactorOracle(Model):
         label = self.labels[index]
         state = self.sequence[index]
 
-        self._add_direct_transition(index - 1, label,
-                                    index)  # Creation of a transition between new state and previous state
+        # Creation of a transition between new state and previous state
+        self._add_direct_transition(index - 1, label, index)
 
         k = self.suffix_links[index - 1]  # k is the state linked to the previous state with a suffix link
         while k is not None and self._from_state_read_label(k, label, equiv) is None:
-            self._add_factor_link(k, label,
-                                  index)  # We add the factor link if we can't find an arrow with the correct label
+            # We add the factor link if we can't find an arrow with the correct label
+            self._add_factor_link(k, label, index)
             k = self.suffix_links[k]  # We iterate over the suffix links
 
         if k is None:
@@ -240,11 +229,11 @@ class FactorOracle(Model):
         :Example:
 
         >>> sequence_FO = "AABBABCBBABAAB"
-        >>> FO = FactorOracle(sequence_FO, sequence_FO)
+        #>>> FO = FactorOracle(sequence_FO, sequence_FO)
         >>> sequence_input_1 = "ABCB"
         >>> sequence_input_2 = "BBBBBB"
-        >>> print("{} recognized by the Factor Oracle built on {}?\\n{}".format(sequence_input_1,sequence_FO,FO.is_recognized(sequence_input_1)))
-        >>> print("{} recognized by the Factor Oracle built on {}?\\n{}".format(sequence_input_2,sequence_FO,FO.is_recognized(sequence_input_2)))
+        # >>> print("{} recognized by the Factor Oracle built on {}?\\n{}".format(sequence_input_1,sequence_FO,FO.is_recognized(sequence_input_1)))
+        #>>> print("{} recognized by the Factor Oracle built on {}?\\n{}".format(sequence_input_2,sequence_FO,FO.is_recognized(sequence_input_2)))
         """
         if equiv is None:
             equiv = self.equiv
@@ -289,7 +278,7 @@ class FactorOracle(Model):
         else:
             self.reverse_suffix_links[index_state2] = [index_state1]
 
-    def _from_state_read_label(self, index_state, label, equiv=None, authorize_factor_links=True):
+    def _from_state_read_label(self, index_state, label, equiv: Optional[Callable] = None, authorize_factor_links=True):
         # Return state reach for current state reading the letter (None is return if there is no exiting transion or
         # factor link labelled with the letter)
         """ Reads label 'label' from state at index 'index_state'.
@@ -654,6 +643,3 @@ class FactorOracle(Model):
             i_s1 -= 1
             i_s2 -= 1
         return length
-
-
-

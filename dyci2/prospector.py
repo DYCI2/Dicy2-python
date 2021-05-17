@@ -79,13 +79,20 @@ class Prospector:
 
     def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        self.model.learn_event(event, equiv)
-        self.navigator.learn_event(event, equiv)
+        if isinstance(event, self.content_type) and isinstance(event.label, self.label_type):
+            self.model.learn_event(event, equiv)
+            self.navigator.learn_event(event, equiv)
+        else:
+            raise TypeError(f"Invalid content/label type for event {str(event)}")
 
     def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+
         # TODO[D]: This is never called! In original code it is called from Model.__init__, which obviously isn't
         #  possible. Need to call this from outside when simplifying calls
+
+        # TODO[C]: Ensure that the sequence always is validated at top level so that the list of MemoryEvents always
+        #  has (1) a single LabelType and (2) a single ContentType.
         self.model.learn_sequence(sequence, equiv)
         self.navigator.learn_sequence(sequence, equiv)
 

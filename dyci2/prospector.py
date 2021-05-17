@@ -31,12 +31,8 @@ from memory import MemoryEvent, Memory
 from model import Model
 from utils import DontKnow
 
-class Prospector(ABC):
-    def __init__(self, model_class: Type[Model], navigator_class: Type[Navigator],
-                 memory: Optional[Memory] = None, equiv: Callable = lambda x, y: x == y):
-        self.model: Model = model_class()
 
-class FactorOracleProspector:
+class Prospector:
     """
         **Factor Oracle Navigator class**.
         This class implements heuristics of navigation through a Factor Oracle automaton for creative applications:
@@ -365,4 +361,4 @@ class FactorOracleProspector:
 
 
 # TODO[C] Get rid of.
-implemented_model_navigator_classes = {"FactorOracleNavigator": FactorOracleProspector}
+implemented_model_navigator_classes = {"FactorOracleNavigator": Prospector}

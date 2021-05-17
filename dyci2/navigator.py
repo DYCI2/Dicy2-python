@@ -21,6 +21,7 @@ The classes defined in this module are used in association with models (cf. :mod
 """
 
 import random
+from abc import ABC, abstractmethod
 from typing import List, Optional, Callable, Dict
 
 from dyci2.intervals import *
@@ -34,11 +35,37 @@ from dyci2.intervals import *
 # TODO : QUAND ON GENERE, DEBUT OU NON ? SOIT INTEGRER DANS PARAMETRES FONCTIONS SOIT DECIDER QU'ON APPELLE
 #  reinit_navigation_param si c'est le début
 from label import Label
-from memory import MemoryEvent
+from memory import MemoryEvent, Memory
 from utils import noneIsInfinite, DontKnow
 
 
-class Navigator:
+class Navigator(ABC):
+    def __init__(self, memory: Memory, equiv: Callable = (lambda x, y: x == y)):
+        self.memory: Memory = memory
+        self.equiv: Callable = equiv
+
+    @abstractmethod
+    def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
+        # FIXME[MergeState]: A[x], B[x], C[x], D[x], E[]
+        """ TODO """
+
+    @abstractmethod
+    def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
+        # FIXME[MergeState]: A[x], B[x], C[x], D[x], E[]
+        """ TODO """
+
+    @abstractmethod
+    def rewind_generation(self, index_state: int):
+        # FIXME[MergeState]: A[x], B[x], C[x], D[x], E[]
+        """ TODO """
+
+    @abstractmethod
+    def weight_candidates(self):
+        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        """ TODO """
+
+
+class FactorOracleNavigator:
     """
     The class :class:`~Navigator.Navigator` implements **parameters and methods that are used to navigate through a
     model of sequence**.

@@ -46,7 +46,7 @@ from dyci2.transforms import *
 # TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
 from generation_process import GenerationProcess
 from memory import MemoryEvent
-from prospector import FactorOracleProspector, implemented_model_navigator_classes
+from prospector import Prospector, implemented_model_navigator_classes
 from utils import format_list_as_list_of_strings, DontKnow
 
 
@@ -141,7 +141,7 @@ class GenerationScheduler:
                 if equiv is None:
                     equiv = basic_equiv
                 self.model_navigator = model_navigator
-                self.prospector: FactorOracleProspector = implemented_model_navigator_classes[self.model_navigator](
+                self.prospector: Prospector = implemented_model_navigator_classes[self.model_navigator](
                     sequence=sequence,
                     labels=labels,
                     label_type=label_type,

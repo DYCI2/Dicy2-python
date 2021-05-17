@@ -41,7 +41,7 @@ class Memory:
     def __init__(self, events: List[MemoryEvent], content_type: Type[MemoryEvent], label_type: Type[Label]):
         self._events: List[MemoryEvent] = events
         self._content_type: Type[MemoryEvent] = content_type
-        self._label_type: Type[Label] = label_type
+        self.label_type: Type[Label] = label_type
 
     @classmethod
     def new_empty(cls, content_type: Type[MemoryEvent], label_type: Type[Label]):
@@ -49,3 +49,4 @@ class Memory:
 
     def append(self, event: MemoryEvent):
         self._events.append(event)
+

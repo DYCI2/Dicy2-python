@@ -19,7 +19,7 @@ Tutorial in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`
 """
 import random
 from abc import ABC
-from typing import Callable, Tuple, Optional, List
+from typing import Callable, Tuple, Optional, List, Type
 
 from dyci2.navigator import Navigator
 from factor_oracle_model import FactorOracle
@@ -27,9 +27,14 @@ from factor_oracle_model import FactorOracle
 # TODO : mode 0 : répétitions authorisées, mode 1 = on prend le min, mode 2, interdire les déjà passés
 # TODO : SURCHARGER POUR INTERDIRE LES AUTRES
 from label import Label
-from memory import MemoryEvent
+from memory import MemoryEvent, Memory
+from model import Model
 from utils import DontKnow
 
+class Prospector(ABC):
+    def __init__(self, model_class: Type[Model], navigator_class: Type[Navigator],
+                 memory: Optional[Memory] = None, equiv: Callable = lambda x, y: x == y):
+        self.model: Model = model_class()
 
 class FactorOracleProspector:
     """

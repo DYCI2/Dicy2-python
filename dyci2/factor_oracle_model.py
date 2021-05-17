@@ -78,6 +78,33 @@ class FactorOracle(Model):
         self.reverse_suffix_links = {}
 
         Model.__init__(self, sequence, labels, equiv, label_type, content_type)
+        self.build(sequence, labels)
+
+    def build(self, sequence, labels):
+        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        """
+        Builds the model.
+
+        :param sequence: sequence learnt in the model.
+        :type sequence: list or str
+        :param labels: sequence of labels chosen to describe the sequence
+        :type labels: list or str
+        :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
+        :type equiv: function
+
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+
+        """
+        if not self.label_type is None:
+            try:
+                assert issubclass(self.label_type, Label)
+            except AssertionError as exception:
+                print("label_type must inherit from the class Label.", exception)
+                return None
+            else:
+                self.equiv: Callable = self.label_type.__eq__
+        self.init_model()
+        self.learn_sequence(sequence, labels, self.equiv)
 
     def init_model(self):
         """
@@ -87,6 +114,43 @@ class FactorOracle(Model):
         self.labels.append(None)
         self.suffix_links[self.index_last_state()] = None
         self.reverse_suffix_links[self.index_last_state()] = []
+
+    def index_last_state(self):
+        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        """ Index of the last state in the model."""
+        return len(self.labels) - 1
+
+    def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
+        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        """
+        Learns (appends) a new sequence in the model.
+
+        :param sequence: sequence learnt in the Factor Oracle automaton
+        :type sequence: list or str
+        # :param labels: sequence of labels chosen to describe the sequence
+        # :type labels: list or str
+        :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
+        :type equiv: function
+
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+
+        """
+        if equiv is None:
+            equiv = self.equiv
+        try:
+            assert len(labels) == len(sequence)
+        except AssertionError as exception:
+            print("Sequence and sequence of labels have different lengths.", exception)
+            return None
+        else:
+            # TODO POUR CONTENTS QUAND LA CLASSE EXISTERA
+            labels_to_learn = from_list_to_labels(labels, self.label_type)
+            sequence_to_learn = from_list_to_contents(sequence, self.content_type)
+            # print("LABELS TO LEARN = {}".format(labels_to_learn))
+            print(self.content_type)
+            # print("CONTENTS TO LEARN = {}".format(sequence_to_learn))
+            for i in range(len(labels_to_learn)):
+                self.learn_event(sequence_to_learn[i], labels_to_learn[i], equiv)
 
     # TODO : COMPUTE THE LRS, AND THEN USE IT !!!!
     def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
@@ -590,3 +654,6 @@ class FactorOracle(Model):
             i_s1 -= 1
             i_s2 -= 1
         return length
+
+
+

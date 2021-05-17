@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Union
+from typing import Any, List, Union, Type
 
 from label import Label
 
@@ -38,8 +38,14 @@ class BasicEvent(MemoryEvent):
 
 
 class Memory:
-    def __init__(self):
-        self._events: List[MemoryEvent] = []
+    def __init__(self, events: List[MemoryEvent], content_type: Type[MemoryEvent], label_type: Type[Label]):
+        self._events: List[MemoryEvent] = events
+        self._content_type: Type[MemoryEvent] = content_type
+        self._label_type: Type[Label] = label_type
+
+    @classmethod
+    def new_empty(cls, content_type: Type[MemoryEvent], label_type: Type[Label]):
+        return cls([], content_type, label_type)
 
     def append(self, event: MemoryEvent):
         self._events.append(event)

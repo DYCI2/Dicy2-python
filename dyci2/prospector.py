@@ -77,14 +77,16 @@ class Prospector:
         self.navigator.reinit_navigation_param_old_modelnavigator()
 
     def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
+        """ raises: TypeError if event is incompatible with current memory """
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        if isinstance(event, self.content_type) and isinstance(event.label, self.label_type):
+        if isinstance(event, self.content_type) and isinstance(event.label(), self.label_type):
             self.model.learn_event(event, equiv)
             self.navigator.learn_event(event, equiv)
         else:
             raise TypeError(f"Invalid content/label type for event {str(event)}")
 
     def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
+        """ raises: TypeError if sequence is incompatible with current memory """
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
 
         # TODO[D]: This is never called! In original code it is called from Model.__init__, which obviously isn't
@@ -92,8 +94,11 @@ class Prospector:
 
         # TODO[C]: Ensure that the sequence always is validated at top level so that the list of MemoryEvents always
         #  has (1) a single LabelType and (2) a single ContentType.
-        self.model.learn_sequence(sequence, equiv)
-        self.navigator.learn_sequence(sequence, equiv)
+        if len(sequence) > 0 and isinstance(sequence[0], self.content_type) and isinstance(sequence[0].label(), self.label_type):
+            self.model.learn_sequence(sequence, equiv)
+            self.navigator.learn_sequence(sequence, equiv)
+        else:
+            raise TypeError(f"Invalid content/label type for sequence")
 
     def l_pre_free_navigation(self, equiv: Optional[Callable], new_max_continuity: int,
                               init: bool) -> Tuple[bool, Callable]:

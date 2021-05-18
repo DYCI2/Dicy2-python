@@ -157,12 +157,14 @@ class GenerationScheduler:
 
     def learn_event(self, event: MemoryEvent) -> None:
         # FIXME[MergeState]: A[x], B[], C[], D[]
-        """ Learn a new event in the memory (model navigator)."""
+        """ Learn a new event in the memory (model navigator).
+            raises: TypeError if event is incompatible with current memory """
         self.prospector.learn_event(event=event)
 
     def learn_sequence(self, sequence: List[MemoryEvent]) -> None:
         # FIXME[MergeState]: A[x], B[], C[], D[]
-        """ Learn a new sequence in the memory (model navigator)."""
+        """ Learn a new sequence in the memory (model navigator).
+            raises: TypeError if sequence is incompatible with current memory """
         self.prospector.learn_sequence(sequence=sequence)
 
     def process_query(self, query: Query):

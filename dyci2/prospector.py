@@ -282,7 +282,6 @@ class Prospector:
 
     def l_set_sequence(self, sequence: List[DontKnow]):
         self.model.sequence = sequence
-        print("Test")
 
     def l_get_labels_nonmutable(self) -> List[DontKnow]:
         return self.model.labels

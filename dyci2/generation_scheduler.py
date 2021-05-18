@@ -195,7 +195,7 @@ class GenerationScheduler:
             self.prospector.rewind_generation(generation_index - 1)
 
         # TODO[B] UNSOLVED! Massive side-effect. Exactly what is current_navigation_index?
-        self.prospector.current_navigation_index = generation_index - 1
+        self.prospector.navigator.current_navigation_index = generation_index - 1
         # TODO[B]: UNSOLVED! generator_process_query should return output, not store it in current_generation_output
         self._process_query(query)
 
@@ -220,8 +220,11 @@ class GenerationScheduler:
 
         elif isinstance(query, LabelQuery) and len(query.labels) == 1:
             print("GENERATION MATCHING QUERY LABEL ...")
-            output = result = self.simply_guided_generation(required_labels=query.labels, init=self.initial_query,
+            # TODO[C] Find solution for this: since `scenario_based` also calls simply_guided, this cannot be in `simply_guided`
+            self.encode_memory_with_current_transfo()
+            output = self.simply_guided_generation(required_labels=query.labels, init=self.initial_query,
                                                             print_info=query.print_info)
+            self.decode_memory_with_current_transfo()
             self.transfo_current_generation_output = [self.current_transformation_memory] * len(output)
             print("... GENERATION MATCHING QUERY LABEL OK")
 
@@ -284,7 +287,6 @@ class GenerationScheduler:
                 # TODO[B] Handle with proper location of Memory
                 sequence.append(self.prospector.model.sequence[generated_index])
 
-        self.decode_memory_with_current_transfo()
         return sequence
 
     def simply_guided_generation(self, required_labels: List[Label],
@@ -320,7 +322,7 @@ class GenerationScheduler:
         """
 
         print("HANDLE GENERATION MATCHING LABEL...")
-        self.encode_memory_with_current_transfo()
+
 
         equiv = self.prospector.l_pre_guided_navigation(required_labels, equiv, new_max_continuity, init)
 

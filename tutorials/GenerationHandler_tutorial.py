@@ -13,6 +13,7 @@ Generation Handler Tutorial
 Tutorial for the class :class:`~Generator.GenerationHander` defined in :mod:`Generator` (cf. also :mod:`OSCAgent_tutorial`).
 
 """
+import sys
 from typing import List
 
 from dyci2.factor_oracle_model import FactorOracle
@@ -69,6 +70,8 @@ if __name__ == '__main__':
     # generation_handler.current_performance_time["ms"] += 1000
     # generation_handler.current_performance_time["last_update_event_in_ms"] = generation_handler.current_performance_time["ms"]
     generation_scheduler.inc_performance_time(increment=1)
+
+    # sys.exit(1)
 
     print("\n**NEW PERFORMANCE TIME : BEAT {}**\n**PLAYING CORRESPONDING GENERATED EVENT: {}**".format(
         generation_scheduler.performance_time,

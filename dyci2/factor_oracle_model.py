@@ -118,6 +118,9 @@ class FactorOracle(Model):
         """ Index of the last state in the model."""
         return len(self.labels) - 1
 
+    def memory_length(self):
+        return len(self.labels) - 1
+
     def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """
@@ -189,6 +192,12 @@ class FactorOracle(Model):
         else:
             return self._continuations(index_state=index_state, forward_context_length_min=forward_context_length_min,
                                        equiv=equiv, authorize_direct_transition=authorize_direct_transition)
+
+    def l_set_sequence(self, sequence: List[Optional[MemoryEvent]]):
+        self.sequence = sequence
+
+    def l_set_labels(self, labels: List[Optional[Label]]):
+        self.labels = labels
 
     def print_model(self):
         """

@@ -85,10 +85,15 @@ class Model(ABC):
     @abstractmethod
     def get_candidates(self, index_state: int, label: Optional[Label]):
         # FIXME[MergeState]: A[x], B[x], C[], D[], E[]
-        """"""
+        """ TODO """
 
     @abstractmethod
     def print_model(self):
         # FIXME[MergeState]: A[x], B[x], C[x], D[x], E[]
         # TODO: Should this really be an enforced method?
-        """"""
+        """ TODO """
+
+    @abstractmethod
+    def memory_length(self):
+        # FIXME[MergeState]: A[x], B[x], C[x], D[x], E[]
+        """ TODO """

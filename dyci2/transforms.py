@@ -17,7 +17,7 @@ Class defining transformations on labels and contents.
 
 """
 # TODO : TUTO
-
+from abc import ABC, abstractmethod
 
 from dyci2.label import ChordLabel, Label, ListLabel
 
@@ -27,10 +27,25 @@ from dyci2.label import ChordLabel, Label, ListLabel
 from copy import deepcopy
 
 
-# abstract class that represents identity, only if the class of the object
-#       is in the transformation catalog
+class Transform(ABC):
+    @abstractmethod
+    def encode(self, obj):
+        """ TODO """
 
-class NoTransform(object):
+    @abstractmethod
+    def decode(self, obj):
+        """ TODO """
+
+    @abstractmethod
+    def encode_sequence(self, seq):
+        """ TODO """
+
+    @abstractmethod
+    def decode_sequence(self, seq):
+        """ TODO """
+
+
+class NoTransform(Transform):
     def __init__(self):
         # self.admitted_types = [AbstractLabel, AbstractContents] # dictionary of admitted label classes
         self.admitted_types = [AbstractLabel]  # dictionary of admitted label classes

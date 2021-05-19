@@ -29,6 +29,7 @@ from factor_oracle_model import FactorOracle
 from label import Label
 from memory import MemoryEvent, Memory
 from model import Model
+from transforms import Transform
 from utils import DontKnow
 
 
@@ -94,14 +95,16 @@ class Prospector:
 
         # TODO[C]: Ensure that the sequence always is validated at top level so that the list of MemoryEvents always
         #  has (1) a single LabelType and (2) a single ContentType.
-        if len(sequence) > 0 and isinstance(sequence[0], self.content_type) and isinstance(sequence[0].label(), self.label_type):
+        if len(sequence) > 0 and isinstance(sequence[0], self.content_type) and isinstance(sequence[0].label(),
+                                                                                           self.label_type):
             self.model.learn_sequence(sequence, equiv)
             self.navigator.learn_sequence(sequence, equiv)
         else:
             raise TypeError(f"Invalid content/label type for sequence")
 
-    def l_pre_free_navigation(self, equiv: Optional[Callable], new_max_continuity: int,
-                              init: bool) -> Tuple[bool, Callable]:
+    # TODO: This function should ideally not exist once setting of parameter and initialization is handled correctly
+    def l_prepare_navigation(self, required_labels: List[Label], equiv: Optional[Callable],
+                             new_max_continuity: Optional[int], init: bool) -> Callable:
         if equiv is None:
             equiv = self.model.equiv
 
@@ -109,46 +112,19 @@ class Prospector:
             self.navigator.max_continuity = new_max_continuity
 
         if init:
-            self.navigator.reinit_navigation_param_old_modelnavigator()
-
-        print("FREE GENERATION")
-        print_info: bool = True
+            self.navigator.clear()
 
         if self.navigator.current_position_in_sequence < 0:
-            self.navigator.set_current_position_in_sequence_with_sideeffects(
-                random.randint(1, self.model.index_last_state()))
-        return print_info, equiv
-
-    def l_pre_guided_navigation(self, required_labels: List[DontKnow], equiv: Optional[Callable],
-                                new_max_continuity: Optional[int], init: bool) -> Callable:
-        # ###########################################
-        # #### From old simply_guided_generation ####
-        # ###########################################
-        if equiv is None:
-            equiv = self.model.equiv
-
-        if not new_max_continuity is None:
-            self.navigator.max_continuity = new_max_continuity
-
-        if init:
-            self.navigator.reinit_navigation_param_old_modelnavigator()
-        # ###########################################
-        # #### From old simply_guided_navigation ####
-        # ###########################################
-        if equiv is None:
-            equiv = self.model.equiv
-
-        if not new_max_continuity is None:
-            self.navigator.max_continuity = new_max_continuity
-
-        if init:
-            self.navigator.reinit_navigation_param_old_modelnavigator()
-            init_states = [i for i in range(1, self.model.index_last_state()) if
-                           self.model.direct_transitions.get(i) and equiv(
-                               self.model.direct_transitions.get(i)[0], required_labels[0])]
-            self.navigator.set_current_position_in_sequence_with_sideeffects(
-                init_states[random.randint(0, len(init_states) - 1)])
-
+            if len(required_labels) > 0:
+                init_states: List[int] = [i for i in range(1, self.model.memory_length()) if
+                                          self.model.direct_transitions.get(i)
+                                          and equiv(self.model.direct_transitions.get(i)[0], required_labels[0])]
+                # TODO: Handle case where init_states is empty?
+                new_position: int = random.randint(0, len(init_states) - 1)
+                self.navigator.set_current_position_in_sequence_with_sideeffects(new_position)
+            else:
+                new_position: int = random.randint(1, self.model.memory_length())
+                self.navigator.set_current_position_in_sequence_with_sideeffects(new_position)
         return equiv
 
     def r_free_navigation_one_step(self, iteration_index: int, forward_context_length_min: int = 0,
@@ -270,38 +246,46 @@ class Prospector:
     #   TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP   #
     ################################################################################################################
 
-    def l_get_no_empty_event(self) -> bool:
-        return self.navigator.no_empty_event
+    # def l_get_no_empty_event(self) -> bool:
+    #     return self.navigator.no_empty_event
+    #
+    # def l_set_no_empty_event(self, v: bool) -> None:
+    #     self.navigator.no_empty_event = v
+    #
+    # def l_get_index_last_state(self) -> int:
+    #     return self.model.index_last_state()
+    #
+    # def l_get_sequence_nonmutable(self) -> List[DontKnow]:
+    #     return self.model.sequence
+    #
+    # def l_get_sequence_maybemutable(self) -> List[DontKnow]:
+    #     return self.model.sequence
+    #
+    # def l_set_sequence(self, sequence: List[DontKnow]):
+    #     self.model.sequence = sequence
+    #
+    # def l_get_labels_nonmutable(self) -> List[DontKnow]:
+    #     return self.model.labels
+    #
+    # def l_get_labels_maybemutable(self) -> List[DontKnow]:
+    #     return self.model.labels
+    #
+    # def l_set_labels(self, labels: List[DontKnow]):
+    #     self.model.labels = labels
+    #
+    # def l_get_position_in_sequence(self) -> int:
+    #     return self.navigator.current_position_in_sequence
+    #
+    # def l_set_position_in_sequence(self, index: int):
+    #     self.navigator.set_current_position_in_sequence_with_sideeffects(index)
 
-    def l_set_no_empty_event(self, v: bool) -> None:
-        self.navigator.no_empty_event = v
+    def l_encode_with_transform(self, transform: Transform):
+        self.model.l_set_sequence([None] + transform.encode_sequence(self.model.sequence[1::]))
+        self.model.l_set_labels([None] + transform.encode_sequence(self.model.labels[1::]))
 
-    def l_get_index_last_state(self) -> int:
-        return self.model.index_last_state()
-
-    def l_get_sequence_nonmutable(self) -> List[DontKnow]:
-        return self.model.sequence
-
-    def l_get_sequence_maybemutable(self) -> List[DontKnow]:
-        return self.model.sequence
-
-    def l_set_sequence(self, sequence: List[DontKnow]):
-        self.model.sequence = sequence
-
-    def l_get_labels_nonmutable(self) -> List[DontKnow]:
-        return self.model.labels
-
-    def l_get_labels_maybemutable(self) -> List[DontKnow]:
-        return self.model.labels
-
-    def l_set_labels(self, labels: List[DontKnow]):
-        self.model.labels = labels
-
-    def l_get_position_in_sequence(self) -> int:
-        return self.navigator.current_position_in_sequence
-
-    def l_set_position_in_sequence(self, index: int):
-        self.navigator.set_current_position_in_sequence_with_sideeffects(index)
+    def l_decode_with_transform(self, transform: Transform):
+        self.model.l_set_sequence([None] + transform.decode_sequence(self.model.sequence[1::]))
+        self.model.l_set_labels([None] + transform.decode_sequence(self.model.labels[1::]))
 
     ################################################################################################################
     #   LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY   #

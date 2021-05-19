@@ -64,6 +64,11 @@ class Navigator(ABC):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ TODO """
 
+    @abstractmethod
+    def clear(self):
+        # FIXME[MergeState]: A[x], B[x], C[x], D[x], E[]
+        """ TODO """
+
 
 class FactorOracleNavigator(Navigator):
     """
@@ -232,11 +237,11 @@ class FactorOracleNavigator(Navigator):
     #     self._forbid_indexes([len(self.labels) - 1])
 
     # TODO[B]: Why are those two so different?
-    def reinit_navigation_param_old_modelnavigator(self):
+    def clear(self):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ (Re)initializes the navigation parameters (current navigation index, history of retrieved indexes,
         current continuity,...). """
-        # self.history_and_taboos = [None] + [0] * (len(self.sequence) - 1)   # TODO[A] Breaking change, old on this line
+        # self.history_and_taboos = [None] + [0] * (len(self.sequence) - 1)   # TODO[A] Breaking change, old here
         self.history_and_taboos = [None] + [0] * len(self.sequence)
         self.current_continuity = 0
         self.current_position_in_sequence = -1

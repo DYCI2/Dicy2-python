@@ -38,6 +38,8 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 
 from typing import Optional, Callable, Tuple, Type, List
 
+from candidate import Candidate
+from candidate_selector import CandidateSelector, TempCandidateSelector
 from dyci2.query import Query, FreeQuery, LabelQuery, TimeMode
 from dyci2.transforms import *
 # TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
@@ -58,8 +60,6 @@ def basic_equiv(x, y):
     return x == y
 
 
-# TODO[E]: Remove noinspection
-# noinspection PyIncorrectDocstring
 class GenerationScheduler:
     """ The class **Generator** embeds a **model navigator** as "memory" (cf. metaclass
     :class:`~MetaModelNavigator.MetaModelNavigator`) and processes **queries** (class :class:`~Query.Query`) to
@@ -77,8 +77,8 @@ class GenerationScheduler:
         * :meth:`Generator.receive_query` / :meth:`GenerationHandler.receive_query`
         * :meth:`Generator.process_query` / :meth:`GenerationHandler.process_query`
 
-    :param model_navigator:
-    :type model_navigator: str
+    # :param model_navigator:
+    # :type model_navigator: str
 
     #:param memory: "Model navigator" inheriting from (a subclass of) :class:`~Model.Model` and (a subclass of)
     :class:`~Navigator.Navigator`.
@@ -87,7 +87,7 @@ class GenerationScheduler:
     #:param initial_query:
     :type initial_query: bool
     #:param current_generation_query:
-    :type current_generation_query: :class:`~Query.Query`
+    # :type current_generation_query: :class:`~Query.Query`
 
     #:param current_generation_output:
     :type current_generation_output: list
@@ -138,8 +138,8 @@ class GenerationScheduler:
                                                  memory=memory, equiv=equiv)
         self.content_type: Type[MemoryEvent] = memory.content_type  # TODO[C]: Should not be here
 
-        self.initial_query: bool = True  # TODO[B] Rename: `restart_generation`? `generation_initialized`?
-        self.current_generation_output: List[MemoryEvent] = []
+        self.uninitialized: bool = True  # TODO[C] Positive name `initialized` would be better + invert all conditions
+        self.current_generation_output: List[Optional[Candidate]] = []
         self.transfo_current_generation_output: List[DontKnow] = []
 
         self.authorized_transformations: List[DontKnow] = list(authorized_tranformations)
@@ -149,6 +149,7 @@ class GenerationScheduler:
         self.performance_time: int = 0
 
         self.generation_process: GenerationProcess = GenerationProcess()
+        self.candidate_selector: CandidateSelector = TempCandidateSelector()
 
     def __setattr__(self, name_attr, val_attr):
         object.__setattr__(self, name_attr, val_attr)
@@ -167,19 +168,17 @@ class GenerationScheduler:
             raises: TypeError if sequence is incompatible with current memory """
         self.prospector.learn_sequence(sequence=sequence)
 
-    def process_query(self, query: Query):
+    def process_query(self, query: Query) -> int:
         # TODO[B]: This entire function is basically a long list of side effects to distribute all over the system given
         #   various cases. A better solution would be to clean most of these up and pass along. The only important thing
         #   here is go_to_anterior_state_using_execution_trace
-        """ raises: """
+        """ raises: RuntimeError if receiving a relative query as the first query. """
         print("\n--------------------")
         print(f"current_performance_time: {self.performance_time}")
         print(f"current_generation_time: {self.generation_process.generation_time}")
 
-        if not self.initial_query and self.performance_time < 0 and query.time_mode == TimeMode.RELATIVE:
-            # TODO[JEROME]: Throw error? What is the purpose of this invariant? For reference: old statement was
-            #  if self.initial_query or performance_time >= 0 or query.time_mode == TimeMode.ABSOLUTE
-            return query.start_date
+        if not self.uninitialized and self.performance_time < 0 and query.time_mode == TimeMode.RELATIVE:
+            raise RuntimeError("Cannot handle a relative query as the first query")
 
         # TODO[B] If invariant above is useless or if we can handle this elsewhere, handle query.to_absolute in scheduler instead
         print("PROCESS QUERY\n", query)
@@ -187,7 +186,7 @@ class GenerationScheduler:
             query.to_absolute(self.performance_time)
             print("QUERY ABSOLUTE\n", query)
 
-        if self.initial_query:
+        if self.uninitialized:
             self.performance_time = 0
         generation_index: int = query.start_date
         print(f"generation_index: {generation_index}")
@@ -207,26 +206,27 @@ class GenerationScheduler:
         # TODO[B] Can this return generation_index instead? Or is query.start_date changed somewhere along the line?
         return query.start_date
 
-    def _process_query(self, query: Query):
+    def _process_query(self, query: Query) -> List[Optional[MemoryEvent]]:
         print("**********************************\nPROCESS QUERY: QUERY = \n**********************************", query)
         print("**********************************\nGENERATION MATCHING QUERY: QUERY = \n**********************", query)
-        output: Optional[DontKnow]
+        output: List[Optional[MemoryEvent]]
         # TODO[B]: UNSOLVED! probably unnecessary side-effect but discuss w/ Jerome before removing
         self.transfo_current_generation_output = []
         if isinstance(query, FreeQuery):
             print("GENERATION MATCHING QUERY FREE ...")
-            output = self.free_generation(num_events=query.num_events, init=self.initial_query,
+            output = self.free_generation(num_events=query.num_events, init=self.uninitialized,
                                           print_info=query.print_info)
             print("... GENERATION MATCHING QUERY FREE OK")
             self.transfo_current_generation_output = [self.current_transformation_memory] * len(output)
 
         elif isinstance(query, LabelQuery) and len(query.labels) == 1:
             print("GENERATION MATCHING QUERY LABEL ...")
-            # TODO[C] Find solution for this: since `scenario_based` also calls simply_guided, this cannot be in `simply_guided`
-            self.encode_memory_with_current_transfo()
-            output = self.simply_guided_generation(required_labels=query.labels, init=self.initial_query,
-                                                            print_info=query.print_info)
-            self.decode_memory_with_current_transfo()
+            # TODO[C] Find solution for transforms: since `scenario_based` also calls simply_guided,
+            #  this cannot be in `simply_guided`
+            self.encode_memory_with_current_transform()
+            output = self.simply_guided_generation(required_labels=query.labels, init=self.uninitialized,
+                                                   print_info=query.print_info)
+            self.decode_memory_with_current_transform()
             self.transfo_current_generation_output = [self.current_transformation_memory] * len(output)
             print("... GENERATION MATCHING QUERY LABEL OK")
 
@@ -241,11 +241,12 @@ class GenerationScheduler:
         # TODO[B] Again with the side effects...
         self.current_generation_output = output
         if len(self.current_generation_output) > 0:
-            self.initial_query = False
+            self.uninitialized = False
+        return output
 
     def free_generation(self, num_events: int, new_max_continuity: Optional[DontKnow] = None,
                         forward_context_length_min: int = 0, init: bool = False, equiv: Callable = None,
-                        print_info: bool = False) -> List[Optional[DontKnow]]:
+                        print_info: bool = False) -> List[Optional[MemoryEvent]]:
         """ Free navigation through the sequence.
         Naive version of the method handling the free navigation in a sequence (random).
         This method has to be overloaded by a model-dependant version when creating a **model navigator** class
@@ -273,23 +274,17 @@ class GenerationScheduler:
         """
         # TODO[B] Discuss this with Jerome: how does encoding/decoding impact the actual memory? Is the return value
         #  here (`sequence`) really referring to something else than what's decoded in line below?
-        self.encode_memory_with_current_transfo()
-        # TODO[B]: Is it possible to get rid of these pre_ functions? Can we pass these parameters
-        #  along all the way instead?
-        print_info, equiv = self.prospector.l_pre_free_navigation(equiv, new_max_continuity, init)
-        sequence: List[Optional[DontKnow]] = []
-        generated_indices: List[Optional[int]] = []
+        self.encode_memory_with_current_transform()
+        equiv = self.prospector.l_prepare_navigation([], equiv, new_max_continuity, init)
+        sequence: List[Optional[MemoryEvent]] = []
         for i in range(num_events):
-            generated_indices.append(self.prospector.r_free_navigation_one_step(i, forward_context_length_min,
-                                                                                equiv, print_info))
-        for generated_index in generated_indices:
-            if generated_index is None:
-                sequence.append(None)
-            else:
-                # TODO[B] Handle with proper location of Memory
-                sequence.append(self.prospector.model.sequence[generated_index])
+            candidates: List[Candidate] = self.prospector.r_free_navigation_one_step(i, forward_context_length_min,
+                                                                                     equiv, print_info)
+            sequence.append(self.candidate_selector.decide(candidates))
 
         return sequence
+
+
 
     def simply_guided_generation(self, required_labels: List[Label],
                                  new_max_continuity: Optional[Tuple[float, float]] = None,
@@ -325,7 +320,6 @@ class GenerationScheduler:
 
         print("HANDLE GENERATION MATCHING LABEL...")
 
-
         equiv = self.prospector.l_pre_guided_navigation(required_labels, equiv, new_max_continuity, init)
 
         generated_indices: List[Optional[int]] = []
@@ -344,7 +338,7 @@ class GenerationScheduler:
         sequence: List[Optional[DontKnow]] = [self.prospector.model.sequence[i] if i is not None else None
                                               for i in generated_indices]
 
-        self.decode_memory_with_current_transfo()
+        self.decode_memory_with_current_transform()
         return sequence
 
     def scenario_based_generation(self, list_of_labels: List[Label], print_info: bool = False):
@@ -416,7 +410,7 @@ class GenerationScheduler:
         authorized_indexes = self.filter_using_history_and_taboos(
             list(range(len(self.prospector.l_get_labels_nonmutable()))))
 
-        self.decode_memory_with_current_transfo()
+        self.decode_memory_with_current_transform()
         self.current_transformation_memory = None
 
         if self.prospector.model.label_type is not None and self._use_intervals():
@@ -474,7 +468,7 @@ class GenerationScheduler:
             # PLUS BESOIN CAR FAIT TOUT SEUL
             # self.memory.current_continuity = 0
             # Navigation simple current_scenario jusqua plus rien- > sort l --> faire
-            self.encode_memory_with_current_transfo()
+            self.encode_memory_with_current_transform()
             aux = self.prospector.l_get_no_empty_event()
             # In order to begin a new navigation phase when this method returns a "None" event
             self.prospector.l_set_no_empty_event(False)
@@ -547,41 +541,6 @@ class GenerationScheduler:
     def fonction_test(self):
         return self.prospector.navigator.history_and_taboos
 
-    # TODO : [NONE] au début : UNIQUEMENT POUR ORACLE ! PAS GENERIQUE !
-    # TODO : A MODIFIER QUAND LES CONTENTS DANS SEQUENCE AURONT UN TYPE !
-    def encode_memory_with_transfo(self, transform):
-        """
-        Apply the transformation given in argument to :attr:`self.memory.sequence and :attr:`self.memory.label`.
-
-        :param transform:
-        :type transform: cf. :mod:`Transforms`
-
-        """
-        # print("*********************************************************")
-        # print(self.memory.sequence[1::])
-        # TODO : Faire mieux
-        if self.content_type:
-            self.prospector.l_set_sequence(
-                [None] + transform.encode_sequence(self.prospector.l_get_sequence_nonmutable()[1::]))
-        self.prospector.l_set_labels([None] + transform.encode_sequence(self.prospector.l_get_labels_nonmutable()[1::]))
-
-    # TODO : [NONE] au début : UNIQUEMENT POUR ORACLE ! PAS GENERIQUE !
-    # TODO : SERA CERTAINEMENT A MODIFIER QUAND LES CONTENTS DANS SEQUENCE AURONT UN TYPE !
-    def decode_memory_with_transfo(self, transform):
-        """
-        Apply the reciprocal transformation of the transformation given in argument to :attr:`self.memory.sequence` and
-        :attr:`self.memory.label`.
-
-        :param transform:
-        :type transform: cf. :mod:`Transforms`
-
-        """
-        # TODO : Faire mieux
-        if self.content_type:
-            self.prospector.l_set_sequence([None] +
-                                           transform.decode_sequence(self.prospector.l_get_sequence_nonmutable()[1::]))
-        self.prospector.l_set_labels([None] + transform.decode_sequence(self.prospector.l_get_labels_nonmutable()[1::]))
-
     # TODO PLUS GENERAL FAIRE SLOT "POIGNEE" DANS CLASSE TRANSFORM
     # OU METTRE CETTE METHODE DANS CLASSE TRANSFORM
     def formatted_output_couple_content_transfo(self):
@@ -608,14 +567,14 @@ class GenerationScheduler:
     def formatted_generation_trace_string(self):
         return format_list_as_list_of_strings(self.generation_trace)
 
-    def encode_memory_with_current_transfo(self):
+    def encode_memory_with_current_transform(self):
         # FIXME[MergeState]: A[X], B[], C[], D[], E[]
-        current_transfo = self.current_transformation_memory
-        if current_transfo is not None:
-            self.encode_memory_with_transfo(current_transfo)
+        transform: Optional[Transform] = self.current_transformation_memory
+        if transform is not None:
+            self.prospector.l_encode_with_transform(transform)
 
-    def decode_memory_with_current_transfo(self):
+    def decode_memory_with_current_transform(self):
         # FIXME[MergeState]: A[X], B[], C[], D[], E[]
-        current_transfo = self.current_transformation_memory
-        if current_transfo is not None:
-            self.decode_memory_with_transfo(current_transfo)
+        transform: Optional[Transform] = self.current_transformation_memory
+        if transform is not None:
+            self.prospector.l_decode_with_transform(transform)

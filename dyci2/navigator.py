@@ -22,8 +22,9 @@ The classes defined in this module are used in association with models (cf. :mod
 
 import random
 from abc import ABC, abstractmethod
-from typing import List, Optional, Callable, Dict
+from typing import List, Optional, Callable, Dict, Tuple
 
+from candidate import Candidate
 from dyci2.intervals import *
 # POUR SEQUENCE ET LABELS :
 # ET AUSSI POUR HISTORY_AND_TABOOS QUI DEPEND DE LA TAILLE D'AILLEURS !
@@ -36,7 +37,7 @@ from dyci2.intervals import *
 #  reinit_navigation_param si c'est le début
 from label import Label
 from memory import MemoryEvent, Memory
-from utils import noneIsInfinite, DontKnow
+from utils import noneIsInfinite
 
 
 class Navigator(ABC):
@@ -60,7 +61,7 @@ class Navigator(ABC):
         """ TODO """
 
     @abstractmethod
-    def weight_candidates(self):
+    def weight_candidates(self, candidates: List[Candidate]) -> List[Candidate]:
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ TODO """
 
@@ -70,6 +71,7 @@ class Navigator(ABC):
         """ TODO """
 
 
+# noinspection PyIncorrectDocstring
 class FactorOracleNavigator(Navigator):
     """
     The class :class:`~Navigator.Navigator` implements **parameters and methods that are used to navigate through a
@@ -161,8 +163,50 @@ class FactorOracleNavigator(Navigator):
     def rewind_generation(self, index_state: int):
         self._go_to_anterior_state_using_execution_trace(index_in_navigation=index_state)
 
-    def weight_candidates(self):
-        raise NotImplementedError("weight candidates is not implemented")
+    def weight_candidates(self, candidates: List[Candidate], model_direct_transitions: Dict[int, Tuple[Label, int]],
+                          shift_index: int, sequence: List[Optional[MemoryEvent]], required_label: Optional[Label],
+                          print_info: bool = False) -> List[Candidate]:
+        str_print_info: str = f"{shift_index} " \
+                              f"(cont. = {self.current_continuity}/{self.max_continuity})" \
+                              f": {self.current_position_in_sequence}"
+
+        candidates: List[Candidate] = self.filter_using_history_and_taboos(candidates)
+
+        # Case 1: Transition to state immediately following the previous one
+        candidates = self._follow_continuation_using_transition(candidates, model_direct_transitions)
+        if len(candidates) > 0:
+            # TODO[C]: Remove this once follow_continuation_using_transition returns all candidates.
+            str_print_info += f" -{candidates[0].event.label()}-> {candidates[0].index}"
+        else:
+            # Case 2: Transition to any other state in the list of candidates
+            # TODO[C]: NOTE! This one will remove the actual candidate selected in the previous step if called.
+            # TODO[B]: Migrate the random choice performed in this step to top level
+            candidates = self._follow_continuation_with_jump(candidates, model_direct_transitions)
+
+            if len(candidates) > 0:
+                prev_index: int = candidates[0].index - 1
+                str_print_info += f" ...> {prev_index} - {model_direct_transitions.get(prev_index)[0]} " \
+                                  f"-> {model_direct_transitions.get(prev_index)[1]}"
+
+            else:
+                # Case 3: Select from all valid candidates.
+                # Exclude first (None) and last element from list of candidates
+                candidates = [Candidate(e, i, 1.0, None) for (i, e) in enumerate(sequence[1:-1], start=1)]
+                candidates = self.filter_using_history_and_taboos(candidates)
+                if required_label is not None:
+                    candidates = self.find_matching_label_without_continuation(required_label, candidates, equiv)
+                else:
+                    candidates = self._follow_continuation_with_jump(candidates, model_direct_transitions)
+
+                if len(candidates) > 0:
+                    str_print_info += f" xxnothingxx - random: {candidates[0].index}"
+                else:
+                    str_print_info += " xxnothingxx"
+
+        if print_info:
+            print(str_print_info)
+
+        return candidates
 
     def find_prefix_matching_with_labels(self, use_intervals, labels, list_of_labels, continuity_with_future,
                                          authorized_indexes, authorized_transformations, sequence_to_interval_fun,
@@ -279,13 +323,13 @@ class FactorOracleNavigator(Navigator):
         self._authorize_indexes([current_last_idx])
         self.history_and_taboos.append(None)
 
-    def filter_using_history_and_taboos(self, list_of_indexes):
+    def filter_using_history_and_taboos(self, candidates: List[Candidate]) -> List[Candidate]:
         # FIXME[MergeState]: A[], B[], C[], D[], E[]
         # TODO[A2] This one probably has to remain public until filtering is moved to GH
-        filtered_list = [i for i in list_of_indexes
-                         if (not (self.history_and_taboos[i] is None)
+        filtered_list = [c for c in candidates
+                         if (not (self.history_and_taboos[c.index] is None)
                              and (self.avoid_repetitions_mode < 2 or self.avoid_repetitions_mode >= 2
-                                  and self.history_and_taboos[i] == 0))]
+                                  and self.history_and_taboos[c.index] == 0))]
         # print("Possible next indexes = {}, filtered list = {}".format(list_of_indexes, filtered_list))
         return filtered_list
 
@@ -313,7 +357,8 @@ class FactorOracleNavigator(Navigator):
 
         self.execution_trace[index_in_navigation] = trace_index
 
-    def _follow_continuation_using_transition(self, authorized_indexes, direct_transitions: Dict[int, DontKnow]):
+    def _follow_continuation_using_transition(self, candidates: List[Candidate],
+                                              direct_transitions: Dict[int, Tuple[Label, int]]) -> List[Candidate]:
         # FIXME[MergeState]: A[], B[], C[], D[], E[]
         # TODO[A] This should return a list of candidates (that for stage A1 may be of length 1)
         """
@@ -324,29 +369,23 @@ class FactorOracleNavigator(Navigator):
         In the method simply_guided_generation, this method is called with authorized_indexes = possible continuations
         **matching the required label** filtered to satisfy the constraints of taboos and repetitions.
 
-        :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
-        :type authorized_indexes: list(int)
+        # :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
+        # :type authorized_indexes: list(int)
         :return: index of the state
         :rtype: int
 
         """
 
-        s = None
-        direct_transition = direct_transitions.get(self.current_position_in_sequence)
+        direct_transition: Optional[Tuple[Label, int]] = direct_transitions.get(self.current_position_in_sequence)
 
-        if direct_transition:
-            # print(direct_transition)
-            state_direct_transition = direct_transition[1]
-            # print(state_direct_transition)
-            if self.current_continuity < self.max_continuity and state_direct_transition in authorized_indexes:
-                # print("***CONTINUITY MODE***")
-                s = state_direct_transition
-            # factor_oracle_navigator.current_continuity += 1
-        return s
+        if direct_transition is not None and self.current_continuity < self.max_continuity:
+            # TODO[B]: Assign a value to a match instead of returning it directly
+            return [candidate for candidate in candidates if candidate.index == direct_transition[1]]
+        return []
 
-    def _continuations_with_jump(self, authorized_indexes, direct_transitions: Dict[int, DontKnow]):
-        # FIXME[MergeState]: A[], B[], C[], D[], E[]
-        # TODO[A] This should return a list of candidates (that for stage A1 may be of length 1)
+    def _continuations_with_jump(self, candidates: List[Candidate],
+                                 direct_transitions: Dict[int, Tuple[Label, int]]) -> List[Candidate]:
+        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """
         List of continuations with jumps to indexes with similar contexts direct transition from
         self.current_position_in_sequence.
@@ -356,34 +395,34 @@ class FactorOracleNavigator(Navigator):
         In the method simply_guided_generation, this method is called with authorized_indexes = possible continuations
         **matching the required label** filtered to satisfy the constraints of taboos and repetitions.
 
-        :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
-        :type authorized_indexes: list(int)
+        # :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
+        # :type authorized_indexes: list(int)
         :return: indexes of the states
         :rtype: list(int)
 
         """
-        possible_continuations = None
-        # print(self.direct_transitions)
-        direct_transition = direct_transitions.get(self.current_position_in_sequence)
-        # print(direct_transition)
-        filtered_continuations = authorized_indexes
+        direct_transition: Optional[Tuple[Label, int]] = direct_transitions.get(self.current_position_in_sequence)
 
-        if direct_transition and direct_transition[1] in filtered_continuations:
-            filtered_continuations.remove(direct_transition[1])
+        if direct_transition:
+            # TODO[C]: Note! This step is not compatible the idea of a list of candidates as it will actually remove
+            #          the candidate selected in the previous step (_follow_continuation_using_transition)
+            candidates = [c for c in candidates if candidates.index != direct_transition[1]]
 
-        if len(filtered_continuations) > 0:
+        if len(candidates) > 0:
             if self.avoid_repetitions_mode > 0:
-                print("\nTrying to avoid repetitions: possible continuations {}...".format(filtered_continuations))
-                filtered_continuations = [c for c in filtered_continuations if self.history_and_taboos[c] == min(
-                    [self.history_and_taboos[ch] for ch in filtered_continuations], key=noneIsInfinite)]
-                print("... reduced to {}.".format(filtered_continuations))
-            possible_continuations = filtered_continuations
-        return possible_continuations
+                print(f"\nTrying to avoid repetitions: possible continuations {[c.index for c in candidates]}...")
+                # TODO[D]: This nested list comprehension could be optimized
+                minimum_history_taboo_value: int = min([self.history_and_taboos[ch.index] for ch in candidates],
+                                                       key=noneIsInfinite)
+                candidates = [c for c in candidates if self.history_and_taboos[c.index] == minimum_history_taboo_value]
+                print(f"... reduced to {[c.index for c in candidates]}.")
+
+        return candidates
 
     # TODO : autres modes que random choice
-    def _follow_continuation_with_jump(self, authorized_indexes, direct_transitions: Dict[int, DontKnow]):
-        # FIXME[MergeState]: A[], B[], C[], D[], E[]
-        # TODO[A] This should return a list of candidates (that for stage A1 may be of length 1)
+    def _follow_continuation_with_jump(self, candidates: List[Candidate],
+                                       direct_transitions: Dict[int, Tuple[Label, int]]) -> List[Candidate]:
+        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """
         Random selection of a continuation with jump to indexes with similar contexts direct transition from
         self.current_position_in_sequence.
@@ -393,19 +432,18 @@ class FactorOracleNavigator(Navigator):
         In the method simply_guided_generation, this method is called with authorized_indexes = possible continuations
         **matching the required label** filtered to satisfy the constraints of taboos and repetitions.
 
-        :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
-        :type authorized_indexes: list(int)
+        # :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
+        # :type authorized_indexes: list(int)
         :return: index of the state
         :rtype: int
 
         """
-        s = None
-        filtered_continuations = self._continuations_with_jump(authorized_indexes, direct_transitions)
-        if (not (filtered_continuations is None)) and len(filtered_continuations) > 0:
-            random_choice = random.randint(0, len(filtered_continuations) - 1)
-            s = filtered_continuations[random_choice]
-        # self.current_continuity = 0
-        return s
+        candidates = self._continuations_with_jump(candidates, direct_transitions)
+        if len(candidates) > 0:
+            # TODO[B]: Migrate this choice to top level
+            random_choice: int = random.randint(0, len(candidates) - 1)
+            return [candidates[random_choice]]
+        return []
 
     def _update_history_and_taboos(self, index_in_sequence):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
@@ -491,32 +529,16 @@ class FactorOracleNavigator(Navigator):
                 s.append(i)
         self._authorize_indexes(s)
 
-    def navigate_without_continuation(self, authorized_indexes):
-        # FIXME[MergeState]: A[], B[], C[], D[], E[]
-        # TODO[A]: This should probably return a list of candidates
-        """
-        Random state in the sequence if self.no_empty_event is True (else None).
-
-        :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
-        :type authorized_indexes: list(int)
-        :return: index of the state
-        :rtype: int
-        """
-
-        s = None
-        if self.no_empty_event and authorized_indexes and len(authorized_indexes) > 0:
-            s = authorized_indexes[random.randint(0, len(authorized_indexes) - 1)]
-        return s
-
-    def find_matching_label_without_continuation(self, required_label, authorized_indexes, equiv=None):
+    def find_matching_label_without_continuation(self, required_label: Label, candidates: List[Candidate],
+                                                 equiv: Optional[Callable] = None) -> List[Candidate]:
         # FIXME[MergeState]: A[], B[], C[], D[], E[]
         # TODO[A]: This should probably return a list of candidates
         """
         Random state in the sequence matching required_label if self.no_empty_event is True (else None).
 
         :param required_label: label to read
-        :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
-        :type authorized_indexes: list(int)
+        # :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
+        # :type authorized_indexes: list(int)
         :param equiv: Compararison function given as a lambda function, default: self.equiv.
         :type equiv: function
         :return: index of the state
@@ -528,13 +550,12 @@ class FactorOracleNavigator(Navigator):
         if equiv is None:
             equiv = self.equiv
 
-        s = None
         if self.no_empty_event:
-            possible_states = [p for p in range(1, len(self.sequence)) if
-                               equiv(self.labels[p], required_label) and p in authorized_indexes]
-            if len(possible_states) > 0:
-                s = possible_states[random.randint(0, len(possible_states) - 1)]
-        return s
+            candidates = [c for c in candidates if equiv(c.event.label(), required_label)]
+            if len(candidates) > 0:
+                random_choice: int = random.randint(0, len(candidates) - 1)
+                return [candidates[random_choice]]
+        return []
 
     ################################################################################################################
     #   LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY   #

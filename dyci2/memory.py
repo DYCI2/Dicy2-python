@@ -22,7 +22,7 @@ class MemoryEvent(ABC):
 
 
 class BasicEvent(MemoryEvent):
-    def __init__(self,event: Union[int, float, str], label: Label):
+    def __init__(self, event: Union[int, float, str], label: Label):
         super().__init__()
         self._event: Union[int, float, str] = event
         self._label: Label = label

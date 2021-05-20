@@ -21,6 +21,7 @@ import random
 from abc import ABC
 from typing import Callable, Tuple, Optional, List, Type
 
+from candidate import Candidate
 from dyci2.navigator import Navigator
 from factor_oracle_model import FactorOracle
 # TODO : surchager set use_taboo pour que tous les -1 passent à 0 si on passe à FALSE
@@ -127,106 +128,28 @@ class Prospector:
                 self.navigator.set_current_position_in_sequence_with_sideeffects(new_position)
         return equiv
 
-    def r_free_navigation_one_step(self, iteration_index: int, forward_context_length_min: int = 0,
-                                   equiv: Optional[Callable] = None,
-                                   print_info: bool = False) -> Optional[int]:
-        str_print_info = "{} (cont. = {}/{}): {}".format(iteration_index, self.navigator.current_continuity,
-                                                         self.navigator.max_continuity,
-                                                         self.navigator.current_position_in_sequence)
+    def navigation_single_step(self, required_label: Optional[Label], forward_context_length_min: int = 0,
+                               equiv: Optional[Callable] = None, print_info: bool = False,
+                               shift_index: int = 0) -> List[Candidate]:
+        candidates: List[Candidate]
+        candidates = self.model.get_candidates(index_state=self.navigator.current_position_in_sequence,
+                                               label=required_label,
+                                               forward_context_length_min=forward_context_length_min,
+                                               equiv=equiv, authorize_direct_transition=True)
 
-        init_continuations, filtered_continuations = self.filtered_continuations(
-            self.navigator.current_position_in_sequence,
-            forward_context_length_min, equiv)
-        # print("FREE GENERATION 3.{}.1".format(i))
+        # TODO[B2]: Move filtering to Prospector (after discussion with Jérôme)
+        candidates = self.navigator.filter_using_history_and_taboos(candidates)
 
-        s = self.navigator._follow_continuation_using_transition(filtered_continuations, self.model.direct_transitions)
-        if not s is None:
-            # print("FREE GENERATION 3.{}.2".format(i))
-            str_print_info += " -{}-> {}".format(self.model.labels[s], s)
-        # factor_oracle_navigator.current_position_in_sequence = s
-        else:
-            # print("FREE GENERATION 3.{}.3".format(i))
-            s = self.navigator._follow_continuation_with_jump(filtered_continuations, self.model.direct_transitions)
-            if not s is None:
-                # print("FREE GENERATION 3.{}.4".format(i))
-                str_print_info += " ...> {} -{}-> {}".format(s - 1,
-                                                             self.model.direct_transitions.get(s - 1)[
-                                                                 0],
-                                                             self.model.direct_transitions.get(s - 1)[
-                                                                 1])
-            # factor_oracle_navigator.current_position_in_sequence = s
-            else:
-                # print("FREE GENERATION 3.{}.5".format(i))
-                # s = factor_oracle_navigator.navigate_without_continuation(factor_oracle_navigator
-                #     .filter_using_history_and_taboos(init_continuations))
-                # LAST 15/10
-                s = self.navigator._follow_continuation_with_jump(list(range(self.model.index_last_state())),
-                                                                  self.model.direct_transitions)
-                if not s is None:
-                    str_print_info += " xxnothingxx - random: {}".format(s)
-                # factor_oracle_navigator.current_position_in_sequence = s
-                else:
-                    str_print_info += " xxnothingxx"
-                # factor_oracle_navigator.current_position_in_sequence = s
+        candidates = self.navigator.weight_candidates(candidates=candidates,
+                                                      model_direct_transitions=self.model.direct_transitions,
+                                                      shift_index=shift_index, sequence=self.model.sequence,
+                                                      required_label=required_label, print_info=print_info)
+        # TODO[B2]: This should be migrated to feedback function instead
+        if len(candidates) > 0:
+            self.navigator.set_current_position_in_sequence_with_sideeffects(candidates[0].index)
 
-        if print_info:
-            print(str_print_info)
+        return candidates
 
-        # print("FREE GENERATION 3.{}.6".format(i))
-
-        if not s is None:
-            self.navigator.set_current_position_in_sequence_with_sideeffects(s)
-        # print("\n\n--> FREE NAVIGATION SETS POSITION IN SEQUENCE: {}<--".format(s))
-        # factor_oracle_navigator.history_and_taboos[s] += 1
-        return s
-
-    # TODO : ATTENTION, SI UTILISE AILLEURS, BIEN PENSER AU MECANISME EQUIVALENT A INIT POUR ..._navigation_TOUT-COURT
-    def simply_guided_navigation_one_step(self, required_label, new_max_continuity=None,
-                                          forward_context_length_min=0, equiv=None, print_info=False,
-                                          shift_index=0):
-        # FIXME[MergeState]: A[], B[], C[], D[], E[]
-        str_print_info = "{} (cont. = {}/{}): {}".format(shift_index, self.navigator.current_continuity,
-                                                         self.navigator.max_continuity,
-                                                         self.navigator.current_position_in_sequence)
-
-        s = None
-        init_continuations_matching_label, filtered_continuations_matching_label = \
-            self.filtered_continuations_with_label(self.navigator.current_position_in_sequence, required_label,
-                                                   forward_context_length_min, equiv)
-
-        s = self.navigator._follow_continuation_using_transition(filtered_continuations_matching_label,
-                                                                 self.model.direct_transitions)
-        if not s is None:
-            str_print_info += " -{}-> {}".format(self.model.labels[s], s)
-        else:
-            s = self.navigator._follow_continuation_with_jump(filtered_continuations_matching_label,
-                                                              self.model.direct_transitions)
-            if not s is None:
-                str_print_info += " ...> {} -{}-> {}".format(s - 1,
-                                                             self.model.direct_transitions.get(s - 1)[0],
-                                                             self.model.direct_transitions.get(s - 1)[1])
-            else:
-                # s = factor_oracle_navigator.find_matching_label_without_continuation(required_label,
-                #                             init_continuations_matching_label, equiv)
-                s = self.navigator.find_matching_label_without_continuation(
-                    required_label,
-                    self.navigator.filter_using_history_and_taboos(list(range(1, self.model.index_last_state()))),
-                    equiv)
-                if not s is None:
-                    str_print_info += " xxnothingxx - random matching label: {}".format(s)
-                else:
-                    str_print_info += " xxnothingxx"
-
-        if not s is None:
-            # print("\n\n-->SIMPLY NAVIGATION SETS POSITION: {}<--".format(s))
-            self.navigator.set_current_position_in_sequence_with_sideeffects(s)
-        # factor_oracle_navigator.current_position_in_sequence = s
-        # factor_oracle_navigator.history_and_taboos[s] += 1
-
-        if print_info:
-            print(str_print_info)
-
-        return s
 
     def scenario_based_generation(self, use_intervals: bool, labels: List[Label], continuity_with_future: List[float],
                                   authorized_indexes: List[int], authorized_transformations: DontKnow,

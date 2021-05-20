@@ -1,5 +1,6 @@
 from typing import Optional, Callable, List, Type
 
+from candidate import Candidate
 from label import Label
 from memory import MemoryEvent, Memory
 from model import Model
@@ -184,14 +185,18 @@ class FactorOracle(Model):
             self._add_suffix_link(index, self._from_state_read_label(k, label, equiv))
 
     def get_candidates(self, index_state: int, required_label: Optional[Label], forward_context_length_min: int = 1,
-                       equiv: Optional[Callable] = None, authorize_direct_transition: bool = True) -> List[int]:
+                       equiv: Optional[Callable] = None, authorize_direct_transition: bool = True) -> List[Candidate]:
         if required_label is not None:
-            return self._continuations_with_label(index_state=index_state, required_label=required_label,
-                                                  forward_context_length_min=forward_context_length_min,
-                                                  equiv=equiv, authorize_direct_transition=authorize_direct_transition)
+            indices: List[int] = self._continuations_with_label(index_state=index_state, required_label=required_label,
+                                                                forward_context_length_min=forward_context_length_min,
+                                                                equiv=equiv,
+                                                                authorize_direct_transition=authorize_direct_transition)
         else:
-            return self._continuations(index_state=index_state, forward_context_length_min=forward_context_length_min,
-                                       equiv=equiv, authorize_direct_transition=authorize_direct_transition)
+            indices: List[int] = self._continuations(index_state=index_state,
+                                                     forward_context_length_min=forward_context_length_min,
+                                                     equiv=equiv,
+                                                     authorize_direct_transition=authorize_direct_transition)
+        return [Candidate(self.sequence[i], i, 1.0, None) for i in indices]
 
     def l_set_sequence(self, sequence: List[Optional[MemoryEvent]]):
         self.sequence = sequence

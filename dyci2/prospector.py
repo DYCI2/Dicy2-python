@@ -18,12 +18,10 @@ Tutorial in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`
 
 """
 import random
-from abc import ABC
 from typing import Callable, Tuple, Optional, List, Type
 
 from candidate import Candidate
 from dyci2.navigator import Navigator
-from factor_oracle_model import FactorOracle
 # TODO : surchager set use_taboo pour que tous les -1 passent à 0 si on passe à FALSE
 # TODO : mode 0 : répétitions authorisées, mode 1 = on prend le min, mode 2, interdire les déjà passés
 # TODO : SURCHARGER POUR INTERDIRE LES AUTRES
@@ -68,7 +66,7 @@ class Prospector:
         >>> #FON = FactorOracleGenerator(sequence, labels)
 
         """
-        # TODO: Assert compatbility between model_class and navigator_class
+        # TODO: Assert compatibility between model_class and navigator_class
 
         self.model: Model = model_class(memory, equiv)
         self.navigator: Navigator = navigator_class(memory, equiv, max_continuity, control_parameters,
@@ -76,7 +74,7 @@ class Prospector:
         self.content_type: Type[MemoryEvent] = memory.content_type
         self.label_type: Type[Label] = memory.label_type
 
-        self.navigator.reinit_navigation_param_old_modelnavigator()
+        self.navigator.clear()
 
     def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
         """ raises: TypeError if event is incompatible with current memory """
@@ -150,7 +148,6 @@ class Prospector:
 
         return candidates
 
-
     def scenario_based_generation(self, use_intervals: bool, labels: List[Label], continuity_with_future: List[float],
                                   authorized_indexes: List[int], authorized_transformations: DontKnow,
                                   sequence_to_interval_fun: Optional[Callable], equiv_interval: Optional[Callable],
@@ -165,43 +162,6 @@ class Prospector:
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         self.navigator.rewind_generation(index_in_navigation)
 
-    ################################################################################################################
-    #   TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP   #
-    ################################################################################################################
-
-    # def l_get_no_empty_event(self) -> bool:
-    #     return self.navigator.no_empty_event
-    #
-    # def l_set_no_empty_event(self, v: bool) -> None:
-    #     self.navigator.no_empty_event = v
-    #
-    # def l_get_index_last_state(self) -> int:
-    #     return self.model.index_last_state()
-    #
-    # def l_get_sequence_nonmutable(self) -> List[DontKnow]:
-    #     return self.model.sequence
-    #
-    # def l_get_sequence_maybemutable(self) -> List[DontKnow]:
-    #     return self.model.sequence
-    #
-    # def l_set_sequence(self, sequence: List[DontKnow]):
-    #     self.model.sequence = sequence
-    #
-    # def l_get_labels_nonmutable(self) -> List[DontKnow]:
-    #     return self.model.labels
-    #
-    # def l_get_labels_maybemutable(self) -> List[DontKnow]:
-    #     return self.model.labels
-    #
-    # def l_set_labels(self, labels: List[DontKnow]):
-    #     self.model.labels = labels
-    #
-    # def l_get_position_in_sequence(self) -> int:
-    #     return self.navigator.current_position_in_sequence
-    #
-    # def l_set_position_in_sequence(self, index: int):
-    #     self.navigator.set_current_position_in_sequence_with_sideeffects(index)
-
     def l_encode_with_transform(self, transform: Transform):
         self.model.l_set_sequence([None] + transform.encode_sequence(self.model.sequence[1::]))
         self.model.l_set_labels([None] + transform.encode_sequence(self.model.labels[1::]))
@@ -209,73 +169,3 @@ class Prospector:
     def l_decode_with_transform(self, transform: Transform):
         self.model.l_set_sequence([None] + transform.decode_sequence(self.model.sequence[1::]))
         self.model.l_set_labels([None] + transform.decode_sequence(self.model.labels[1::]))
-
-    ################################################################################################################
-    #   LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY   #
-    ################################################################################################################
-
-    def filtered_continuations(self, index_state, forward_context_length_min=0, equiv: Optional[Callable] = None):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        """ Continuations from the state at index index_state in the automaton (see method continuations),
-        and filtered continuations satisfying the constraints of taboos and repetitions
-        (cf. FactorOracleNavigator.history_and_taboos and FactorOracleNavigator.avoid_repetitions_mode).
-
-        :param index_state: start index
-        :type index_state: int
-        #:param required_label: label to read (optional)
-        :param forward_context_length_min: minimum length of the forward common context
-        :type forward_context_length_min: int
-        :param equiv: Compararison function given as a lambda function, default: factor_oracle_navigator.equiv.
-        :type equiv: function
-        :return: Indexes in the automaton of the possible continuations from the state at index index_state in the
-        automaton.
-        :rtype: tuple(list (int), list (int))
-        :see also: FactorOracleNavigator.continuations(...)
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        """
-
-        init_continuations = self.model.get_candidates(index_state=index_state, required_label=None,
-                                                       forward_context_length_min=forward_context_length_min,
-                                                       equiv=equiv, authorize_direct_transition=True)
-        # print("\n\nInitial continuations from index {}: {}".format(index_state, init_continuations))
-        # filtered_continuations = [c for c in init_continuations
-        #                           if (not (factor_oracle_navigator.history_and_taboos[c] is None)
-        #                               and (factor_oracle_navigator.avoid_repetitions_mode < 2
-        #                                    or factor_oracle_navigator.avoid_repetitions_mode >= 2
-        #                                    and factor_oracle_navigator.history_and_taboos[c] == 0))]
-        filtered_continuations = self.navigator.filter_using_history_and_taboos(init_continuations)
-        # print("Continuations from index {} after filtering: {}".format(index_state, filtered_continuations))
-        return init_continuations, filtered_continuations
-
-    def filtered_continuations_with_label(self, index_state, required_label,
-                                          forward_context_length_min=0, equiv=None):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        """ Continuations labeled by required_label from the state at index index_state in the automaton (see method
-        continuations), and filtered continuations satisfying the constraints of taboos and repetitions
-        (cf. FactorOracleNavigator.history_and_taboos and FactorOracleNavigator.avoid_repetitions_mode).
-
-        :param index_state: start index
-        :type index_state: int
-        :param required_label: label to read
-        :param forward_context_length_min: minimum length of the forward common context
-        :type forward_context_length_min: int
-        :param equiv: Compararison function given as a lambda function, default: factor_oracle_navigator.equiv.
-        :type equiv: function
-        :return: Indexes in the automaton of the possible continuations from the state at index index_state in the automaton.
-        :rtype: tuple(list (int), list (int))
-        :see also: FactorOracleNavigator.continuations_with_label(...)
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        """
-        init_continuations = self.model.get_candidates(index_state, required_label,
-                                                       forward_context_length_min, equiv,
-                                                       authorize_direct_transition=True)
-        filtered_continuations = self.navigator.filter_using_history_and_taboos(init_continuations)
-        return init_continuations, filtered_continuations
-
-
-# TODO[C] Get rid of.
-implemented_model_navigator_classes = {"FactorOracleNavigator": Prospector}

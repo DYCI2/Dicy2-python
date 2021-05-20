@@ -26,15 +26,6 @@ from typing import List, Optional, Callable, Dict, Tuple
 
 from candidate import Candidate
 from dyci2.intervals import *
-# POUR SEQUENCE ET LABELS :
-# ET AUSSI POUR HISTORY_AND_TABOOS QUI DEPEND DE LA TAILLE D'AILLEURS !
-# TODO : que faire si on apprend un nouvel élément ? il faut agrandir listes !
-# TODO : surchager set use_taboo pour que tous les -1 passent à 0 si on passe à FALSE
-# self.avoid_repetitions_mode = 1
-# TODO : mode 0 : répétitions authorisées, mode 1 = on prend le min, mode 2, interdire les déjà passés
-# TODO : SURCHARGER POUR INTERDIRE LES AUTRES
-# TODO : QUAND ON GENERE, DEBUT OU NON ? SOIT INTEGRER DANS PARAMETRES FONCTIONS SOIT DECIDER QU'ON APPELLE
-#  reinit_navigation_param si c'est le début
 from label import Label
 from memory import MemoryEvent, Memory
 from utils import noneIsInfinite
@@ -136,7 +127,7 @@ class FactorOracleNavigator(Navigator):
         self.current_continuity: int = -1
         self.current_position_in_sequence: int = -1
         self.current_navigation_index: int = -1
-        self.reinit_navigation_param_old_modelnavigator()
+        self.clear()
 
         self.control_parameters = ["avoid_repetitions_mode", "max_continuity"]
         if type(control_parameters) != type(None):
@@ -156,7 +147,6 @@ class FactorOracleNavigator(Navigator):
 
     def __setattr__(self, name_attr, val_attr):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        # super.__setattr__(self, name_attr, val_attr)
         object.__setattr__(self, name_attr, val_attr)
         # TODO : SUPPRIMER TRACE AVANT TEMPS PERFORMANCE
 
@@ -194,7 +184,7 @@ class FactorOracleNavigator(Navigator):
                 candidates = [Candidate(e, i, 1.0, None) for (i, e) in enumerate(sequence[1:-1], start=1)]
                 candidates = self.filter_using_history_and_taboos(candidates)
                 if required_label is not None:
-                    candidates = self.find_matching_label_without_continuation(required_label, candidates, equiv)
+                    candidates = self._find_matching_label_without_continuation(required_label, candidates, equiv)
                 else:
                     candidates = self._follow_continuation_with_jump(candidates, model_direct_transitions)
 
@@ -214,8 +204,6 @@ class FactorOracleNavigator(Navigator):
         # FIXME[MergeState]: A[], B[], C[], D[], E[]
         # TODO[A]: This should probably return a list of candidates
 
-        # print("LOOKING FOR PREFIXES OF {}".format(list_of_labels))
-
         if use_intervals:
             index_delta_prefixes, max_length = filtered_prefix_indexing_intervals(sequence=labels,
                                                                                   pattern=list_of_labels,
@@ -225,12 +213,6 @@ class FactorOracleNavigator(Navigator):
                                                                                   sequence_to_interval_fun=sequence_to_interval_fun,
                                                                                   equiv=equiv_interval,
                                                                                   print_info=False)
-        # index_delta_prefixes, max_length = filtered_prefix_indexing_intervals(sequence = self.memory.labels,
-        #     pattern = list_of_labels, length_interval = self.continuity_with_future,
-        #     authorized_indexes = authorized_indexes,
-        #     authorized_intervals = self.authorized_tranformations ,
-        #     sequence_to_interval_fun = self.sequence_to_interval_fun,
-        #     equiv_mod_interval = self.equiv_mod_interval, print_info = False)
 
         else:
             index_delta_prefixes, max_length = PrefixIndexing \
@@ -245,7 +227,6 @@ class FactorOracleNavigator(Navigator):
         #  ON EN EST OU DU FILTRAGE PAR POSITIONS OU IL Y A DES SUFFIX LINKS ?
         # TODO : STOCKER ALTERNATIVE_PATHS ICI, IE TOUS LES PREFIXES --> MELANGE SOMAX
 
-        # print("SCENARIO ONE PHASE 2")
         s, t, length_selected_prefix = self.choose_prefix_from_list(index_delta_prefixes, pattern=list_of_labels)
         return s, t, length_selected_prefix
 
@@ -269,23 +250,11 @@ class FactorOracleNavigator(Navigator):
         for name_slot, value_slot in history_after_generating_prev.items():
             self.__dict__[name_slot] = value_slot
 
-    # This function is supposedly never called as it is overwritten
-    # def reinit_navigation_param_old_navigator(self):
-    #     # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-    #     """ (Re)initializes the navigation parameters (current navigation index, history of retrieved indexes,
-    #     current continuity,...)."""
-    #     self.history_and_taboos = [0] * (len(self.sequence))
-    #     self.current_continuity = -1
-    #     self.current_position_in_sequence = -1
-    #     self.current_navigation_index = - 1
-    #     self._forbid_indexes([len(self.labels) - 1])
-
-    # TODO[B]: Why are those two so different?
     def clear(self):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ (Re)initializes the navigation parameters (current navigation index, history of retrieved indexes,
         current continuity,...). """
-        # self.history_and_taboos = [None] + [0] * (len(self.sequence) - 1)   # TODO[A] Breaking change, old here
+        # self.history_and_taboos = [None] + [0] * (len(self.sequence) - 1)   # TODO[A] Breaking change, old code here
         self.history_and_taboos = [None] + [0] * len(self.sequence)
         self.current_continuity = 0
         self.current_position_in_sequence = -1
@@ -529,8 +498,8 @@ class FactorOracleNavigator(Navigator):
                 s.append(i)
         self._authorize_indexes(s)
 
-    def find_matching_label_without_continuation(self, required_label: Label, candidates: List[Candidate],
-                                                 equiv: Optional[Callable] = None) -> List[Candidate]:
+    def _find_matching_label_without_continuation(self, required_label: Label, candidates: List[Candidate],
+                                                  equiv: Optional[Callable] = None) -> List[Candidate]:
         # FIXME[MergeState]: A[], B[], C[], D[], E[]
         # TODO[A]: This should probably return a list of candidates
         """

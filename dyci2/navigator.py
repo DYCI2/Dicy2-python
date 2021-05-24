@@ -24,11 +24,12 @@ import random
 from abc import ABC, abstractmethod
 from typing import List, Optional, Callable, Dict, Tuple
 
+import intervals
 from candidate import Candidate
-from dyci2.intervals import *
 from label import Label
 from memory import MemoryEvent, Memory
-from utils import noneIsInfinite
+from prefix_indexing import PrefixIndexing
+from utils import noneIsInfinite, DontKnow
 
 
 class Navigator(ABC):
@@ -154,7 +155,7 @@ class FactorOracleNavigator(Navigator):
         self._go_to_anterior_state_using_execution_trace(index_in_navigation=index_state)
 
     def weight_candidates(self, candidates: List[Candidate], model_direct_transitions: Dict[int, Tuple[Label, int]],
-                          shift_index: int, sequence: List[Optional[MemoryEvent]], required_label: Optional[Label],
+                          shift_index: int, all_memory: List[Candidate], required_label: Optional[Label],
                           print_info: bool = False) -> List[Candidate]:
         str_print_info: str = f"{shift_index} " \
                               f"(cont. = {self.current_continuity}/{self.max_continuity})" \
@@ -181,8 +182,7 @@ class FactorOracleNavigator(Navigator):
             else:
                 # Case 3: Select from all valid candidates.
                 # Exclude first (None) and last element from list of candidates
-                candidates = [Candidate(e, i, 1.0, None) for (i, e) in enumerate(sequence[1:-1], start=1)]
-                candidates = self.filter_using_history_and_taboos(candidates)
+                candidates = self.filter_using_history_and_taboos(all_memory)
                 if required_label is not None:
                     candidates = self._find_matching_label_without_continuation(required_label, candidates, equiv)
                 else:
@@ -198,37 +198,52 @@ class FactorOracleNavigator(Navigator):
 
         return candidates
 
-    def find_prefix_matching_with_labels(self, use_intervals, labels, list_of_labels, continuity_with_future,
-                                         authorized_indexes, authorized_transformations, sequence_to_interval_fun,
-                                         equiv_interval, equiv):
-        # FIXME[MergeState]: A[], B[], C[], D[], E[]
-        # TODO[A]: This should probably return a list of candidates
+    def find_prefix_matching_with_labels(self, use_intervals: bool, candidates: List[Candidate], labels: List[Label],
+                                         continuity_with_future: Tuple[float, float],
+                                         authorized_transformations: List[int],
+                                         sequence_to_interval_fun: Optional[Callable],
+                                         equiv_interval: Optional[Callable],
+                                         equiv: Optional[Callable]) -> List[Candidate]:
 
+        memory_labels: List[Label] = [c.event.label() for c in candidates]
+        authorized_indices: List[int] = [c.index for c in candidates]
+
+        index_delta_prefixes: Dict[int, List[DontKnow]]
         if use_intervals:
-            index_delta_prefixes, max_length = filtered_prefix_indexing_intervals(sequence=labels,
-                                                                                  pattern=list_of_labels,
-                                                                                  length_interval=continuity_with_future,
-                                                                                  authorized_indexes=authorized_indexes,
-                                                                                  authorized_intervals=authorized_transformations,
-                                                                                  sequence_to_interval_fun=sequence_to_interval_fun,
-                                                                                  equiv=equiv_interval,
-                                                                                  print_info=False)
+            index_delta_prefixes, _ = intervals.filtered_prefix_indexing_intervals(
+                sequence=labels,
+                pattern=memory_labels,
+                length_interval=continuity_with_future,
+                authorized_indexes=authorized_indices,
+                authorized_intervals=authorized_transformations,
+                sequence_to_interval_fun=sequence_to_interval_fun,
+                equiv=equiv_interval,
+                print_info=False)
 
         else:
-            index_delta_prefixes, max_length = PrefixIndexing \
-                .filtered_prefix_indexing(sequence=labels, pattern=list_of_labels,
-                                          length_interval=continuity_with_future, authorized_indexes=authorized_indexes,
-                                          equiv=equiv, print_info=False)
+            index_delta_prefixes, _ = PrefixIndexing.filtered_prefix_indexing(
+                sequence=labels,
+                pattern=memory_labels,
+                length_interval=continuity_with_future,
+                authorized_indexes=authorized_indices,
+                equiv=equiv,
+                print_info=False)
 
-        # TODO : FAIRE LE PRINT COMME POUR LE RESTE DE LA NAVIGATION
-        # TODO : FILTRER LISTES DES PREFIXES
-        # TODO : MODULARISER FAIRE UNE FONCTION POUR LE CHOIX, ET PLUS DE POSSIBILITES QUE RANDOM
-        #  (e.g. longueur prefixe)...
-        #  ON EN EST OU DU FILTRAGE PAR POSITIONS OU IL Y A DES SUFFIX LINKS ?
-        # TODO : STOCKER ALTERNATIVE_PATHS ICI, IE TOUS LES PREFIXES --> MELANGE SOMAX
+        s: Optional[int]
+        t: int
+        length_selected_prefix: Optional[int]
+        s, t, length_selected_prefix = self.choose_prefix_from_list(index_delta_prefixes)
 
-        s, t, length_selected_prefix = self.choose_prefix_from_list(index_delta_prefixes, pattern=list_of_labels)
-        return s, t, length_selected_prefix
+        if s is not None:
+            # In practise: this will only be a single candidate due to previous function call
+            selected_candidates: List[Candidate] = [c for c in candidates if c.index == s]
+            for candidate in selected_candidates:
+                candidate.transform = t
+                candidate.score = length_selected_prefix
+        else:
+            selected_candidates = []
+
+        return selected_candidates
 
     def _go_to_anterior_state_using_execution_trace(self, index_in_navigation):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
@@ -293,8 +308,7 @@ class FactorOracleNavigator(Navigator):
         self.history_and_taboos.append(None)
 
     def filter_using_history_and_taboos(self, candidates: List[Candidate]) -> List[Candidate]:
-        # FIXME[MergeState]: A[], B[], C[], D[], E[]
-        # TODO[A2] This one probably has to remain public until filtering is moved to GH
+        # TODO[B2]: The condition `(not (self.history_and_taboos[c.index] is None)` should be removed once restructured
         filtered_list = [c for c in candidates
                          if (not (self.history_and_taboos[c.index] is None)
                              and (self.avoid_repetitions_mode < 2 or self.avoid_repetitions_mode >= 2
@@ -309,7 +323,7 @@ class FactorOracleNavigator(Navigator):
     def _record_execution_trace(self, index_in_navigation):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """
-        Stores in :attr:`self.execution_trace` the values of different parameters of the model when generating the
+        Stores in :attr:`self.execution_trace` the values of different parameters of the model when generating thefu
         event in the sequence at the index given in argument.
 
         :param index_in_navigation:
@@ -530,29 +544,18 @@ class FactorOracleNavigator(Navigator):
     #   LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY   #
     ################################################################################################################
 
-    def choose_prefix_from_list(self, index_delta_prefixes, pattern=()):
-        # TODO[A1] This needs to be stereotyped and return a list of candidates (which may be of length 1)
-        s = None
-        t = 0
-        length_selected_prefix = None
-        # print("*¨*¨*¨*¨*¨*¨*¨")
-        # print(index_delta_prefixes)
+    def choose_prefix_from_list(self, index_delta_prefixes: Dict[int, List[DontKnow]]) -> Tuple[Optional[int],
+                                                                                                int,
+                                                                                                Optional[int]]:
+        s: Optional[int] = None
+        t: int = 0
+        length_selected_prefix: Optional[int] = None
         if len(index_delta_prefixes.keys()) > 0:
             # TODO : MAX PAS FORCEMENT BONNE IDEE
-            # length_selected_prefix = index_delta_prefixes.keys()[random.randint(0, len(index_delta_prefixes.keys())-1)]
-
-            max_length = max(index_delta_prefixes.keys())
-            # print(max_length)
-            # accepted_lengths = [l for l in index_delta_prefixes.keys() if l > int(0.33*max_length)]
-            # print(accepted_lengths)
-            # length_selected_prefix = accepted_lengths[random.randint(0,len(accepted_lengths)-1)]
-            # print(length_selected_prefix)
-            # s = index_delta_prefixes[length_selected_prefix][random.randint(0, len(index_delta_prefixes[length_selected_prefix])-1)]
-            # print(s)
 
             length_selected_prefix = max(index_delta_prefixes.keys())
-            s = index_delta_prefixes[length_selected_prefix][
-                random.randint(0, len(index_delta_prefixes[length_selected_prefix]) - 1)]
+            random_choice: int = random.randint(0, len(index_delta_prefixes[length_selected_prefix]) - 1)
+            s: DontKnow = index_delta_prefixes[length_selected_prefix][random_choice]
             if type(s) == list:
                 t = s[1]
                 s = s[0]

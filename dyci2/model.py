@@ -22,7 +22,7 @@ Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/Factor
 
 """
 from abc import ABC, abstractmethod
-from typing import List, Callable, Optional
+from typing import Callable
 
 from dyci2.label import *
 from memory import MemoryEvent, Memory

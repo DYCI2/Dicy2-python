@@ -140,23 +140,45 @@ class Prospector:
 
         candidates = self.navigator.weight_candidates(candidates=candidates,
                                                       model_direct_transitions=self.model.direct_transitions,
-                                                      shift_index=shift_index, sequence=self.model.sequence,
-                                                      required_label=required_label, print_info=print_info)
+                                                      shift_index=shift_index,
+                                                      all_memory=self.model.l_memory_as_candidates(exclude_last=True),
+                                                      required_label=required_label,
+                                                      print_info=print_info)
         # TODO[B2]: This should be migrated to feedback function instead
         if len(candidates) > 0:
             self.navigator.set_current_position_in_sequence_with_sideeffects(candidates[0].index)
 
         return candidates
 
-    def scenario_based_generation(self, use_intervals: bool, labels: List[Label], continuity_with_future: List[float],
-                                  authorized_indexes: List[int], authorized_transformations: DontKnow,
-                                  sequence_to_interval_fun: Optional[Callable], equiv_interval: Optional[Callable],
-                                  equiv: Optional[Callable]) -> Tuple[int, int, int]:
+    def scenario_based_generation(self, labels: List[Label], use_intervals: bool,
+                                  continuity_with_future: Tuple[float, float], authorized_transformations: DontKnow,
+                                  equiv: Optional[Callable]) -> List[Candidate]:
         # FIXME[MergeState]: A[], B[], C[], D[], E[]
-        return self.navigator.find_prefix_matching_with_labels(use_intervals, self.model.labels, labels,
-                                                               continuity_with_future, authorized_indexes,
-                                                               authorized_transformations, sequence_to_interval_fun,
-                                                               equiv_interval, equiv)
+
+        # BREAKING CHANGE: initial code passes entire model.labels, which means that first value will be None...
+        #   But maybe it's not a problem because filter_using_history_and_taboo will remove None regardless.
+        candidates: List[Candidate] = self.model.l_memory_as_candidates(exclude_last=False)
+        candidates: List[Candidate] = self.navigator.filter_using_history_and_taboos(candidates)
+
+        if use_intervals:  # TODO: This should be controlled by prospector, not passed as argument
+            func_intervals_to_labels: Optional[Callable]
+            func_intervals_to_labels = self.label_type.make_sequence_of_intervals_from_sequence_of_labels
+            equiv_mod_interval: Optional[Callable] = self.label_type.equiv_mod_interval
+        else:
+            func_intervals_to_labels = None
+            equiv_mod_interval = None
+
+        candidates = self.navigator.find_prefix_matching_with_labels(
+            use_intervals=use_intervals,
+            candidates=candidates,
+            labels=labels,
+            continuity_with_future=continuity_with_future,
+            authorized_transformations=authorized_transformations,
+            sequence_to_interval_fun=func_intervals_to_labels,
+            equiv_interval=equiv_mod_interval,
+            equiv=equiv)
+
+        return candidates
 
     def rewind_generation(self, index_in_navigation: int) -> None:
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
@@ -169,3 +191,42 @@ class Prospector:
     def l_decode_with_transform(self, transform: Transform):
         self.model.l_set_sequence([None] + transform.decode_sequence(self.model.sequence[1::]))
         self.model.l_set_labels([None] + transform.decode_sequence(self.model.labels[1::]))
+
+    ################################################################################################################
+    #   TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP   #
+    ################################################################################################################
+
+    # def l_get_no_empty_event(self) -> bool:
+    #     return self.navigator.no_empty_event
+    #
+    # def l_set_no_empty_event(self, v: bool) -> None:
+    #     self.navigator.no_empty_event = v
+    #
+    #     self.navigator.no_empty_event = v
+    #
+    # def l_get_index_last_state(self) -> int:
+    #     return self.model.index_last_state()
+    #
+    # def l_get_sequence_nonmutable(self) -> List[DontKnow]:
+    #     return self.model.sequence
+    #
+    # def l_get_sequence_maybemutable(self) -> List[DontKnow]:
+    #     return self.model.sequence
+    #
+    # def l_set_sequence(self, sequence: List[DontKnow]):
+    #     self.model.sequence = sequence
+    #
+    # def l_get_labels_nonmutable(self) -> List[DontKnow]:
+    #     return self.model.labels
+    #
+    # def l_get_labels_maybemutable(self) -> List[DontKnow]:
+    #     return self.model.labels
+    #
+    # def l_set_labels(self, labels: List[DontKnow]):
+    #     self.model.labels = labels
+    #
+    # def l_get_position_in_sequence(self) -> int:
+    #     return self.navigator.current_position_in_sequence
+    #
+    # def l_set_position_in_sequence(self, index: int):
+    #     self.navigator.set_current_position_in_sequence_with_sideeffects(index)

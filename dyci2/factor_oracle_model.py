@@ -144,13 +144,12 @@ class FactorOracle(Model):
         for event in sequence:
             self.learn_event(event, equiv)
 
-    # TODO : COMPUTE THE LRS, AND THEN USE IT !!!!
     def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
         """
         Learns (appends) a new state in the Factor Oracle automaton.
 
         :param event:
-        :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
+        :param equiv: Comparison function given as a lambda function, default if no parameter is given: self.equiv.
         :type equiv: function
 
         :!: **equiv** has to be consistent with the type of label.
@@ -165,8 +164,6 @@ class FactorOracle(Model):
 
         index = self.index_last_state()
 
-        # 28/11 CAREFUL USE THIS TECHNIQUE BECAUSE LABELS AND STATE MAY HAVE BEEN USED IN MODEL.LEARN_EVENT TO
-        #       INSTANTIATE OBJECTS
         label = self.labels[index]
         state = self.sequence[index]
 
@@ -197,6 +194,13 @@ class FactorOracle(Model):
                                                      equiv=equiv,
                                                      authorize_direct_transition=authorize_direct_transition)
         return [Candidate(self.sequence[i], i, 1.0, None) for i in indices]
+
+    def l_memory_as_candidates(self, exclude_last: bool = False) -> List[Candidate]:
+        if exclude_last:
+            # This is used in the case of simply guided navigation, don't know why
+            return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:-1], start=1)]
+        else:
+            return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:], start=1)]
 
     def l_set_sequence(self, sequence: List[Optional[MemoryEvent]]):
         self.sequence = sequence

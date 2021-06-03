@@ -35,6 +35,7 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 # TODO DOCUMENTER VRAIMENT LES SLOTS DE LA CLASSE ET DONC CERTAINS ARGUMENTS DE METHODES ET FONCTIONS
 # TODO S'OCCUPER D'UNE CLASSE CONTENT !!
 import itertools
+import warnings
 from typing import Optional, Callable, Tuple, Type, List
 
 from candidate import Candidate
@@ -207,10 +208,10 @@ class GenerationScheduler:
         # TODO[B] Can this return generation_index instead? Or is query.start_date changed somewhere along the line?
         return query.start_date
 
-    def _process_query(self, query: Query) -> List[Optional[Output]]:
+    # TODO: THIS function should return List[Optional[Output]], but relies on proper implem. of transforms first.
+    def _process_query(self, query: Query) -> List[Optional[Candidate]]:
         print("**********************************\nPROCESS QUERY: QUERY = \n**********************************", query)
         print("**********************************\nGENERATION MATCHING QUERY: QUERY = \n**********************", query)
-        raise NotImplementedError("TODO: Still need to solve relation Candidate/Output here")
         output: List[Optional[Candidate]]
         # TODO[B]: UNSOLVED! probably unnecessary side-effect but discuss w/ Jerome before removing
         self.transfo_current_generation_output = []
@@ -275,8 +276,6 @@ class GenerationScheduler:
             self.avoid_repetitions_mode, self.no_empty_event.
         """
 
-        raise NotImplementedError("TODO: This function should return List[Optional[Output]]")
-
         # TODO[B] Discuss this with Jerome: how does encoding/decoding impact the actual memory? Is the return value
         #  here (`sequence`) really referring to something else than what's decoded in line below?
         self.encode_memory_with_current_transform()
@@ -325,8 +324,6 @@ class GenerationScheduler:
         self.avoid_repetitions_mode, self.no_empty_event.
         """
 
-        raise NotImplementedError("TODO: This function should return List[Optional[Output]]")
-
         print("HANDLE GENERATION MATCHING LABEL...")
 
         equiv = self.prospector.l_prepare_navigation(required_labels, equiv, new_max_continuity, init)
@@ -339,7 +336,7 @@ class GenerationScheduler:
                                                                 equiv=equiv, print_info=print_info,
                                                                 shift_index=i + shift_index)
 
-            if break_when_none and len(candidates) > 0:
+            if break_when_none and len(candidates) == 0:
                 break
             else:
                 sequence.append(self.candidate_selector.decide(candidates))
@@ -350,7 +347,7 @@ class GenerationScheduler:
         return sequence
 
     def scenario_based_generation(self, list_of_labels: List[Label],
-                                  print_info: bool = False) -> List[Optional[Output]]:
+                                  print_info: bool = False) -> List[Optional[Candidate]]:
         """
         Generates a sequence matching a "scenario" (a list of labels). The generation process takes advantage of the
         scenario to introduce anticatory behaviour, that is, continuity with the future of the scenario.
@@ -364,11 +361,11 @@ class GenerationScheduler:
 
         """
         # TODO[C] Way too much manipulation and access of `memory` (i.e. Generator) here
-        generated_sequence: List[Optional[Output]] = []
+        generated_sequence: List[Optional[Candidate]] = []
         print("SCENARIO BASED GENERATION 0")
         while len(generated_sequence) < len(list_of_labels):
             current_index: int = len(generated_sequence)
-            seq: List[Output]
+            seq: List[Candidate]
             seq = self.handle_scenario_based_generation_one_phase(list_of_labels=list_of_labels[current_index:],
                                                                   original_query_length=len(list_of_labels),
                                                                   print_info=print_info,
@@ -382,7 +379,7 @@ class GenerationScheduler:
         return generated_sequence
 
     # TODO: We need a strategy to handle the default case in a modular manner
-    def l_scenario_default_case(self) -> Optional[Output]:
+    def l_scenario_default_case(self) -> Optional[Candidate]:
         if self.prospector.navigator.no_empty_event and \
                 self.prospector.navigator.current_position_in_sequence < self.prospector.model.index_last_state():
             print("NO EMPTY EVENT")
@@ -390,7 +387,7 @@ class GenerationScheduler:
             self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(next_index)
             # TODO[CRITICAL]: This does not handle transforms coherently with surrounding code
             #  (original code didn't either)
-            return Output(self.prospector.model.sequence[next_index], next_index, NoTransform())
+            return Candidate(self.prospector.model.sequence[next_index], next_index, 1.0, NoTransform())
 
         else:
             print("EMPTY EVENT")
@@ -399,7 +396,7 @@ class GenerationScheduler:
 
     # TODO : PAS OPTIMAL DU TOUT D'ENCODER DECODER A CHAQUE ETAPE !!!!!!!!
     def handle_scenario_based_generation_one_phase(self, list_of_labels: List[Label], original_query_length: int,
-                                                   print_info: bool = False, shift_index: int = 0) -> List[Output]:
+                                                   print_info: bool = False, shift_index: int = 0) -> List[Candidate]:
         """
 
         :param list_of_labels: "current scenario", suffix of the scenario given in argument to
@@ -433,18 +430,16 @@ class GenerationScheduler:
         self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(candidate.index)
         print(f"current_position_in_sequence: {candidate.index}")
 
-        # TODO[Transform]: Handle 0-case as NoTransform instead (and do proper parsing, not `if`)
+        # TODO: This is *NOT* a good solution for transforms, nor should it be handled here
         if candidate.transform is not None and candidate.transform != 0:
-            transform: Optional[Transform] = TransposeTransform(candidate.transform)
+            transform: Transform = TransposeTransform(candidate.transform)
+            # Transform candidate back to its neutral state (since entire memory was previously decoded with transf.)
+            candidate: [Candidate] = transform.encode(candidate)
             # TODO: Side effect
             self.current_transformation_memory = transform
-        else:
-            transform = None
-
-        output: Output = Output.from_candidate(candidate, transform)
 
         if print_info:
-            print(f"{shift_index} NEW STARTING POINT {output.event.label()} (orig. --): {output.index}\n"
+            print(f"{shift_index} NEW STARTING POINT {candidate.event.label()} (orig. --): {candidate.index}\n"
                   f"length future = {candidate.score} - FROM NOW {self.current_transformation_memory}")
 
         # TODO: Side effect: This should probably be in GenerationProcess?
@@ -460,8 +455,7 @@ class GenerationScheduler:
         # In order to begin a new navigation phase when this method returns a "None" event
         self.prospector.navigator.no_empty_event = False
 
-        raise NotImplementedError("TODO: Still need to solve relation Candidate/Output here")
-        seq: List[Optional[Output]]
+        seq: List[Optional[Candidate]]
         seq = self.simply_guided_generation(required_labels=list_of_labels[1::], init=False,
                                             print_info=print_info,
                                             shift_index=original_query_length - len(list_of_labels) + 1,
@@ -469,18 +463,14 @@ class GenerationScheduler:
 
         self.prospector.navigator.no_empty_event = aux
 
-        generated_sequence: List[Output] = [output]
-        for output_event in itertools.takewhile(lambda o: o is not None, seq):  # type: Output
+        generated_sequence: List[Candidate] = [candidate]
+        for output_event in itertools.takewhile(lambda o: o is not None, seq):  # type: Candidate
             generated_sequence.append(output_event)
             # TODO: Side effect
             self.transfo_current_generation_output.append(self.current_transformation_memory)
 
         print(f"---------END handle_scenario_based ->> Return {generated_sequence}")
-        return generated_sequence  # TODO : + TRANSFORMATION POUR TRANSPO SI NECESSAIRE
-
-    ################################################################################################################
-    #   LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY   #
-    ################################################################################################################
+        return generated_sequence
 
     def start(self):
         """ Sets :attr:`self.current_performance_time` to 0."""
@@ -488,7 +478,6 @@ class GenerationScheduler:
 
     # TODO : EPSILON POUR LANCER NOUVELLE GENERATION
     def update_performance_time(self, new_time: Optional[int] = None):
-        # print(self.current_performance_time)
         if new_time is not None:
             self.performance_time = new_time
         else:
@@ -496,7 +485,6 @@ class GenerationScheduler:
 
         print(f"NEW PERF TIME = {self.performance_time}")
         # TODO : EPSILON POUR LANCER NOUVELLE GENERATION
-        # #### Release 09/18 #####
         if self.generation_process.generation_time < self.performance_time:
             old = self.generation_process.generation_time
             self.generation_process.update_generation_time(self.performance_time)

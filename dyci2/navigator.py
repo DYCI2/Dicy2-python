@@ -19,7 +19,7 @@ The classes defined in this module are used in association with models (cf. :mod
 **model navigator** classes (cf. :mod:`ModelNavigator`).
 
 """
-
+import copy
 import random
 from abc import ABC, abstractmethod
 from typing import List, Optional, Callable, Dict, Tuple
@@ -156,7 +156,7 @@ class FactorOracleNavigator(Navigator):
 
     def weight_candidates(self, candidates: List[Candidate], model_direct_transitions: Dict[int, Tuple[Label, int]],
                           shift_index: int, all_memory: List[Candidate], required_label: Optional[Label],
-                          print_info: bool = False) -> List[Candidate]:
+                          print_info: bool = False, equiv: Optional[Callable] = None) -> List[Candidate]:
         str_print_info: str = f"{shift_index} " \
                               f"(cont. = {self.current_continuity}/{self.max_continuity})" \
                               f": {self.current_position_in_sequence}"
@@ -205,14 +205,14 @@ class FactorOracleNavigator(Navigator):
                                          equiv_interval: Optional[Callable],
                                          equiv: Optional[Callable]) -> List[Candidate]:
 
-        memory_labels: List[Label] = [c.event.label() for c in candidates]
+        memory_labels: List[Optional[Label]] = [None] + [c.event.label() for c in candidates]
         authorized_indices: List[int] = [c.index for c in candidates]
 
         index_delta_prefixes: Dict[int, List[DontKnow]]
         if use_intervals:
             index_delta_prefixes, _ = intervals.filtered_prefix_indexing_intervals(
-                sequence=labels,
-                pattern=memory_labels,
+                sequence=memory_labels,
+                pattern=labels,
                 length_interval=continuity_with_future,
                 authorized_indexes=authorized_indices,
                 authorized_intervals=authorized_transformations,
@@ -336,7 +336,7 @@ class FactorOracleNavigator(Navigator):
         trace_index = {}
         for name_slot in self.execution_trace_parameters:
             # trace_index[name_slot] = copy.deepcopy(self.__dict__[name_slot])
-            trace_index[name_slot] = deepcopy(self.__dict__[name_slot])
+            trace_index[name_slot] = copy.deepcopy(self.__dict__[name_slot])
 
         self.execution_trace[index_in_navigation] = trace_index
 

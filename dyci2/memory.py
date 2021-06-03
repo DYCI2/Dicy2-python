@@ -9,7 +9,7 @@ class MemoryEvent(ABC):
         pass
 
     @abstractmethod
-    def event(self) -> Any:
+    def data(self) -> Any:
         """ TODO """
 
     @abstractmethod
@@ -22,13 +22,13 @@ class MemoryEvent(ABC):
 
 
 class BasicEvent(MemoryEvent):
-    def __init__(self, event: Union[int, float, str], label: Label):
+    def __init__(self, data: Union[int, float, str], label: Label):
         super().__init__()
-        self._event: Union[int, float, str] = event
+        self._data: Union[int, float, str] = data
         self._label: Label = label
 
-    def event(self) -> Any:
-        return self._event
+    def data(self) -> Any:
+        return self._data
 
     def label(self) -> Label:
         return self._label
@@ -38,13 +38,16 @@ class BasicEvent(MemoryEvent):
 
 
 class DebugEvent(MemoryEvent):
-    def __init__(self, event: Label, label: Label):
+    def __init__(self, data: Label, label: Label):
         super().__init__()
-        self._event: Label = event
+        self._data: Label = data
         self._label: Label = label
 
-    def event(self) -> Label:
-        return self._event
+    def __repr__(self):
+        return f"{self.__class__.__name__}(data={self.data()},label={self.label()})"
+
+    def data(self) -> Label:
+        return self._data
 
     def label(self) -> Label:
         return self._label

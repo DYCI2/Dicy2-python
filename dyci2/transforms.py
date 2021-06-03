@@ -17,8 +17,10 @@ Class defining transformations on labels and contents.
 
 """
 # TODO : TUTO
+import warnings
 from abc import ABC, abstractmethod
 
+from candidate import Candidate
 from dyci2.label import ChordLabel, Label, ListLabel
 
 # from numpy import roll
@@ -107,6 +109,10 @@ class TransposeTransform(NoTransform):
         #    new_thing.label = self.encode(new_thing.label)
         #    new_thing.contents = self.encode(new_thing.contents)
         #    return new_thing
+        if isinstance(thing, Candidate):
+            warnings.warn("Note: transform is only applied to label!!")
+            thing.label = self.encode(thing.event.label())
+            return thing
 
         if type(thing) is ChordLabel:
             # new_label = deepcopy(thing)

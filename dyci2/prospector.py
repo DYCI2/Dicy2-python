@@ -143,7 +143,7 @@ class Prospector:
                                                       shift_index=shift_index,
                                                       all_memory=self.model.l_memory_as_candidates(exclude_last=True),
                                                       required_label=required_label,
-                                                      print_info=print_info)
+                                                      print_info=print_info, equiv=equiv)
         # TODO[B2]: This should be migrated to feedback function instead
         if len(candidates) > 0:
             self.navigator.set_current_position_in_sequence_with_sideeffects(candidates[0].index)
@@ -157,7 +157,7 @@ class Prospector:
 
         # BREAKING CHANGE: initial code passes entire model.labels, which means that first value will be None...
         #   But maybe it's not a problem because filter_using_history_and_taboo will remove None regardless.
-        candidates: List[Candidate] = self.model.l_memory_as_candidates(exclude_last=False)
+        candidates: List[Candidate] = self.model.l_memory_as_candidates(exclude_last=False, exclude_first=False)
         candidates: List[Candidate] = self.navigator.filter_using_history_and_taboos(candidates)
 
         if use_intervals:  # TODO: This should be controlled by prospector, not passed as argument

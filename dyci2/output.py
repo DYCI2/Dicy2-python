@@ -12,9 +12,12 @@ class Output:
         self.index: int = index
         self.applied_transform: Transform = applied_transform
 
+    # TODO: The once transforms are correctly handled, remove this function and just do deepcopying and transforming
+    #  directly in __init__. But pass event + transform_to_apply, not just candidate (too implicit)
     @classmethod
     def from_candidate(cls, candidate: Candidate,
                        transform_to_apply: Optional[Transform]) -> 'Output':
+        # TODO: Handle transforms properly. Candidate should already contain a transform and thus not need this.
         if transform_to_apply is not None:
             transform: Transform = transform_to_apply
         else:

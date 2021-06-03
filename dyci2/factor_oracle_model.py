@@ -1,8 +1,8 @@
-from typing import Optional, Callable, List, Type
+from typing import Optional, Callable, List, Type, Any
 
 from candidate import Candidate
 from label import Label
-from memory import MemoryEvent, Memory
+from memory import MemoryEvent, Memory, DebugEvent
 from model import Model
 
 
@@ -70,7 +70,9 @@ class FactorOracle(Model):
         >>> #FO = FactorOracle(sequence, labels, equiv_AC_BD)
         """
 
-        self.sequence: List[Optional[MemoryEvent]] = []
+        # TODO: Separation of sequence/labels should be removed and replaced by a
+        #  single `memory: List[MemoryEvent]` or simply `memory: Memory`.
+        self.sequence: List[Optional[Any]] = []
         self.labels: List[Optional[Label]] = []
         self.content_type: Type[MemoryEvent] = memory.content_type
         self.label_type: Type[Label] = memory.label_type
@@ -159,7 +161,7 @@ class FactorOracle(Model):
         if equiv is None:
             equiv = self.equiv
 
-        self.sequence.append(event.event())
+        self.sequence.append(event.data())
         self.labels.append(event.label())
 
         index = self.index_last_state()
@@ -181,10 +183,10 @@ class FactorOracle(Model):
         else:
             self._add_suffix_link(index, self._from_state_read_label(k, label, equiv))
 
-    def get_candidates(self, index_state: int, required_label: Optional[Label], forward_context_length_min: int = 1,
+    def get_candidates(self, index_state: int, label: Optional[Label], forward_context_length_min: int = 1,
                        equiv: Optional[Callable] = None, authorize_direct_transition: bool = True) -> List[Candidate]:
-        if required_label is not None:
-            indices: List[int] = self._continuations_with_label(index_state=index_state, required_label=required_label,
+        if label is not None:
+            indices: List[int] = self._continuations_with_label(index_state=index_state, required_label=label,
                                                                 forward_context_length_min=forward_context_length_min,
                                                                 equiv=equiv,
                                                                 authorize_direct_transition=authorize_direct_transition)
@@ -193,14 +195,22 @@ class FactorOracle(Model):
                                                      forward_context_length_min=forward_context_length_min,
                                                      equiv=equiv,
                                                      authorize_direct_transition=authorize_direct_transition)
-        return [Candidate(self.sequence[i], i, 1.0, None) for i in indices]
+        # TODO: Temp! Should obviously not use DebugEvent once properly handled in __init__
+        return [Candidate(DebugEvent(self.sequence[i], self.labels[i]), i, 1.0, None) for i in indices]
 
-    def l_memory_as_candidates(self, exclude_last: bool = False) -> List[Candidate]:
-        if exclude_last:
+    def l_memory_as_candidates(self, exclude_last: bool = False, exclude_first: bool = True) -> List[Candidate]:
+        # TODO: Temp! Neither of these should use DebugEvent once properly handled in __init__
+        start: int = 1 if exclude_first else 0
+        end: int = len(self.sequence) - 1 if exclude_last else len(self.sequence)
+        candidates: List[Candidate] = []
+        for i in range(start, end):
+            candidates.append(Candidate(DebugEvent(self.sequence[i], self.labels[i]), i, 1.0, None))
+        # if exclude_last:
             # This is used in the case of simply guided navigation, don't know why
-            return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:-1], start=1)]
-        else:
-            return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:], start=1)]
+            # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:-1], start=1)]
+        # else:
+            # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:], start=1)]
+        return candidates
 
     def l_set_sequence(self, sequence: List[Optional[MemoryEvent]]):
         self.sequence = sequence

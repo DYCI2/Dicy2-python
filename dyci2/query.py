@@ -46,3 +46,6 @@ class LabelQuery(Query):
         self.labels: List[Label] = labels
         if len(self.labels) < 0:
             raise AttributeError(f"{self.__class__.__name__} must contain at least one label")
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(labels={self.labels},start_date={self.start_date},...)"

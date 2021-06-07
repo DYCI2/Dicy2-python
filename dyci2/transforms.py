@@ -110,7 +110,7 @@ class TransposeTransform(NoTransform):
         #    new_thing.contents = self.encode(new_thing.contents)
         #    return new_thing
         if isinstance(thing, Candidate):
-            warnings.warn("Note: transform is only applied to label!!")
+            warnings.warn("Note: transform is only applied to label!")
             thing.label = self.encode(thing.event.label())
             return thing
 
@@ -151,6 +151,11 @@ class TransposeTransform(NoTransform):
         #    new_thing.contents = self.decode(new_thing.contents)
         #    return new_thing
         #if type(thing) is Label.ChordLabel:
+        if isinstance(thing, Candidate):
+            warnings.warn("Note: transform is only applied to label!")
+            thing.label = self.decode(thing.event.label())
+            return thing
+
         if type(thing) is ChordLabel:
             # new_label = deepcopy(thing)
             # new_label.transpose_root(+self.semitone)# pas precis : rajouter les bornes et les accords

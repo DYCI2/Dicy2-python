@@ -198,13 +198,17 @@ class FactorOracle(Model):
         # TODO: Temp! Should obviously not use DebugEvent once properly handled in __init__
         return [Candidate(DebugEvent(self.sequence[i], self.labels[i]), i, 1.0, None) for i in indices]
 
-    def l_memory_as_candidates(self, exclude_last: bool = False, exclude_first: bool = True) -> List[Candidate]:
+    def l_memory_as_candidates(self, exclude_last: bool = False,
+                               exclude_first: bool = True) -> List[Optional[Candidate]]:
         # TODO: Temp! Neither of these should use DebugEvent once properly handled in __init__
         start: int = 1 if exclude_first else 0
         end: int = len(self.sequence) - 1 if exclude_last else len(self.sequence)
-        candidates: List[Candidate] = []
+        candidates: List[Optional[Candidate]] = []
         for i in range(start, end):
-            candidates.append(Candidate(DebugEvent(self.sequence[i], self.labels[i]), i, 1.0, None))
+            if self.sequence[i] is None or self.labels[i] is None:
+                candidates.append(None)
+            else:
+                candidates.append(Candidate(DebugEvent(self.sequence[i], self.labels[i]), i, 1.0, None))
         # if exclude_last:
             # This is used in the case of simply guided navigation, don't know why
             # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:-1], start=1)]

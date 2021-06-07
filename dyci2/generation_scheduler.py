@@ -433,8 +433,9 @@ class GenerationScheduler:
         # TODO: This is *NOT* a good solution for transforms, nor should it be handled here
         if candidate.transform is not None and candidate.transform != 0:
             transform: Transform = TransposeTransform(candidate.transform)
-            # Transform candidate back to its neutral state (since entire memory was previously decoded with transf.)
-            candidate: [Candidate] = transform.encode(candidate)
+            # NOTE! ContentType was never set in orig. Therefore commented out
+            # candidate: [Candidate] = transform.encode(candidate)
+            candidate.transform = transform
             # TODO: Side effect
             self.current_transformation_memory = transform
 
@@ -446,7 +447,7 @@ class GenerationScheduler:
         #  Or perhaps not even necessary since stored in Output
         self.transfo_current_generation_output.append(self.current_transformation_memory)
 
-        # Apply transform to memory to revert to state before computing scenario_based_generation
+        # Apply transform from initial candidate to memory
         self.encode_memory_with_current_transform()
 
         # TODO: This is not ok at all!! - pass this as value to simply_guided_generation.
@@ -465,6 +466,7 @@ class GenerationScheduler:
 
         generated_sequence: List[Candidate] = [candidate]
         for output_event in itertools.takewhile(lambda o: o is not None, seq):  # type: Candidate
+            output_event.transform = self.current_transformation_memory
             generated_sequence.append(output_event)
             # TODO: Side effect
             self.transfo_current_generation_output.append(self.current_transformation_memory)

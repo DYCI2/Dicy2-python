@@ -199,13 +199,14 @@ class FactorOracleNavigator(Navigator):
         return candidates
 
     def find_prefix_matching_with_labels(self, use_intervals: bool, candidates: List[Candidate], labels: List[Label],
+                                         full_memory: List[Optional[Candidate]],
                                          continuity_with_future: Tuple[float, float],
                                          authorized_transformations: List[int],
                                          sequence_to_interval_fun: Optional[Callable],
                                          equiv_interval: Optional[Callable],
                                          equiv: Optional[Callable]) -> List[Candidate]:
 
-        memory_labels: List[Optional[Label]] = [None] + [c.event.label() for c in candidates]
+        memory_labels: List[Optional[Label]] = [c.event.label() if c is not None else None for c in full_memory]
         authorized_indices: List[int] = [c.index for c in candidates]
 
         index_delta_prefixes: Dict[int, List[DontKnow]]
@@ -307,12 +308,13 @@ class FactorOracleNavigator(Navigator):
         self._authorize_indexes([current_last_idx])
         self.history_and_taboos.append(None)
 
-    def filter_using_history_and_taboos(self, candidates: List[Candidate]) -> List[Candidate]:
+    def filter_using_history_and_taboos(self, candidates: List[Optional[Candidate]]) -> List[Candidate]:
         # TODO[B2]: The condition `(not (self.history_and_taboos[c.index] is None)` should be removed once restructured
         filtered_list = [c for c in candidates
-                         if (not (self.history_and_taboos[c.index] is None)
-                             and (self.avoid_repetitions_mode < 2 or self.avoid_repetitions_mode >= 2
-                                  and self.history_and_taboos[c.index] == 0))]
+                         if c is not None
+                         and (not (self.history_and_taboos[c.index] is None)
+                              and (self.avoid_repetitions_mode < 2 or self.avoid_repetitions_mode >= 2
+                                   and self.history_and_taboos[c.index] == 0))]
         # print("Possible next indexes = {}, filtered list = {}".format(list_of_indexes, filtered_list))
         return filtered_list
 

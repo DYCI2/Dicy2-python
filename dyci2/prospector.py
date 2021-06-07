@@ -155,10 +155,10 @@ class Prospector:
                                   equiv: Optional[Callable]) -> List[Candidate]:
         # FIXME[MergeState]: A[], B[], C[], D[], E[]
 
-        # BREAKING CHANGE: initial code passes entire model.labels, which means that first value will be None...
-        #   But maybe it's not a problem because filter_using_history_and_taboo will remove None regardless.
-        candidates: List[Candidate] = self.model.l_memory_as_candidates(exclude_last=False, exclude_first=False)
-        candidates: List[Candidate] = self.navigator.filter_using_history_and_taboos(candidates)
+        # TODO: Not a good solution - very particular behaviour for how prefix indexing is handled
+        full_memory: List[Optional[Candidate]] = self.model.l_memory_as_candidates(exclude_last=False,
+                                                                                   exclude_first=False)
+        candidates: List[Candidate] = self.navigator.filter_using_history_and_taboos(full_memory)
 
         if use_intervals:  # TODO: This should be controlled by prospector, not passed as argument
             func_intervals_to_labels: Optional[Callable]
@@ -172,6 +172,7 @@ class Prospector:
             use_intervals=use_intervals,
             candidates=candidates,
             labels=labels,
+            full_memory=full_memory,
             continuity_with_future=continuity_with_future,
             authorized_transformations=authorized_transformations,
             sequence_to_interval_fun=func_intervals_to_labels,
@@ -185,11 +186,11 @@ class Prospector:
         self.navigator.rewind_generation(index_in_navigation)
 
     def l_encode_with_transform(self, transform: Transform):
-        self.model.l_set_sequence([None] + transform.encode_sequence(self.model.sequence[1::]))
+        # self.model.l_set_sequence([None] + transform.encode_sequence(self.model.sequence[1::]))
         self.model.l_set_labels([None] + transform.encode_sequence(self.model.labels[1::]))
 
     def l_decode_with_transform(self, transform: Transform):
-        self.model.l_set_sequence([None] + transform.decode_sequence(self.model.sequence[1::]))
+        # self.model.l_set_sequence([None] + transform.decode_sequence(self.model.sequence[1::]))
         self.model.l_set_labels([None] + transform.decode_sequence(self.model.labels[1::]))
 
     ################################################################################################################

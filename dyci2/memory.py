@@ -1,3 +1,4 @@
+import copy
 from abc import ABC, abstractmethod
 from typing import Any, List, Union, Type
 
@@ -41,7 +42,7 @@ class DebugEvent(MemoryEvent):
     def __init__(self, data: Label, label: Label):
         super().__init__()
         self._data: Label = data
-        self._label: Label = label
+        self._label: Label = copy.deepcopy(label)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(data={self.data()},label={self.label()})"

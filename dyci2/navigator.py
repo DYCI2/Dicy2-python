@@ -33,7 +33,7 @@ from utils import noneIsInfinite, DontKnow
 
 
 class Navigator(ABC):
-    def __init__(self, memory: Memory, equiv: Callable = (lambda x, y: x == y)):
+    def __init__(self, memory: Memory, equiv: Callable = (lambda x, y: x == y), **kwargs):
         self.memory: Memory = memory
         self.equiv: Callable = equiv
 

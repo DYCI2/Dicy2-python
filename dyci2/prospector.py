@@ -12,7 +12,8 @@ Model Navigator
 ======================
 Definition of "model navigators" using the metaclass :class:`~MetaModelNavigator.MetaModelNavigator`.
 Main classes: :class:`~ModelNavigator.FactorOracleNavigator`. 
-Tutorial for the class :class:`~ModelNavigator.FactorOracleNavigator` in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`.
+Tutorial for the class :class:`~ModelNavigator.FactorOracleNavigator`
+in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`.
 
 Tutorial in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`
 
@@ -54,7 +55,6 @@ class Prospector:
     def __init__(self, model_class: Type[Model], navigator_class: Type[Navigator], memory: Memory, max_continuity=20,
                  control_parameters=(), history_parameters=(), equiv: Callable = (lambda x, y: x == y),
                  label_type=None, content_type=None):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """
         Constructor for the class FactorOracleNavigator.
         :see also: The class FactorOracle in FactorOracleAutomaton.py
@@ -68,7 +68,10 @@ class Prospector:
         """
         # TODO: Assert compatibility between model_class and navigator_class
 
+        # TODO: Model and Navigator should not be initialized here - to handle kwargs properly @ init,
+        #       it's better to initialize at parse, alt. pass explicit `model_kwargs` and `navigator_kwargs`
         self.model: Model = model_class(memory, equiv)
+
         self.navigator: Navigator = navigator_class(memory, equiv, max_continuity, control_parameters,
                                                     history_parameters)
         self.content_type: Type[MemoryEvent] = memory.content_type
@@ -78,7 +81,6 @@ class Prospector:
 
     def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
         """ raises: TypeError if event is incompatible with current memory """
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         if isinstance(event, self.content_type) and isinstance(event.label(), self.label_type):
             self.model.learn_event(event, equiv)
             self.navigator.learn_event(event, equiv)
@@ -87,8 +89,6 @@ class Prospector:
 
     def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
         """ raises: TypeError if sequence is incompatible with current memory """
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-
         # TODO[D]: This is never called! In original code it is called from Model.__init__, which obviously isn't
         #  possible. Need to call this from outside when simplifying calls
 
@@ -102,17 +102,22 @@ class Prospector:
             raise TypeError(f"Invalid content/label type for sequence")
 
     # TODO: This function should ideally not exist once setting of parameter and initialization is handled correctly
+    #       Or rather - this function should probably exist but be a `clear` function, where relevant aspects are
+    #       migrated to their corresponding parts
     def l_prepare_navigation(self, required_labels: List[Label], equiv: Optional[Callable],
                              new_max_continuity: Optional[int], init: bool) -> Callable:
+        # TODO: Don't pass this here, use `set_param`
         if equiv is None:
             equiv = self.model.equiv
 
+        # TODO: Don't pass this here, use `set_param`
         if new_max_continuity is not None:
             self.navigator.max_continuity = new_max_continuity
 
         if init:
             self.navigator.clear()
 
+        # TODO: This is not a good solution, this should be part of an explicit `init/clear` function or smth.
         if self.navigator.current_position_in_sequence < 0:
             if len(required_labels) > 0:
                 init_states: List[int] = [i for i in range(1, self.model.memory_length()) if
@@ -130,6 +135,16 @@ class Prospector:
                                equiv: Optional[Callable] = None, print_info: bool = False,
                                shift_index: int = 0) -> List[Candidate]:
         candidates: List[Candidate]
+        # TODO:
+        #   current_position_in_sequence: previously output event as defined by feedback function.
+        #                                 Generalize as interface function
+        #   forward_context_length_min:   Don't pass this here, use `set_param`
+        #                                 _
+        #   equiv:                        Don't pass this here, use `set_param`
+        #                                 _
+        #   authorize_direct_transition:  Don't pass this here, use `set_param`. Alt. pass a `**model_kwargs` dict
+        #  ---
+        #  ALSO: return some sort of `navigator_kwargs` from this function
         candidates = self.model.get_candidates(index_state=self.navigator.current_position_in_sequence,
                                                label=required_label,
                                                forward_context_length_min=forward_context_length_min,
@@ -138,6 +153,18 @@ class Prospector:
         # TODO[B2]: Move filtering to Prospector (after discussion with Jérôme)
         candidates = self.navigator.filter_using_history_and_taboos(candidates)
 
+        # TODO:
+        #  model_direct_transition: Part of `navigator_kwargs` passed from Model
+        #                           _
+        #  shift_index:             Part of `navigator_kwargs* passed from outside (not from Model - need strategy)
+        #                           _
+        #  all_memory:              Pass Memory directly instead and convert to whatever format needed
+        #                           _
+        #  required_label:          Should be part of the interface!!!
+        #                           _
+        #  print_info:              Handle with logging solution instead
+        #                           _
+        #  equiv:                   Don't pass this here, use `set_param`
         candidates = self.navigator.weight_candidates(candidates=candidates,
                                                       model_direct_transitions=self.model.direct_transitions,
                                                       shift_index=shift_index,
@@ -185,12 +212,16 @@ class Prospector:
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         self.navigator.rewind_generation(index_in_navigation)
 
+    # TODO: Should be part of interface but perhaps renamed. Could also be just one function with flag `apply_inverse`
     def l_encode_with_transform(self, transform: Transform):
         # self.model.l_set_sequence([None] + transform.encode_sequence(self.model.sequence[1::]))
+        # TODO: Just call `model.encode_with_transform` and `navigator.encode_with_transform`
         self.model.l_set_labels([None] + transform.encode_sequence(self.model.labels[1::]))
 
+    # TODO: Should be part of the interface but perhaps renamed
     def l_decode_with_transform(self, transform: Transform):
         # self.model.l_set_sequence([None] + transform.decode_sequence(self.model.sequence[1::]))
+        # TODO: Just call `model.decode_with_transform` and `navigator.decode_with_transform`
         self.model.l_set_labels([None] + transform.decode_sequence(self.model.labels[1::]))
 
     ################################################################################################################

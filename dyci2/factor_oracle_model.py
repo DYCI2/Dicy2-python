@@ -627,6 +627,9 @@ class FactorOracle(Model):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         return len(self.sequence)
 
+    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
+        pass    # TODO: Implement
+
     # TODO : Use prefix indexing algo
     def _length_common_forward_context(self, index_state1, index_state2, equiv: Optional[Callable] = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]

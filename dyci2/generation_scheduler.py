@@ -123,7 +123,6 @@ class GenerationScheduler:
         self.content_type: Type[MemoryEvent] = memory.content_type  # TODO[C]: Should not be here
 
         self.uninitialized: bool = True  # TODO[C] Positive name `initialized` would be better + invert all conditions
-        self.current_generation_output: List[Optional[Candidate]] = []
         self.transfo_current_generation_output: List[Transform] = []
 
         self.authorized_transformations: List[DontKnow] = list(authorized_tranformations)
@@ -184,10 +183,10 @@ class GenerationScheduler:
         # TODO[B] UNSOLVED! Massive side-effect. Exactly what is current_navigation_index?
         self.prospector.navigator.current_navigation_index = generation_index - 1
         # TODO[B]: UNSOLVED! generator_process_query should return output, not store it in current_generation_output
-        self._process_query(query)
+        output: List[Optional[Candidate]] = self._process_query(query)
 
-        print(f"self.current_generation_output {self.current_generation_output}")
-        self.generation_process.add_output(generation_index, self.current_generation_output)
+        print(f"self.current_generation_output {output}")
+        self.generation_process.add_output(generation_index, output)
 
         # TODO[B] Can this return generation_index instead? Or is query.start_date changed somewhere along the line?
         return query.start_date
@@ -225,8 +224,7 @@ class GenerationScheduler:
             raise RuntimeError(f"Invalid query type: {query.__class__.__name__}")
 
         # TODO[B] Again with the side effects...
-        self.current_generation_output = output
-        if len(self.current_generation_output) > 0:
+        if len(output) > 0:
             self.uninitialized = False
         return output
 
@@ -268,7 +266,10 @@ class GenerationScheduler:
                                                                 forward_context_length_min=forward_context_length_min,
                                                                 equiv=equiv, print_info=print_info, shift_index=i)
 
-            sequence.append(self.candidate_selector.decide(candidates))
+            output: Optional[Candidate] = self.candidate_selector.decide(candidates)
+            warnings.warn("Feedback does not have access to generation time")
+            self.feedback(-1, output)
+            sequence.append(output)
 
         self.decode_memory_with_current_transform()
         return sequence
@@ -320,7 +321,10 @@ class GenerationScheduler:
             if break_when_none and candidates.length() == 0:
                 break
             else:
-                sequence.append(self.candidate_selector.decide(candidates))
+                output: Optional[Candidate] = self.candidate_selector.decide(candidates)
+                warnings.warn("Feedback does not have access to generation time")
+                self.feedback(-1, output)
+                sequence.append(output)
 
         # TODO: This was most likely a misinterpretation of the original code and should probably be removed
         # sequence: List[Candidate] = [c for c in sequence if c is not None]
@@ -403,6 +407,7 @@ class GenerationScheduler:
             equiv=self.prospector.model.equiv)
 
         candidate: Optional[Candidate] = self.candidate_selector.decide(candidates)
+        # TODO: Feedback here!!!!
         if candidate is None:
             return []
 
@@ -453,6 +458,10 @@ class GenerationScheduler:
 
         print(f"---------END handle_scenario_based ->> Return {generated_sequence}")
         return generated_sequence
+
+    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
+        self.candidate_selector.feedback(time, output_event)
+        self.prospector.feedback(time, output_event)
 
     def start(self):
         """ Sets :attr:`self.current_performance_time` to 0."""

@@ -24,6 +24,7 @@ Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/Factor
 from abc import ABC, abstractmethod
 from typing import Callable
 
+from candidate import Candidate
 from candidates import Candidates
 from dyci2.label import *
 from memory import MemoryEvent, Memory
@@ -98,3 +99,8 @@ class Model(ABC):
     def memory_length(self):
         # FIXME[MergeState]: A[x], B[x], C[x], D[x], E[]
         """ TODO """
+
+    @abstractmethod
+    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
+        """ TODO """
+

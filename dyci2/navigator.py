@@ -41,27 +41,26 @@ class Navigator(ABC):
 
     @abstractmethod
     def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
-        # FIXME[MergeState]: A[x], B[x], C[x], D[x], E[]
         """ TODO """
 
     @abstractmethod
     def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
-        # FIXME[MergeState]: A[x], B[x], C[x], D[x], E[]
         """ TODO """
 
     @abstractmethod
     def rewind_generation(self, index_state: int):
-        # FIXME[MergeState]: A[x], B[x], C[x], D[x], E[]
         """ TODO """
 
     @abstractmethod
     def weight_candidates(self, candidates: Candidates) -> Candidates:
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ TODO """
 
     @abstractmethod
     def clear(self):
-        # FIXME[MergeState]: A[x], B[x], C[x], D[x], E[]
+        """ TODO """
+
+    @abstractmethod
+    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
         """ TODO """
 
 
@@ -455,6 +454,9 @@ class FactorOracleNavigator(Navigator):
             random_choice: int = random.randint(0, len(candidates) - 1)
             return [candidates[random_choice]]
         return []
+
+    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
+        pass # TODO
 
     def _update_history_and_taboos(self, index_in_sequence):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]

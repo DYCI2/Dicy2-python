@@ -10,6 +10,10 @@ class CandidateSelector(ABC):
     def decide(self, candidates: Candidates) -> Optional[Candidate]:
         """ TODO """
 
+    @abstractmethod
+    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
+        """ TODO """
+
 
 class TempCandidateSelector(CandidateSelector):
     def decide(self, candidates: Candidates) -> Optional[Candidate]:
@@ -17,3 +21,6 @@ class TempCandidateSelector(CandidateSelector):
             return None
         else:
             return candidates.at(0)
+
+    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
+        pass

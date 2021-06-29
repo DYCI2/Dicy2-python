@@ -214,6 +214,10 @@ class Prospector:
     def rewind_generation(self, index_in_navigation: int) -> None:
         self.navigator.rewind_generation(index_in_navigation)
 
+    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
+        self.model.feedback(time, output_event)
+        self.navigator.feedback(time, output_event)
+
     # TODO: Should be part of interface but perhaps renamed. Could also be just one function with flag `apply_inverse`
     def l_encode_with_transform(self, transform: Transform):
         # self.model.l_set_sequence([None] + transform.encode_sequence(self.model.sequence[1::]))

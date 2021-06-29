@@ -199,14 +199,10 @@ class FactorOracle(Model):
         # TODO: Temp! Should obviously not use DebugEvent once properly handled in __init__
         candidates: List[Candidate] = [Candidate(DebugEvent(self.sequence[i], self.labels[i]), i, 1.0, None)
                                        for i in indices]
-        # TODO: Temp! This should ideally just return self.memory, but cannot do so currently as it needs to take
-        #  applied transforms into account
-        dummy_memory: Memory = Memory([DebugEvent(s, l) for (i, (s, l)) in enumerate(zip(self.sequence, self.labels))],
-                                      content_type=self.content_type, label_type=self.label_type)
-        return Candidates(candidates=candidates, memory=dummy_memory)
+        return Candidates(candidates=candidates, memory=self.l_dummy_memory())
 
     def l_memory_as_candidates(self, exclude_last: bool = False,
-                               exclude_first: bool = True) -> List[Optional[Candidate]]:
+                               exclude_first: bool = True) -> Candidates:
         # TODO: Temp! Neither of these should use DebugEvent once properly handled in __init__
         start: int = 1 if exclude_first else 0
         end: int = len(self.sequence) - 1 if exclude_last else len(self.sequence)
@@ -221,7 +217,13 @@ class FactorOracle(Model):
             # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:-1], start=1)]
         # else:
             # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:], start=1)]
-        return candidates
+        return Candidates(candidates, self.l_dummy_memory())
+
+    def l_dummy_memory(self) -> Memory:
+        # TODO: Temp! This should ideally just return self.memory, but cannot do so currently as it needs to take
+        #  applied transforms into account
+        return  Memory([DebugEvent(s, l) for (i, (s, l)) in enumerate(zip(self.sequence, self.labels))],
+                                      content_type=self.content_type, label_type=self.label_type)
 
     def l_set_sequence(self, sequence: List[Optional[MemoryEvent]]):
         self.sequence = sequence

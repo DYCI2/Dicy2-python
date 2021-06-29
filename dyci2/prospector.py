@@ -199,9 +199,9 @@ class Prospector:
     def _scenario_initial_candidate(self, labels: List[Label], use_intervals: bool,
                                     continuity_with_future: Tuple[float, float], authorized_transformations: DontKnow,
                                     equiv: Optional[Callable]) -> Candidates:
-        full_memory: List[Optional[Candidate]] = self.model.l_memory_as_candidates(exclude_last=False,
+        full_memory: Candidates = self.model.l_memory_as_candidates(exclude_last=False,
                                                                                    exclude_first=False)
-        candidates: List[Candidate] = self.navigator.filter_using_history_and_taboos(full_memory)
+        full_memory.data = self.navigator.filter_using_history_and_taboos(full_memory.data)
 
         if use_intervals:  # TODO: This should be controlled by prospector (or navigator even?), not passed as argument
             func_intervals_to_labels: Optional[Callable]
@@ -213,7 +213,7 @@ class Prospector:
 
         candidates = self.navigator.find_prefix_matching_with_labels(
             use_intervals=use_intervals,
-            candidates=candidates,
+            candidates=full_memory.data,
             labels=labels,
             full_memory=full_memory,
             continuity_with_future=continuity_with_future,
@@ -222,7 +222,7 @@ class Prospector:
             equiv_interval=equiv_mod_interval,
             equiv=equiv)
 
-        return candidates
+        return Candidates(candidates, full_memory.memory)
 
     def rewind_generation(self, index_in_navigation: int) -> None:
         self.navigator.rewind_generation(index_in_navigation)

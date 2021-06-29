@@ -21,6 +21,7 @@ The classes defined in this module are used in association with models (cf. :mod
 """
 import copy
 import random
+import warnings
 from abc import ABC, abstractmethod
 from typing import List, Optional, Callable, Dict, Tuple
 
@@ -161,18 +162,36 @@ class FactorOracleNavigator(Navigator):
                               f"(cont. = {self.current_continuity}/{self.max_continuity})" \
                               f": {self.current_position_in_sequence}"
 
+        warnings.warn("This code contains a number of temporary changes that should be removed")
+        # FIXME: This code should just apply all functions to the same `candidates` variable, where each
+        #  _follow_continuations should never remove any candidates, just adjust their scores. As the code currently
+        #  does not do so, a number of temporary adjustments (renaming `candidates` to `original_candidates` in several
+        #  places) has been made. These should be reverted - there should only be a `candidates` variable,
+        #  no `original_candidates`
+        #  .
+        #  Actually, all of this code needs to be updated to be compatible with this idea - the intended behaviour is
+        #  to call all three functions (_using_transition, _with_jump, _without_continuation) on the same set, where the
+        #  last step might append further Candidates to the initial list of Candidates. Currently, it will only try to
+        #  call them after each other, but if there are matches in the first the second one will not be called, etc.
+
+
+        # Filtered, reachable candidates matching required_label
         candidates: List[Candidate] = self.filter_using_history_and_taboos(candidates)
 
-        # Case 1: Transition to state immediately following the previous one
-        candidates = self._follow_continuation_using_transition(candidates, model_direct_transitions)
+        original_candidates: List[Candidate] = candidates  # TODO: Remove this line
+
+        # Case 1: Transition to state immediately following the previous one if reachable and matching
+        # candidates = self._follow_continuation_using_transition(candidates, model_direct_transitions)
+        candidates = self._follow_continuation_using_transition(original_candidates, model_direct_transitions)
         if len(candidates) > 0:
             # TODO[C]: Remove this once follow_continuation_using_transition returns all candidates.
             str_print_info += f" -{candidates[0].event.label()}-> {candidates[0].index}"
         else:
-            # Case 2: Transition to any other state in the list of candidates
+            # Case 2: Transition to any other filtered, reachable candidate matching the required_label
             # TODO[C]: NOTE! This one will remove the actual candidate selected in the previous step if called.
             # TODO[B]: Migrate the random choice performed in this step to top level
-            candidates = self._follow_continuation_with_jump(candidates, model_direct_transitions)
+            # candidates = self._follow_continuation_with_jump(candidates, model_direct_transitions)
+            candidates = self._follow_continuation_with_jump(original_candidates, model_direct_transitions)
 
             if len(candidates) > 0:
                 prev_index: int = candidates[0].index - 1
@@ -180,12 +199,15 @@ class FactorOracleNavigator(Navigator):
                                   f"-> {model_direct_transitions.get(prev_index)[1]}"
 
             else:
-                # Case 3: Select from all valid candidates.
-                # Exclude first (None) and last element from list of candidates
+                # Filtered, _unreachable_candidates_ (matching label is done in `_find_matching_label_wo_continuation`)
+                # TODO[CRITICAL]: This line will also break the intended behaviour as it will overwrite initial
+                #  candidates. This should not be the case - it should just append things to the list of candidates
                 candidates = self.filter_using_history_and_taboos(all_memory)
                 if required_label is not None:
+                    # Case 3.1: Transition to any filtered _unreachable_ candidate matching the label
                     candidates = self._find_matching_label_without_continuation(required_label, candidates, equiv)
                 else:
+                    # Case 3.2: Transition to any filtered _unreachable_ candidate (if free navigation, i.e. no label)
                     candidates = self._follow_continuation_with_jump(candidates, model_direct_transitions)
 
                 if len(candidates) > 0:
@@ -535,6 +557,7 @@ class FactorOracleNavigator(Navigator):
         if equiv is None:
             equiv = self.equiv
 
+        # TODO: This should be an option but not controlled by no empty event: or assign to a low score, default.
         if self.no_empty_event:
             candidates = [c for c in candidates if equiv(c.event.label(), required_label)]
             if len(candidates) > 0:

@@ -17,28 +17,9 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 
 
 """
-
-# TODO
-#  STOCKER LES TRANSFORMATIONS POUR POUVOIR ENVOYER AUSSI AU FORMAT "index ou valeur du contenu dans son etat original"
-#  "transformation à appliquer"
-#  QUERY DE TYPE ADD OR REPLACE
-#  - go_to_anterior_state_using_execution_trace
-
-# TODO POUR VRAIMENT MIXER SOMAX ET IMPROTEK
-#  SLOT DE GENERATION HANDLER (ou de nouvelle classe qui en hérite) : self.alternative_generation_output = None
-#  C'EST POUR GUIDAGE DUR ! STOCKER DIFFERENTES POSSIBILITES DONNEES PAR SCENARIO
-#  ... SUR TOUTE UNE QUERY ? ENORME SI TOUTE LA GRILLE... SUR UNE PHASE ?? Bof...
-
-# TODO FAIRE UNE CLASSE "SEQUENCETRANSFORMER" QUI CONTIENT TOUS LES PARAMETRES ET METHODES LIES A INTERVALS...
-#  A CETTE OCCASION MODIFIER CE QUI EST LA EN DUR, A SAVOIR QUE LE "AUTHORIZED TRANSFO" S'EXPRIMENT UNIQUEMENT EN INT.
-
-# TODO DOCUMENTER VRAIMENT LES SLOTS DE LA CLASSE ET DONC CERTAINS ARGUMENTS DE METHODES ET FONCTIONS
-# TODO S'OCCUPER D'UNE CLASSE CONTENT !!
 import itertools
-import warnings
 from typing import Optional, Callable, Tuple, Type, List
 
-from candidate import Candidate
 from candidate_selector import CandidateSelector, TempCandidateSelector
 from dyci2.query import Query, FreeQuery, LabelQuery, TimeMode
 from dyci2.transforms import *
@@ -87,7 +68,7 @@ class GenerationScheduler:
     :type prospector: cf. :mod:`ModelNavigator` and :mod:`MetaModelNavigator`
 
     #:param initial_query:
-    :type initial_query: bool
+    # :type initial_query: bool
     #:param current_generation_query:
     # :type current_generation_query: :class:`~Query.Query`
 
@@ -180,9 +161,11 @@ class GenerationScheduler:
         print(f"current_generation_time: {self.generation_process.generation_time}")
 
         if not self.uninitialized and self.performance_time < 0 and query.time_mode == TimeMode.RELATIVE:
+            # TODO: Is this really a good strategy? Or should it just assume this as ABSOLUTE(NOW)?
             raise RuntimeError("Cannot handle a relative query as the first query")
 
-        # TODO[B] If invariant above is useless or if we can handle this elsewhere, handle query.to_absolute in scheduler instead
+        # TODO[B] If invariant above is useless or if we can handle this elsewhere,
+        #  handle query.to_absolute in scheduler instead
         print("PROCESS QUERY\n", query)
         if query.time_mode == TimeMode.RELATIVE:
             query.to_absolute(self.performance_time)
@@ -208,7 +191,6 @@ class GenerationScheduler:
         # TODO[B] Can this return generation_index instead? Or is query.start_date changed somewhere along the line?
         return query.start_date
 
-    # TODO: THIS function should return List[Optional[Output]], but relies on proper implem. of transforms first.
     def _process_query(self, query: Query) -> List[Optional[Candidate]]:
         print("**********************************\nPROCESS QUERY: QUERY = \n**********************************", query)
         print("**********************************\nGENERATION MATCHING QUERY: QUERY = \n**********************", query)
@@ -276,8 +258,6 @@ class GenerationScheduler:
             self.avoid_repetitions_mode, self.no_empty_event.
         """
 
-        # TODO[B] Discuss this with Jerome: how does encoding/decoding impact the actual memory? Is the return value
-        #  here (`sequence`) really referring to something else than what's decoded in line below?
         self.encode_memory_with_current_transform()
         equiv = self.prospector.l_prepare_navigation([], equiv, new_max_continuity, init)
         sequence: List[Optional[Candidate]] = []
@@ -360,7 +340,6 @@ class GenerationScheduler:
         :rtype: list
 
         """
-        # TODO[C] Way too much manipulation and access of `memory` (i.e. Generator) here
         generated_sequence: List[Optional[Candidate]] = []
         print("SCENARIO BASED GENERATION 0")
         while len(generated_sequence) < len(list_of_labels):

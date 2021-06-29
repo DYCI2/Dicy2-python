@@ -93,7 +93,7 @@ class Prospector:
         #  possible. Need to call this from outside when simplifying calls
 
         # TODO[C]: Ensure that the sequence always is validated at top level so that the list of MemoryEvents always
-        #  has (1) a single LabelType and (2) a single ContentType.
+        #  has (1) a single LabelType and (2) a single ContentType. OR simply parse with all([isinstance(e) for e in a])
         if len(sequence) > 0 and isinstance(sequence[0], self.content_type) and isinstance(sequence[0].label(),
                                                                                            self.label_type):
             self.model.learn_sequence(sequence, equiv)
@@ -137,7 +137,7 @@ class Prospector:
         candidates: List[Candidate]
         # TODO:
         #   current_position_in_sequence: previously output event as defined by feedback function.
-        #                                 Generalize as interface function
+        #                                 Generalize this getter as interface function
         #   forward_context_length_min:   Don't pass this here, use `set_param`
         #                                 _
         #   equiv:                        Don't pass this here, use `set_param`
@@ -154,7 +154,7 @@ class Prospector:
         candidates = self.navigator.filter_using_history_and_taboos(candidates)
 
         # TODO:
-        #  model_direct_transition: Part of `navigator_kwargs` passed from Model
+        #  model_direct_transition: Part of `navigator_kwargs` passed from Model. Or remove: really don't like this dict
         #                           _
         #  shift_index:             Part of `navigator_kwargs* passed from outside (not from Model - need strategy)
         #                           _
@@ -180,14 +180,13 @@ class Prospector:
     def scenario_based_generation(self, labels: List[Label], use_intervals: bool,
                                   continuity_with_future: Tuple[float, float], authorized_transformations: DontKnow,
                                   equiv: Optional[Callable]) -> List[Candidate]:
-        # FIXME[MergeState]: A[], B[], C[], D[], E[]
 
         # TODO: Not a good solution - very particular behaviour for how prefix indexing is handled
         full_memory: List[Optional[Candidate]] = self.model.l_memory_as_candidates(exclude_last=False,
                                                                                    exclude_first=False)
         candidates: List[Candidate] = self.navigator.filter_using_history_and_taboos(full_memory)
 
-        if use_intervals:  # TODO: This should be controlled by prospector, not passed as argument
+        if use_intervals:  # TODO: This should be controlled by prospector (or navigator even?), not passed as argument
             func_intervals_to_labels: Optional[Callable]
             func_intervals_to_labels = self.label_type.make_sequence_of_intervals_from_sequence_of_labels
             equiv_mod_interval: Optional[Callable] = self.label_type.equiv_mod_interval
@@ -209,7 +208,6 @@ class Prospector:
         return candidates
 
     def rewind_generation(self, index_in_navigation: int) -> None:
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         self.navigator.rewind_generation(index_in_navigation)
 
     # TODO: Should be part of interface but perhaps renamed. Could also be just one function with flag `apply_inverse`

@@ -22,6 +22,7 @@ import random
 from typing import Callable, Tuple, Optional, List, Type
 
 from candidate import Candidate
+from candidates import Candidates
 from dyci2.navigator import Navigator
 # TODO : surchager set use_taboo pour que tous les -1 passent à 0 si on passe à FALSE
 # TODO : mode 0 : répétitions authorisées, mode 1 = on prend le min, mode 2, interdire les déjà passés
@@ -133,8 +134,8 @@ class Prospector:
 
     def navigation_single_step(self, required_label: Optional[Label], forward_context_length_min: int = 0,
                                equiv: Optional[Callable] = None, print_info: bool = False,
-                               shift_index: int = 0) -> List[Candidate]:
-        candidates: List[Candidate]
+                               shift_index: int = 0) -> Candidates:
+        candidates: Candidates
         # TODO:
         #   current_position_in_sequence: previously output event as defined by feedback function.
         #                                 Generalize this getter as interface function
@@ -151,7 +152,8 @@ class Prospector:
                                                equiv=equiv, authorize_direct_transition=True)
 
         # TODO[B2]: Move filtering to Prospector (after discussion with Jérôme)
-        candidates = self.navigator.filter_using_history_and_taboos(candidates)
+
+        candidates.data = self.navigator.filter_using_history_and_taboos(candidates.data)
 
         # TODO:
         #  model_direct_transition: Part of `navigator_kwargs` passed from Model. Or remove: really don't like this dict
@@ -172,14 +174,16 @@ class Prospector:
                                                       required_label=required_label,
                                                       print_info=print_info, equiv=equiv)
         # TODO[B2]: This should be migrated to feedback function instead
-        if len(candidates) > 0:
-            self.navigator.set_current_position_in_sequence_with_sideeffects(candidates[0].index)
+        if candidates.length() > 0:
+            self.navigator.set_current_position_in_sequence_with_sideeffects(candidates.at(0).index)
 
         return candidates
 
     def scenario_based_generation(self, labels: List[Label], use_intervals: bool,
                                   continuity_with_future: Tuple[float, float], authorized_transformations: DontKnow,
                                   equiv: Optional[Callable]) -> List[Candidate]:
+
+        # TODO: This one should use Candidates rather than List[Candidate] once updated
 
         # TODO: Not a good solution - very particular behaviour for how prefix indexing is handled
         full_memory: List[Optional[Candidate]] = self.model.l_memory_as_candidates(exclude_last=False,

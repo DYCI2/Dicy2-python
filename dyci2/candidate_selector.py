@@ -2,17 +2,18 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 
 from candidate import Candidate
+from candidates import Candidates
 
 
 class CandidateSelector(ABC):
     @abstractmethod
-    def decide(self, candidates: List[Candidate]) -> Optional[Candidate]:
+    def decide(self, candidates: Candidates) -> Optional[Candidate]:
         """ TODO """
 
 
 class TempCandidateSelector(CandidateSelector):
-    def decide(self, candidates: List[Candidate]) -> Optional[Candidate]:
-        if len(candidates) == 0:
+    def decide(self, candidates: Candidates) -> Optional[Candidate]:
+        if candidates.length() == 0:
             return None
         else:
-            return candidates[0]
+            return candidates.at(0)

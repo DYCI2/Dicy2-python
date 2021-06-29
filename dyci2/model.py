@@ -24,6 +24,7 @@ Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/Factor
 from abc import ABC, abstractmethod
 from typing import Callable
 
+from candidates import Candidates
 from dyci2.label import *
 from memory import MemoryEvent, Memory
 
@@ -83,7 +84,7 @@ class Model(ABC):
         """
 
     @abstractmethod
-    def get_candidates(self, index_state: int, label: Optional[Label]):
+    def get_candidates(self, index_state: int, label: Optional[Label]) -> Candidates:
         # FIXME[MergeState]: A[x], B[x], C[], D[], E[]
         """ TODO """
 

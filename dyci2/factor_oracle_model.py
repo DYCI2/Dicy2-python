@@ -1,6 +1,7 @@
 from typing import Optional, Callable, List, Type, Any
 
 from candidate import Candidate
+from candidates import Candidates
 from label import Label
 from memory import MemoryEvent, Memory, DebugEvent
 from model import Model
@@ -184,7 +185,7 @@ class FactorOracle(Model):
             self._add_suffix_link(index, self._from_state_read_label(k, label, equiv))
 
     def get_candidates(self, index_state: int, label: Optional[Label], forward_context_length_min: int = 1,
-                       equiv: Optional[Callable] = None, authorize_direct_transition: bool = True) -> List[Candidate]:
+                       equiv: Optional[Callable] = None, authorize_direct_transition: bool = True) -> Candidates:
         if label is not None:
             indices: List[int] = self._continuations_with_label(index_state=index_state, required_label=label,
                                                                 forward_context_length_min=forward_context_length_min,
@@ -196,7 +197,13 @@ class FactorOracle(Model):
                                                      equiv=equiv,
                                                      authorize_direct_transition=authorize_direct_transition)
         # TODO: Temp! Should obviously not use DebugEvent once properly handled in __init__
-        return [Candidate(DebugEvent(self.sequence[i], self.labels[i]), i, 1.0, None) for i in indices]
+        candidates: List[Candidate] = [Candidate(DebugEvent(self.sequence[i], self.labels[i]), i, 1.0, None)
+                                       for i in indices]
+        # TODO: Temp! This should ideally just return self.memory, but cannot do so currently as it needs to take
+        #  applied transforms into account
+        dummy_memory: Memory = Memory([DebugEvent(s, l) for (i, (s, l)) in enumerate(zip(self.sequence, self.labels))],
+                                      content_type=self.content_type, label_type=self.label_type)
+        return Candidates(candidates=candidates, memory=dummy_memory)
 
     def l_memory_as_candidates(self, exclude_last: bool = False,
                                exclude_first: bool = True) -> List[Optional[Candidate]]:

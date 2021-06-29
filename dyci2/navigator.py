@@ -27,6 +27,7 @@ from typing import List, Optional, Callable, Dict, Tuple
 
 import intervals
 from candidate import Candidate
+from candidates import Candidates
 from label import Label
 from memory import MemoryEvent, Memory
 from prefix_indexing import PrefixIndexing
@@ -54,7 +55,7 @@ class Navigator(ABC):
         """ TODO """
 
     @abstractmethod
-    def weight_candidates(self, candidates: List[Candidate]) -> List[Candidate]:
+    def weight_candidates(self, candidates: Candidates) -> Candidates:
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
         """ TODO """
 
@@ -155,9 +156,9 @@ class FactorOracleNavigator(Navigator):
     def rewind_generation(self, index_state: int):
         self._go_to_anterior_state_using_execution_trace(index_in_navigation=index_state)
 
-    def weight_candidates(self, candidates: List[Candidate], model_direct_transitions: Dict[int, Tuple[Label, int]],
-                          shift_index: int, all_memory: List[Candidate], required_label: Optional[Label],
-                          print_info: bool = False, equiv: Optional[Callable] = None) -> List[Candidate]:
+    def weight_candidates(self, candidates: Candidates, model_direct_transitions: Dict[int, Tuple[Label, int]],
+                          shift_index: int, required_label: Optional[Label], print_info: bool = False,
+                          equiv: Optional[Callable] = None) -> Candidates:
         str_print_info: str = f"{shift_index} " \
                               f"(cont. = {self.current_continuity}/{self.max_continuity})" \
                               f": {self.current_position_in_sequence}"
@@ -176,42 +177,45 @@ class FactorOracleNavigator(Navigator):
 
 
         # Filtered, reachable candidates matching required_label
-        candidates: List[Candidate] = self.filter_using_history_and_taboos(candidates)
+        candidates.data = self.filter_using_history_and_taboos(candidates.data)
 
-        original_candidates: List[Candidate] = candidates  # TODO: Remove this line
+        original_candidates: Candidates = copy.deepcopy(candidates)  # TODO: Remove this line, see note above
 
         # Case 1: Transition to state immediately following the previous one if reachable and matching
         # candidates = self._follow_continuation_using_transition(candidates, model_direct_transitions)
-        candidates = self._follow_continuation_using_transition(original_candidates, model_direct_transitions)
-        if len(candidates) > 0:
+        candidates.data = self._follow_continuation_using_transition(original_candidates.data, model_direct_transitions)
+        if candidates.length() > 0:
             # TODO[C]: Remove this once follow_continuation_using_transition returns all candidates.
-            str_print_info += f" -{candidates[0].event.label()}-> {candidates[0].index}"
+            str_print_info += f" -{candidates.at(0).event.label()}-> {candidates.at(0).index}"
         else:
             # Case 2: Transition to any other filtered, reachable candidate matching the required_label
             # TODO[C]: NOTE! This one will remove the actual candidate selected in the previous step if called.
             # TODO[B]: Migrate the random choice performed in this step to top level
             # candidates = self._follow_continuation_with_jump(candidates, model_direct_transitions)
-            candidates = self._follow_continuation_with_jump(original_candidates, model_direct_transitions)
+            candidates.data = self._follow_continuation_with_jump(original_candidates.data, model_direct_transitions)
 
-            if len(candidates) > 0:
-                prev_index: int = candidates[0].index - 1
+            if candidates.length() > 0:
+                prev_index: int = candidates.at(0).index - 1
                 str_print_info += f" ...> {prev_index} - {model_direct_transitions.get(prev_index)[0]} " \
                                   f"-> {model_direct_transitions.get(prev_index)[1]}"
 
             else:
+                # TODO: I have no idea why last is excluded here
                 # Filtered, _unreachable_candidates_ (matching label is done in `_find_matching_label_wo_continuation`)
-                # TODO[CRITICAL]: This line will also break the intended behaviour as it will overwrite initial
-                #  candidates. This should not be the case - it should just append things to the list of candidates
-                candidates = self.filter_using_history_and_taboos(all_memory)
+                all_memory: List[Candidate] = candidates.memory_as_candidates(exclude_last=True)
+                additional_candidates: List[Candidate] = self.filter_using_history_and_taboos(all_memory)
                 if required_label is not None:
                     # Case 3.1: Transition to any filtered _unreachable_ candidate matching the label
-                    candidates = self._find_matching_label_without_continuation(required_label, candidates, equiv)
+                    additional_candidates = self._find_matching_label_without_continuation(required_label,
+                                                                                           additional_candidates, equiv)
                 else:
                     # Case 3.2: Transition to any filtered _unreachable_ candidate (if free navigation, i.e. no label)
-                    candidates = self._follow_continuation_with_jump(candidates, model_direct_transitions)
+                    additional_candidates = self._follow_continuation_with_jump(additional_candidates,
+                                                                                model_direct_transitions)
 
-                if len(candidates) > 0:
-                    str_print_info += f" xxnothingxx - random: {candidates[0].index}"
+                if len(additional_candidates) > 0:
+                    candidates.data = additional_candidates # TODO: Should be `extend` rather than `=` later
+                    str_print_info += f" xxnothingxx - random: {candidates.at(0).index}"
                 else:
                     str_print_info += " xxnothingxx"
 
@@ -413,7 +417,7 @@ class FactorOracleNavigator(Navigator):
         if direct_transition:
             # TODO[C]: Note! This step is not compatible the idea of a list of candidates as it will actually remove
             #          the candidate selected in the previous step (_follow_continuation_using_transition)
-            candidates = [c for c in candidates if candidates.index != direct_transition[1]]
+            candidates = [c for c in candidates if c.index != direct_transition[1]]
 
         if len(candidates) > 0:
             if self.avoid_repetitions_mode > 0:

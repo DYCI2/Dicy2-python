@@ -21,6 +21,7 @@ import itertools
 from typing import Optional, Callable, Tuple, Type, List
 
 from candidate_selector import CandidateSelector, TempCandidateSelector
+from candidates import Candidates
 from dyci2.query import Query, FreeQuery, LabelQuery, TimeMode
 from dyci2.transforms import *
 # TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
@@ -262,7 +263,7 @@ class GenerationScheduler:
         equiv = self.prospector.l_prepare_navigation([], equiv, new_max_continuity, init)
         sequence: List[Optional[Candidate]] = []
         for i in range(num_events):
-            candidates: List[Candidate]
+            candidates: Candidates
             candidates = self.prospector.navigation_single_step(required_label=None,
                                                                 forward_context_length_min=forward_context_length_min,
                                                                 equiv=equiv, print_info=print_info, shift_index=i)
@@ -310,13 +311,13 @@ class GenerationScheduler:
 
         sequence: List[Optional[Output]] = []
         for (i, label) in enumerate(required_labels):
-            candidates: List[Candidate]
+            candidates: Candidates
             candidates = self.prospector.navigation_single_step(required_label=label,
                                                                 forward_context_length_min=forward_context_length_min,
                                                                 equiv=equiv, print_info=print_info,
                                                                 shift_index=i + shift_index)
 
-            if break_when_none and len(candidates) == 0:
+            if break_when_none and candidates.length() == 0:
                 break
             else:
                 sequence.append(self.candidate_selector.decide(candidates))

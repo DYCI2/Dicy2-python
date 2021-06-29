@@ -69,3 +69,6 @@ class Memory:
 
     def append(self, event: MemoryEvent):
         self.events.append(event)
+
+    def length(self) -> int:
+        return len(self.events)

@@ -399,62 +399,78 @@ class GenerationScheduler:
         self.decode_memory_with_current_transform()
         self.current_transformation_memory = None
 
-        candidates: List[Candidate] = self.prospector.scenario_based_generation(
+        generated_sequence: List[Candidate] = []
+
+        candidates: Candidates = self.prospector.scenario_single_step(
             labels=list_of_labels,
             use_intervals=self._use_intervals(),
             continuity_with_future=self.continuity_with_future,
             authorized_transformations=self.authorized_transformations,
-            equiv=self.prospector.model.equiv)
+            equiv=self.prospector.model.equiv,
+            previous_steps=generated_sequence)
 
-        candidate: Optional[Candidate] = self.candidate_selector.decide(candidates)
-        # TODO: Feedback here!!!!
-        if candidate is None:
+        output: Optional[Candidate] = self.candidate_selector.decide(candidates)
+        if output is None:
             return []
+        else:
+            generated_sequence.append(output)
 
-        print(f"SCENARIO BASED ONE PHASE SETS POSITION: {candidate.index}")
-        self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(candidate.index)
-        print(f"current_position_in_sequence: {candidate.index}")
+        # TODO: Feedback here!!!!
+        # self.feedback(..)
+
+        print(f"SCENARIO BASED ONE PHASE SETS POSITION: {output.index}")
+        # TODO: Replace with feedback function
+        self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(output.index)
+        print(f"current_position_in_sequence: {output.index}")
 
         # TODO: This is *NOT* a good solution for transforms, nor should it be handled here
-        if candidate.transform is not None and candidate.transform != 0:
-            transform: Transform = TransposeTransform(candidate.transform)
+        if output.transform is not None and output.transform != 0:
+            transform: Transform = TransposeTransform(output.transform)
             # NOTE! ContentType was never set in orig. Therefore commented out
-            # candidate: [Candidate] = transform.encode(candidate)
-            candidate.transform = transform
+            # output: [Candidate] = transform.encode(output)
+            output.transform = transform
             # TODO: Side effect
             self.current_transformation_memory = transform
 
         if print_info:
-            print(f"{shift_index} NEW STARTING POINT {candidate.event.label()} (orig. --): {candidate.index}\n"
-                  f"length future = {candidate.score} - FROM NOW {self.current_transformation_memory}")
+            print(f"{shift_index} NEW STARTING POINT {output.event.label()} (orig. --): {output.index}\n"
+                  f"length future = {output.score} - FROM NOW {self.current_transformation_memory}")
 
         # TODO: Side effect: This should probably be in GenerationProcess?
-        #  Or perhaps not even necessary since stored in Output
         self.transfo_current_generation_output.append(self.current_transformation_memory)
 
-        # Apply transform from initial candidate to memory
+        # Apply transform from initial output to memory # TODO: Rewrite this as function of `output.transform`
         self.encode_memory_with_current_transform()
 
         # TODO: This is not ok at all!! - pass this as value to simply_guided_generation.
-        #  Also move: `no_empty_event` should not part of Navigator but of GenerationScheduler/Generator.
+        #  Also move: `no_empty_event` should not be part of Navigator but of GenerationScheduler/Generator.
         aux: bool = self.prospector.navigator.no_empty_event
         # In order to begin a new navigation phase when this method returns a "None" event
         self.prospector.navigator.no_empty_event = False
 
-        seq: List[Optional[Candidate]]
-        seq = self.simply_guided_generation(required_labels=list_of_labels[1::], init=False,
-                                            print_info=print_info,
-                                            shift_index=original_query_length - len(list_of_labels) + 1,
-                                            break_when_none=True)
+        equiv = self.prospector.l_prepare_navigation(list_of_labels[1:])
+        shift_index: int = original_query_length - len(list_of_labels) + 1
+        for (i, label) in enumerate(list_of_labels[1:]):    # type: int, Label
+            candidates: Candidates = self.prospector.scenario_single_step(labels=[label],
+                                                                          index_in_generation=shift_index + i,
+                                                                          previous_steps=generated_sequence,
+                                                                          use_intervals=None,
+                                                                          continuity_with_future=None,
+                                                                          authorized_transformations=None,
+                                                                          equiv=equiv)
+
+            output: Optional[Candidate] = self.candidate_selector.decide(candidates)
+            if output is not None:
+                output.transform = self.current_transformation_memory
+                warnings.warn("Feedback does not have access to generation time")
+                self.feedback(-1, output)
+                generated_sequence.append(output)
+                self.transfo_current_generation_output.append(self.current_transformation_memory)
+            else:
+                # Break loop if output is None
+                break
 
         self.prospector.navigator.no_empty_event = aux
-
-        generated_sequence: List[Candidate] = [candidate]
-        for output_event in itertools.takewhile(lambda o: o is not None, seq):  # type: Candidate
-            output_event.transform = self.current_transformation_memory
-            generated_sequence.append(output_event)
-            # TODO: Side effect
-            self.transfo_current_generation_output.append(self.current_transformation_memory)
 
         print(f"---------END handle_scenario_based ->> Return {generated_sequence}")
         return generated_sequence

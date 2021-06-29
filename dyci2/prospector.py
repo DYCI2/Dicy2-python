@@ -105,8 +105,8 @@ class Prospector:
     # TODO: This function should ideally not exist once setting of parameter and initialization is handled correctly
     #       Or rather - this function should probably exist but be a `clear` function, where relevant aspects are
     #       migrated to their corresponding parts
-    def l_prepare_navigation(self, required_labels: List[Label], equiv: Optional[Callable],
-                             new_max_continuity: Optional[int], init: bool) -> Callable:
+    def l_prepare_navigation(self, required_labels: List[Label], equiv: Optional[Callable] = None,
+                             new_max_continuity: Optional[int] = None, init: bool = False) -> Callable:
         # TODO: Don't pass this here, use `set_param`
         if equiv is None:
             equiv = self.model.equiv
@@ -152,7 +152,8 @@ class Prospector:
                                                equiv=equiv, authorize_direct_transition=True)
 
         # TODO[B2]: Move filtering to Prospector (after discussion with Jérôme)
-
+        # TODO: I think easiest solution would be to generate a generic binary `index_map` to handle all index-based
+        #  filtering and just apply this wherever it is needed
         candidates.data = self.navigator.filter_using_history_and_taboos(candidates.data)
 
         # TODO:
@@ -179,13 +180,25 @@ class Prospector:
 
         return candidates
 
-    def scenario_based_generation(self, labels: List[Label], use_intervals: bool,
-                                  continuity_with_future: Tuple[float, float], authorized_transformations: DontKnow,
-                                  equiv: Optional[Callable]) -> List[Candidate]:
+    # TODO: use_intervals, continuity_with_future and equiv should be parameters and/or handled elsewhere rather than
+    #       passed here as part of the interface. Same for authorized transformations (maybe, at least isn't relevant
+    #       for navigation_single_step so need to handle as optional arg if arg. Actually, this is really the definition
+    #       of an invariant: E(index_in_scenario=0, authorized_transformations!=None). Creating function calls like this
+    #       will really mess up the idea of invariants if we need to pass these arguments...
+    def scenario_single_step(self, labels: List[Label], index_in_generation: int, previous_steps: List[Candidate],
+                             use_intervals: bool, continuity_with_future: Tuple[float, float],
+                             authorized_transformations: DontKnow, equiv: Optional[Callable]) -> Candidates:
+        """ raises: IndexError if `labels` is empty """
+        if len(previous_steps) == 0:
+            return self._scenario_initial_candidate(labels=labels, use_intervals=use_intervals,
+                                                    continuity_with_future=continuity_with_future,
+                                                    authorized_transformations=authorized_transformations, equiv=equiv)
+        else:
+            return self.navigation_single_step(labels[0], equiv=equiv, shift_index=index_in_generation)
 
-        # TODO: This one should use Candidates rather than List[Candidate] once updated
-
-        # TODO: Not a good solution - very particular behaviour for how prefix indexing is handled
+    def _scenario_initial_candidate(self, labels: List[Label], use_intervals: bool,
+                                    continuity_with_future: Tuple[float, float], authorized_transformations: DontKnow,
+                                    equiv: Optional[Callable]) -> Candidates:
         full_memory: List[Optional[Candidate]] = self.model.l_memory_as_candidates(exclude_last=False,
                                                                                    exclude_first=False)
         candidates: List[Candidate] = self.navigator.filter_using_history_and_taboos(full_memory)

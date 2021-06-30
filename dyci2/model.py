@@ -49,7 +49,7 @@ class Model(ABC):
         """ TODO[B]: Note that memory must always exist (as it may be necessary to call some sort of `build` or
              `init_memory` from constructor) but it may be empty. """
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
-        self.memory: Memory = memory
+        self._memory: Memory = memory
         self.equiv: Callable[[Label, Label], Label] = equiv
 
     @abstractmethod
@@ -87,6 +87,11 @@ class Model(ABC):
     @abstractmethod
     def get_candidates(self, index_state: int, label: Optional[Label]) -> Candidates:
         # FIXME[MergeState]: A[x], B[x], C[], D[], E[]
+        """ TODO """
+
+    @abstractmethod
+    @property
+    def memory(self):
         """ TODO """
 
     @abstractmethod

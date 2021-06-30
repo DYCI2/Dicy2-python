@@ -204,10 +204,13 @@ class FactorOracleNavigator(Navigator):
                 all_memory: List[Candidate] = candidates.memory_as_candidates(exclude_last=True)
                 additional_candidates: List[Candidate] = self.filter_using_history_and_taboos(all_memory)
                 if required_label is not None:
+                    # TODO: How to ensure that it will not duplicate candidates from previous steps here?
                     # Case 3.1: Transition to any filtered _unreachable_ candidate matching the label
                     additional_candidates = self._find_matching_label_without_continuation(required_label,
                                                                                            additional_candidates, equiv)
                 else:
+                    # TODO: This should be removed as it is covered by fallback selector and doesn't really make sense
+                    #  here (it will always append the entire memory, which isn't really ideal)
                     # Case 3.2: Transition to any filtered _unreachable_ candidate (if free navigation, i.e. no label)
                     additional_candidates = self._follow_continuation_with_jump(additional_candidates,
                                                                                 model_direct_transitions)

@@ -1,5 +1,5 @@
 import warnings
-from typing import List
+from typing import List, Iterable, Optional
 
 # TODO: Abstract base class, so that this can be extended with numpy peaks, etc.
 # class AbstractCandidates(ABC):
@@ -16,11 +16,11 @@ from memory import Memory
 
 
 class Candidates:
-    def __init__(self, candidates: List[Candidate], memory: Memory):
+    def __init__(self, candidates: List[Candidate], memory: Memory, index_mask: Optional[Iterable[int]] = None):
         self.data: List[Candidate] = candidates
         self.memory: Memory = memory
+        self.index_mask: Optional[Iterable[int]] = index_mask   # TODO: Unused so far
         warnings.warn("the Candidates class does not handle transforms")
-
 
     def append(self, candidate: Candidate):
         self.data.append(candidate)

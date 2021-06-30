@@ -211,7 +211,7 @@ class Prospector:
             func_intervals_to_labels = None
             equiv_mod_interval = None
 
-        candidates = self.navigator.find_prefix_matching_with_labels(
+        candidates: List[Candidate] = self.navigator.find_prefix_matching_with_labels(
             use_intervals=use_intervals,
             candidates=full_memory.data,
             labels=labels,
@@ -242,6 +242,9 @@ class Prospector:
         # self.model.l_set_sequence([None] + transform.decode_sequence(self.model.sequence[1::]))
         # TODO: Just call `model.decode_with_transform` and `navigator.decode_with_transform`
         self.model.l_set_labels([None] + transform.decode_sequence(self.model.labels[1::]))
+
+    def get_memory(self) -> Memory:
+        return self.model.memory
 
     ################################################################################################################
     #   TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP   #

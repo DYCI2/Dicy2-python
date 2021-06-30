@@ -213,17 +213,21 @@ class FactorOracle(Model):
             else:
                 candidates.append(Candidate(DebugEvent(self.sequence[i], self.labels[i]), i, 1.0, None))
         # if exclude_last:
-            # This is used in the case of simply guided navigation, don't know why
-            # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:-1], start=1)]
+        # This is used in the case of simply guided navigation, don't know why
+        # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:-1], start=1)]
         # else:
-            # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:], start=1)]
+        # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:], start=1)]
         return Candidates(candidates, self.l_dummy_memory())
+
+    @property
+    def memory(self) -> Memory:
+        return self.l_dummy_memory()
 
     def l_dummy_memory(self) -> Memory:
         # TODO: Temp! This should ideally just return self.memory, but cannot do so currently as it needs to take
         #  applied transforms into account
-        return  Memory([DebugEvent(s, l) for (i, (s, l)) in enumerate(zip(self.sequence, self.labels))],
-                                      content_type=self.content_type, label_type=self.label_type)
+        return Memory([DebugEvent(s, l) for (i, (s, l)) in enumerate(zip(self.sequence, self.labels))],
+                      content_type=self.content_type, label_type=self.label_type)
 
     def l_set_sequence(self, sequence: List[Optional[MemoryEvent]]):
         self.sequence = sequence
@@ -630,7 +634,7 @@ class FactorOracle(Model):
         return len(self.sequence)
 
     def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
-        pass    # TODO: Implement
+        pass  # TODO: Implement
 
     # TODO : Use prefix indexing algo
     def _length_common_forward_context(self, index_state1, index_state2, equiv: Optional[Callable] = None):

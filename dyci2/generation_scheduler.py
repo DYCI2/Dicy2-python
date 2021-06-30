@@ -20,7 +20,7 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 import itertools
 from typing import Optional, Callable, Tuple, Type, List
 
-from candidate_selector import CandidateSelector, TempCandidateSelector
+from candidate_selector import CandidateSelector, TempCandidateSelector, DefaultFallbackSelector
 from candidates import Candidates
 from dyci2.query import Query, FreeQuery, LabelQuery, TimeMode
 from dyci2.transforms import *
@@ -133,6 +133,7 @@ class GenerationScheduler:
 
         self.generation_process: GenerationProcess = GenerationProcess()
         self.candidate_selector: CandidateSelector = TempCandidateSelector()
+        self.fallback_selector: CandidateSelector = DefaultFallbackSelector()
 
     def __setattr__(self, name_attr, val_attr):
         object.__setattr__(self, name_attr, val_attr)
@@ -228,7 +229,7 @@ class GenerationScheduler:
             self.uninitialized = False
         return output
 
-    def free_generation(self, num_events: int, new_max_continuity: Optional[DontKnow] = None,
+    def free_generation(self, num_events: int, new_max_continuity: Optional[int] = None,
                         forward_context_length_min: int = 0, init: bool = False, equiv: Callable = None,
                         print_info: bool = False) -> List[Optional[Candidate]]:
         """ Free navigation through the sequence.
@@ -266,7 +267,7 @@ class GenerationScheduler:
                                                                 forward_context_length_min=forward_context_length_min,
                                                                 equiv=equiv, print_info=print_info, shift_index=i)
 
-            output: Optional[Candidate] = self.candidate_selector.decide(candidates)
+            output: Optional[Candidate] = self.decide(candidates, disable_fallback=False)
             warnings.warn("Feedback does not have access to generation time")
             self.feedback(-1, output)
             sequence.append(output)
@@ -321,7 +322,7 @@ class GenerationScheduler:
             if break_when_none and candidates.length() == 0:
                 break
             else:
-                output: Optional[Candidate] = self.candidate_selector.decide(candidates)
+                output: Optional[Candidate] = self.decide(candidates, disable_fallback=False)
                 warnings.warn("Feedback does not have access to generation time")
                 self.feedback(-1, output)
                 sequence.append(output)
@@ -358,25 +359,32 @@ class GenerationScheduler:
             if len(seq) > 0:
                 generated_sequence.extend(seq)
             else:
-                generated_sequence.append(self.l_scenario_default_case())
+                # TODO: Clunky to create Candidates instance for this. Also - doesn't have access to taboo/mask.
+                fallback_output: Optional[Candidate] = self.decide(Candidates([], self.prospector.get_memory()))
+                fallback_output.transform = NoTransform()
+                if fallback_output is not None:
+                    self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(fallback_output.index)
+                else:
+                    self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(0)
+                generated_sequence.append(fallback_output)
 
         return generated_sequence
 
-    # TODO: We need a strategy to handle the default case in a modular manner
-    def l_scenario_default_case(self) -> Optional[Candidate]:
-        if self.prospector.navigator.no_empty_event and \
-                self.prospector.navigator.current_position_in_sequence < self.prospector.model.index_last_state():
-            print("NO EMPTY EVENT")
-            next_index: int = self.prospector.navigator.current_position_in_sequence + 1
-            self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(next_index)
-            # TODO[CRITICAL]: This does not handle transforms coherently with surrounding code
-            #  (original code didn't either)
-            return Candidate(self.prospector.model.sequence[next_index], next_index, 1.0, NoTransform())
-
-        else:
-            print("EMPTY EVENT")
-            self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(0)
-            return None
+    # # TODO: We need a strategy to handle the default case in a modular manner
+    # def l_scenario_default_case(self) -> Optional[Candidate]:
+    #     if self.prospector.navigator.no_empty_event and \
+    #             self.prospector.navigator.current_position_in_sequence < self.prospector.model.index_last_state():
+    #         print("NO EMPTY EVENT")
+    #         next_index: int = self.prospector.navigator.current_position_in_sequence + 1
+    #         self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(next_index)
+    #         # TODO[CRITICAL]: This does not handle transforms coherently with surrounding code
+    #         #  (original code didn't either)
+    #         return Candidate(self.prospector.model.sequence[next_index], next_index, 1.0, NoTransform())
+    #
+    #     else:
+    #         print("EMPTY EVENT")
+    #         self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(0)
+    #         return None
 
     # TODO : PAS OPTIMAL DU TOUT D'ENCODER DECODER A CHAQUE ETAPE !!!!!!!!
     def handle_scenario_based_generation_one_phase(self, list_of_labels: List[Label], original_query_length: int,
@@ -403,13 +411,14 @@ class GenerationScheduler:
 
         candidates: Candidates = self.prospector.scenario_single_step(
             labels=list_of_labels,
+            index_in_generation=shift_index,
             use_intervals=self._use_intervals(),
             continuity_with_future=self.continuity_with_future,
             authorized_transformations=self.authorized_transformations,
             equiv=self.prospector.model.equiv,
             previous_steps=generated_sequence)
 
-        output: Optional[Candidate] = self.candidate_selector.decide(candidates)
+        output: Optional[Candidate] = self.decide(candidates, disable_fallback=True)
         if output is None:
             return []
         else:
@@ -459,7 +468,7 @@ class GenerationScheduler:
                                                                           authorized_transformations=None,
                                                                           equiv=equiv)
 
-            output: Optional[Candidate] = self.candidate_selector.decide(candidates)
+            output: Optional[Candidate] = self.decide(candidates, disable_fallback=True)
             if output is not None:
                 output.transform = self.current_transformation_memory
                 warnings.warn("Feedback does not have access to generation time")
@@ -478,6 +487,13 @@ class GenerationScheduler:
     def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
         self.candidate_selector.feedback(time, output_event)
         self.prospector.feedback(time, output_event)
+
+    def decide(self, candidates: Candidates, disable_fallback: bool = False) -> Optional[Candidate]:
+        output: Optional[Candidate] = self.candidate_selector.decide(candidates)
+        if output is None and not disable_fallback:
+            output = self.fallback_selector.decide(candidates)
+
+        return output
 
     def start(self):
         """ Sets :attr:`self.current_performance_time` to 0."""

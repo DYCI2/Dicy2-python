@@ -120,7 +120,6 @@ class FactorOracleNavigator(Navigator):
         self.sequence: List[MemoryEvent] = memory.events
         self.labels: List[Label] = [e.label() for e in memory.events]
         self.equiv: Callable = equiv
-        self.no_empty_event = True
         self.max_continuity = max_continuity
         self.avoid_repetitions_mode = 0
         self.execution_trace = {}
@@ -157,7 +156,7 @@ class FactorOracleNavigator(Navigator):
 
     def weight_candidates(self, candidates: Candidates, model_direct_transitions: Dict[int, Tuple[Label, int]],
                           shift_index: int, required_label: Optional[Label], print_info: bool = False,
-                          equiv: Optional[Callable] = None) -> Candidates:
+                          equiv: Optional[Callable] = None, no_empty_event: bool = True) -> Candidates:
         str_print_info: str = f"{shift_index} " \
                               f"(cont. = {self.current_continuity}/{self.max_continuity})" \
                               f": {self.current_position_in_sequence}"
@@ -199,11 +198,11 @@ class FactorOracleNavigator(Navigator):
                                   f"-> {model_direct_transitions.get(prev_index)[1]}"
 
             else:
-                # TODO: I have no idea why last is excluded here
+                # TODO: I have no idea why `last` is excluded here
                 # Filtered, _unreachable_candidates_ (matching label is done in `_find_matching_label_wo_continuation`)
                 all_memory: List[Candidate] = candidates.memory_as_candidates(exclude_last=True)
                 additional_candidates: List[Candidate] = self.filter_using_history_and_taboos(all_memory)
-                if required_label is not None:
+                if required_label is not None and no_empty_event:
                     # TODO: How to ensure that it will not duplicate candidates from previous steps here?
                     # Case 3.1: Transition to any filtered _unreachable_ candidate matching the label
                     additional_candidates = self._find_matching_label_without_continuation(required_label,
@@ -303,7 +302,6 @@ class FactorOracleNavigator(Navigator):
         self.current_continuity = 0
         self.current_position_in_sequence = -1
         self.current_navigation_index = - 1
-        self.no_empty_event = True
 
     def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
         # FIXME[MergeState]: A[x], B[], C[], D[], E[]
@@ -566,12 +564,11 @@ class FactorOracleNavigator(Navigator):
         if equiv is None:
             equiv = self.equiv
 
-        # TODO: This should be an option but not controlled by no empty event: or assign to a low score, default.
-        if self.no_empty_event:
-            candidates = [c for c in candidates if equiv(c.event.label(), required_label)]
-            if len(candidates) > 0:
-                random_choice: int = random.randint(0, len(candidates) - 1)
-                return [candidates[random_choice]]
+        candidates = [c for c in candidates if equiv(c.event.label(), required_label)]
+        if len(candidates) > 0:
+            random_choice: int = random.randint(0, len(candidates) - 1)
+            return [candidates[random_choice]]
+
         return []
 
     ################################################################################################################

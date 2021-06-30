@@ -451,12 +451,6 @@ class GenerationScheduler:
         # Apply transform from initial output to memory # TODO: Rewrite this as function of `output.transform`
         self.encode_memory_with_current_transform()
 
-        # TODO: This is not ok at all!! - pass this as value to simply_guided_generation.
-        #  Also move: `no_empty_event` should not be part of Navigator but of GenerationScheduler/Generator.
-        aux: bool = self.prospector.navigator.no_empty_event
-        # In order to begin a new navigation phase when this method returns a "None" event
-        self.prospector.navigator.no_empty_event = False
-
         equiv = self.prospector.l_prepare_navigation(list_of_labels[1:])
         shift_index: int = original_query_length - len(list_of_labels) + 1
         for (i, label) in enumerate(list_of_labels[1:]):    # type: int, Label
@@ -466,7 +460,8 @@ class GenerationScheduler:
                                                                           use_intervals=None,
                                                                           continuity_with_future=None,
                                                                           authorized_transformations=None,
-                                                                          equiv=equiv)
+                                                                          equiv=equiv,
+                                                                          no_empty_event=False)
 
             output: Optional[Candidate] = self.decide(candidates, disable_fallback=True)
             if output is not None:
@@ -478,8 +473,6 @@ class GenerationScheduler:
             else:
                 # Break loop if output is None
                 break
-
-        self.prospector.navigator.no_empty_event = aux
 
         print(f"---------END handle_scenario_based ->> Return {generated_sequence}")
         return generated_sequence

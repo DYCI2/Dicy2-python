@@ -134,7 +134,7 @@ class Prospector:
 
     def navigation_single_step(self, required_label: Optional[Label], forward_context_length_min: int = 0,
                                equiv: Optional[Callable] = None, print_info: bool = False,
-                               shift_index: int = 0) -> Candidates:
+                               shift_index: int = 0, no_empty_event: bool = True) -> Candidates:
         candidates: Candidates
         # TODO:
         #   current_position_in_sequence: previously output event as defined by feedback function.
@@ -173,7 +173,8 @@ class Prospector:
                                                       shift_index=shift_index,
                                                       all_memory=self.model.l_memory_as_candidates(exclude_last=True),
                                                       required_label=required_label,
-                                                      print_info=print_info, equiv=equiv)
+                                                      print_info=print_info, equiv=equiv,
+                                                      no_empty_event=no_empty_event)
         # TODO[B2]: This should be migrated to feedback function instead
         if candidates.length() > 0:
             self.navigator.set_current_position_in_sequence_with_sideeffects(candidates.at(0).index)
@@ -187,7 +188,8 @@ class Prospector:
     #       will really mess up the idea of invariants if we need to pass these arguments...
     def scenario_single_step(self, labels: List[Label], index_in_generation: int, previous_steps: List[Candidate],
                              use_intervals: bool, continuity_with_future: Tuple[float, float],
-                             authorized_transformations: DontKnow, equiv: Optional[Callable]) -> Candidates:
+                             authorized_transformations: DontKnow, equiv: Optional[Callable],
+                             no_empty_event: bool = True) -> Candidates:
         """ raises: IndexError if `labels` is empty """
         if len(previous_steps) == 0:
             return self._scenario_initial_candidate(labels=labels, use_intervals=use_intervals,

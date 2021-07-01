@@ -87,7 +87,7 @@ class NoTransform(Transform):
         return [cls()]
 
 
-class TransposeTransform(NoTransform):
+class TransposeTransform(Transform):
     # transposition_range = [-3, 3]
     def __init__(self, semitone, mod12=True):
         self.semitone = semitone
@@ -96,6 +96,7 @@ class TransposeTransform(NoTransform):
         # TODO 2021 : ?
         #self.admitted_types = ["ChordLabel", "Label"]
         self.admitted_types = [ChordLabel]
+
 
     def __repr__(self):
         return "Transposition of " + str(self.semitone) + " semi-tones"
@@ -110,7 +111,6 @@ class TransposeTransform(NoTransform):
         #    new_thing.contents = self.encode(new_thing.contents)
         #    return new_thing
         if isinstance(thing, Candidate):
-            warnings.warn("Note: transform is only applied to label!")
             thing.label = self.encode(thing.event.label())
             return thing
 
@@ -152,7 +152,6 @@ class TransposeTransform(NoTransform):
         #    return new_thing
         #if type(thing) is Label.ChordLabel:
         if isinstance(thing, Candidate):
-            warnings.warn("Note: transform is only applied to label!")
             thing.label = self.decode(thing.event.label())
             return thing
 

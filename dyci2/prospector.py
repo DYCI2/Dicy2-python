@@ -196,7 +196,8 @@ class Prospector:
                                                     continuity_with_future=continuity_with_future,
                                                     authorized_transformations=authorized_transformations, equiv=equiv)
         else:
-            return self.navigation_single_step(labels[0], equiv=equiv, shift_index=index_in_generation)
+            return self.navigation_single_step(labels[0], equiv=equiv, shift_index=index_in_generation,
+                                               no_empty_event=no_empty_event)
 
     def _scenario_initial_candidate(self, labels: List[Label], use_intervals: bool,
                                     continuity_with_future: Tuple[float, float], authorized_transformations: DontKnow,

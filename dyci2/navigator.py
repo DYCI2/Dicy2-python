@@ -31,6 +31,7 @@ from candidates import Candidates
 from label import Label
 from memory import MemoryEvent, Memory
 from prefix_indexing import PrefixIndexing
+from transforms import TransposeTransform
 from utils import noneIsInfinite, DontKnow
 
 
@@ -266,7 +267,7 @@ class FactorOracleNavigator(Navigator):
             # In practise: this will only be a single candidate due to previous function call
             selected_candidates: List[Candidate] = [c for c in candidates if c.index == s]
             for candidate in selected_candidates:
-                candidate.transform = t
+                candidate.transform = TransposeTransform(t)
                 candidate.score = length_selected_prefix
         else:
             selected_candidates = []

@@ -207,18 +207,18 @@ class GenerationScheduler:
 
         elif isinstance(query, LabelQuery) and len(query.labels) == 1:
             print("GENERATION MATCHING QUERY LABEL ...")
-            # TODO[C] Find solution for transforms: since `scenario_based` also calls simply_guided,
-            #  transform handling cannot be in `simply_guided`
-            self.encode_memory_with_current_transform()
+            # self.encode_memory_with_current_transform()
             output = self.simply_guided_generation(required_labels=query.labels, init=self.uninitialized,
                                                    print_info=query.print_info)
-            self.decode_memory_with_current_transform()
+            # self.decode_memory_with_current_transform()
             self.transfo_current_generation_output = [self.current_transformation_memory] * len(output)
             print("... GENERATION MATCHING QUERY LABEL OK")
 
         elif isinstance(query, LabelQuery) and len(query.labels) > 1:
             print("GENERATION MATCHING QUERY SCENARIO ...")
             output = self.scenario_based_generation(list_of_labels=query.labels, print_info=query.print_info)
+            warnings.warn("This doesn't seem to handle transfo_current_generation_output consistently "
+                          "with surrounding code")
             print("... GENERATION MATCHING QUERY SCENARIO OK")
 
         else:
@@ -258,7 +258,7 @@ class GenerationScheduler:
             self.avoid_repetitions_mode, self.no_empty_event.
         """
 
-        self.encode_memory_with_current_transform()
+        # self.encode_memory_with_current_transform()
         equiv = self.prospector.l_prepare_navigation([], equiv, new_max_continuity, init)
         sequence: List[Optional[Candidate]] = []
         for i in range(num_events):
@@ -272,7 +272,7 @@ class GenerationScheduler:
             self.feedback(-1, output)
             sequence.append(output)
 
-        self.decode_memory_with_current_transform()
+        # self.decode_memory_with_current_transform()
         return sequence
 
     def simply_guided_generation(self, required_labels: List[Label],
@@ -432,14 +432,14 @@ class GenerationScheduler:
         self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(output.index)
         print(f"current_position_in_sequence: {output.index}")
 
-        # TODO: This is *NOT* a good solution for transforms, nor should it be handled here
-        if output.transform is not None and output.transform != 0:
-            transform: Transform = TransposeTransform(output.transform)
-            # NOTE! ContentType was never set in orig. Therefore commented out
-            # output: [Candidate] = transform.encode(output)
-            output.transform = transform
-            # TODO: Side effect
-            self.current_transformation_memory = transform
+        # if output.transform is not None and output.transform != 0:
+        #     transform: Transform = TransposeTransform(output.transform)
+        #     # NOTE! ContentType was never set in orig. Therefore commented out
+        #     # output: [Candidate] = transform.encode(output)
+        #     output.transform = transform
+        #     # TODO: Side effect
+        #     self.current_transformation_memory = transform
+        self.current_transformation_memory = output.transform if output is not None else None
 
         if print_info:
             print(f"{shift_index} NEW STARTING POINT {output.event.label()} (orig. --): {output.index}\n"

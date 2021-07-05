@@ -87,7 +87,7 @@ class FactorOracle(Model):
         self.build(memory)
 
     def build(self, memory: Memory):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """
         Builds the model.
 
@@ -118,7 +118,7 @@ class FactorOracle(Model):
         self.reverse_suffix_links[self.index_last_state()] = []
 
     def index_last_state(self):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """ Index of the last state in the model."""
         return len(self.labels) - 1
 
@@ -126,7 +126,7 @@ class FactorOracle(Model):
         return len(self.labels) - 1
 
     def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """
         Learns (appends) a new sequence in the model.
 
@@ -185,16 +185,14 @@ class FactorOracle(Model):
             self._add_suffix_link(index, self._from_state_read_label(k, label, equiv))
 
     def get_candidates(self, index_state: int, label: Optional[Label], forward_context_length_min: int = 1,
-                       equiv: Optional[Callable] = None, authorize_direct_transition: bool = True) -> Candidates:
+                       authorize_direct_transition: bool = True) -> Candidates:
         if label is not None:
             indices: List[int] = self._continuations_with_label(index_state=index_state, required_label=label,
                                                                 forward_context_length_min=forward_context_length_min,
-                                                                equiv=equiv,
                                                                 authorize_direct_transition=authorize_direct_transition)
         else:
             indices: List[int] = self._continuations(index_state=index_state,
                                                      forward_context_length_min=forward_context_length_min,
-                                                     equiv=equiv,
                                                      authorize_direct_transition=authorize_direct_transition)
         # TODO: Temp! Should obviously not use DebugEvent once properly handled in __init__
         candidates: List[Candidate] = [Candidate(DebugEvent(self.sequence[i], self.labels[i]), i, 1.0, None)
@@ -547,7 +545,7 @@ class FactorOracle(Model):
     # TODO : introduce quality with length of the backward context
     def _continuations(self, index_state: int, forward_context_length_min: int = 1, equiv: Optional[Callable] = None,
                        authorize_direct_transition: bool = True) -> List[int]:
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """ Possible continuations from the state at index index_state in the automaton, i.e. direct transition and
         states reached using suffix links and reverse suffix links.
         These states follow states sharing a common backward context and a common forward context with the state at
@@ -600,7 +598,7 @@ class FactorOracle(Model):
     def _continuations_with_label(self, index_state: int, required_label: Label,
                                   forward_context_length_min: int = 1, equiv: Optional[Callable] = None,
                                   authorize_direct_transition: bool = True) -> List[int]:
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """ Possible continuations labeled by required_label from the state at index index_state in the automaton.
 
         :param index_state: start index
@@ -630,7 +628,7 @@ class FactorOracle(Model):
                 equiv(required_label, self.labels[s])]
 
     def length(self) -> int:
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         return len(self.sequence)
 
     def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
@@ -638,7 +636,7 @@ class FactorOracle(Model):
 
     # TODO : Use prefix indexing algo
     def _length_common_forward_context(self, index_state1, index_state2, equiv: Optional[Callable] = None):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """ Length of the forward context shared by two states in the sequence.
 
         :type index_state1: int
@@ -667,7 +665,7 @@ class FactorOracle(Model):
 
     # TODO : Method of a "sequence" class ? Use LRS ?
     def _length_common_backward_context(self, index_state1, index_state2, equiv=None):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """ Length of the backward context shared by two states in the sequence.
 
         :type index_state1: int

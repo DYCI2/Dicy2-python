@@ -30,12 +30,13 @@ from candidate import Candidate
 from candidates import Candidates
 from label import Label
 from memory import MemoryEvent, Memory
+from parameter import Parametric, Parameter, OrdinalRange
 from prefix_indexing import PrefixIndexing
 from transforms import TransposeTransform
 from utils import noneIsInfinite, DontKnow
 
 
-class Navigator(ABC):
+class Navigator(Parametric, ABC):
     def __init__(self, memory: Memory, equiv: Callable = (lambda x, y: x == y), **kwargs):
         self.memory: Memory = memory
         self.equiv: Callable = equiv
@@ -115,14 +116,16 @@ class FactorOracleNavigator(Navigator):
     """
 
     def __init__(self, memory: Memory, equiv: Optional[Callable] = (lambda x, y: x == y), max_continuity=20,
-                 control_parameters=(), execution_trace_parameters=()):
+                 control_parameters=(), execution_trace_parameters=(),
+                 continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
         super().__init__(memory, equiv)
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         self.sequence: List[MemoryEvent] = memory.events
         self.labels: List[Label] = [e.label() for e in memory.events]
         self.equiv: Callable = equiv
-        self.max_continuity = max_continuity
-        self.avoid_repetitions_mode = 0
+        self.max_continuity: Parameter[int] = Parameter(max_continuity, OrdinalRange(0, None))
+        self.avoid_repetitions_mode: Parameter[int] = Parameter(0)
+        self.continuity_with_future: Parameter[Tuple[float, float]] = Parameter(continuity_with_future)
         self.execution_trace = {}
 
         self.history_and_taboos: List[Optional[int]] = [0] * (len(self.sequence))
@@ -148,7 +151,7 @@ class FactorOracleNavigator(Navigator):
                 self.execution_trace_parameters.append(param)
 
     def __setattr__(self, name_attr, val_attr):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         object.__setattr__(self, name_attr, val_attr)
         # TODO : SUPPRIMER TRACE AVANT TEMPS PERFORMANCE
 
@@ -159,7 +162,7 @@ class FactorOracleNavigator(Navigator):
                           shift_index: int, required_label: Optional[Label], print_info: bool = False,
                           equiv: Optional[Callable] = None, no_empty_event: bool = True) -> Candidates:
         str_print_info: str = f"{shift_index} " \
-                              f"(cont. = {self.current_continuity}/{self.max_continuity})" \
+                              f"(cont. = {self.current_continuity}/{self.max_continuity.get()})" \
                               f": {self.current_position_in_sequence}"
 
         warnings.warn("This code contains a number of temporary changes that should be removed")
@@ -228,11 +231,9 @@ class FactorOracleNavigator(Navigator):
 
     def find_prefix_matching_with_labels(self, use_intervals: bool, candidates: List[Candidate], labels: List[Label],
                                          full_memory: List[Optional[Candidate]],
-                                         continuity_with_future: Tuple[float, float],
                                          authorized_transformations: List[int],
                                          sequence_to_interval_fun: Optional[Callable],
-                                         equiv_interval: Optional[Callable],
-                                         equiv: Optional[Callable]) -> List[Candidate]:
+                                         equiv_interval: Optional[Callable]) -> List[Candidate]:
 
         memory_labels: List[Optional[Label]] = [c.event.label() if c is not None else None for c in full_memory]
         authorized_indices: List[int] = [c.index for c in candidates]
@@ -242,7 +243,7 @@ class FactorOracleNavigator(Navigator):
             index_delta_prefixes, _ = intervals.filtered_prefix_indexing_intervals(
                 sequence=memory_labels,
                 pattern=labels,
-                length_interval=continuity_with_future,
+                length_interval=self.continuity_with_future,
                 authorized_indexes=authorized_indices,
                 authorized_intervals=authorized_transformations,
                 sequence_to_interval_fun=sequence_to_interval_fun,
@@ -255,7 +256,7 @@ class FactorOracleNavigator(Navigator):
                 pattern=memory_labels,
                 length_interval=continuity_with_future,
                 authorized_indexes=authorized_indices,
-                equiv=equiv,
+                equiv=self.equiv,
                 print_info=False)
 
         s: Optional[int]
@@ -275,7 +276,7 @@ class FactorOracleNavigator(Navigator):
         return selected_candidates
 
     def _go_to_anterior_state_using_execution_trace(self, index_in_navigation):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """
         This method is called when the run of a new query rewrites previously generated anticipations.
         It uses :attr:`self.execution_trace` to go back at the state where the navigator was at the "tiling time".
@@ -295,7 +296,7 @@ class FactorOracleNavigator(Navigator):
             self.__dict__[name_slot] = value_slot
 
     def clear(self):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """ (Re)initializes the navigation parameters (current navigation index, history of retrieved indexes,
         current continuity,...). """
         # self.history_and_taboos = [None] + [0] * (len(self.sequence) - 1)   # TODO[A] Breaking change, old code here
@@ -305,7 +306,7 @@ class FactorOracleNavigator(Navigator):
         self.current_navigation_index = - 1
 
     def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """
         Learns (appends) a new sequence in the model.
 
@@ -326,7 +327,7 @@ class FactorOracleNavigator(Navigator):
             self.learn_event(event, equiv)
 
     def learn_event(self, event: MemoryEvent, equiv: Callable = None):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         if equiv is None:
             equiv = self.equiv
 
@@ -340,7 +341,7 @@ class FactorOracleNavigator(Navigator):
         filtered_list = [c for c in candidates
                          if c is not None
                          and (not (self.history_and_taboos[c.index] is None)
-                              and (self.avoid_repetitions_mode < 2 or self.avoid_repetitions_mode >= 2
+                              and (self.avoid_repetitions_mode.get() < 2 or self.avoid_repetitions_mode.get() >= 2
                                    and self.history_and_taboos[c.index] == 0))]
         # print("Possible next indexes = {}, filtered list = {}".format(list_of_indexes, filtered_list))
         return filtered_list
@@ -350,7 +351,7 @@ class FactorOracleNavigator(Navigator):
     ################################################################################################################
 
     def _record_execution_trace(self, index_in_navigation):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """
         Stores in :attr:`self.execution_trace` the values of different parameters of the model when generating thefu
         event in the sequence at the index given in argument.
@@ -371,7 +372,7 @@ class FactorOracleNavigator(Navigator):
 
     def _follow_continuation_using_transition(self, candidates: List[Candidate],
                                               direct_transitions: Dict[int, Tuple[Label, int]]) -> List[Candidate]:
-        # FIXME[MergeState]: A[], B[], C[], D[], E[]
+        
         # TODO[A] This should return a list of candidates (that for stage A1 may be of length 1)
         """
         Continuation using direct transition from self.current_position_in_sequence.
@@ -390,14 +391,14 @@ class FactorOracleNavigator(Navigator):
 
         direct_transition: Optional[Tuple[Label, int]] = direct_transitions.get(self.current_position_in_sequence)
 
-        if direct_transition is not None and self.current_continuity < self.max_continuity:
+        if direct_transition is not None and self.current_continuity < self.max_continuity.get():
             # TODO[B]: Assign a value to a match instead of returning it directly
             return [candidate for candidate in candidates if candidate.index == direct_transition[1]]
         return []
 
     def _continuations_with_jump(self, candidates: List[Candidate],
                                  direct_transitions: Dict[int, Tuple[Label, int]]) -> List[Candidate]:
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """
         List of continuations with jumps to indexes with similar contexts direct transition from
         self.current_position_in_sequence.
@@ -421,7 +422,7 @@ class FactorOracleNavigator(Navigator):
             candidates = [c for c in candidates if c.index != direct_transition[1]]
 
         if len(candidates) > 0:
-            if self.avoid_repetitions_mode > 0:
+            if self.avoid_repetitions_mode.get() > 0:
                 print(f"\nTrying to avoid repetitions: possible continuations {[c.index for c in candidates]}...")
                 # TODO[D]: This nested list comprehension could be optimized
                 minimum_history_taboo_value: int = min([self.history_and_taboos[ch.index] for ch in candidates],
@@ -434,7 +435,7 @@ class FactorOracleNavigator(Navigator):
     # TODO : autres modes que random choice
     def _follow_continuation_with_jump(self, candidates: List[Candidate],
                                        direct_transitions: Dict[int, Tuple[Label, int]]) -> List[Candidate]:
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """
         Random selection of a continuation with jump to indexes with similar contexts direct transition from
         self.current_position_in_sequence.
@@ -461,7 +462,7 @@ class FactorOracleNavigator(Navigator):
         pass # TODO
 
     def _update_history_and_taboos(self, index_in_sequence):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """
         Increases the value associated to the index given in argument in :attr:`self.history_and_taboos`.
         Handles the taboos linked to :attr:`self.max_continuity`.
@@ -490,7 +491,7 @@ class FactorOracleNavigator(Navigator):
                 previous_previous_continuity_in_sequence = self.execution_trace[self.current_navigation_index - 2][
                     "current_continuity"]
 
-        if self.current_continuity == self.max_continuity - 1 and self.current_position_in_sequence + 1 < self.index_last_state():
+        if self.current_continuity == self.max_continuity.get() - 1 and self.current_position_in_sequence + 1 < self.index_last_state():
             self._forbid_indexes([self.current_position_in_sequence + 1])
         # print("Continuity reaches (self.max_continuity - 1). \n"
         #       "New self.history_and_taboos = {}".format(self.history_and_taboos))
@@ -505,7 +506,7 @@ class FactorOracleNavigator(Navigator):
         #       "New self.history_and_taboos = {}".format(self.history_and_taboos))
 
     def _forbid_indexes(self, indexes):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """
         Introduces "taboos" (events that cannot be retrieved) in the navigation mechanisms.
 
@@ -517,7 +518,7 @@ class FactorOracleNavigator(Navigator):
             self.history_and_taboos[i] = None
 
     def _authorize_indexes(self, indexes):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """
         Delete the "taboos" (events that cannot be retrieved) in the navigation mechanisms for the states listed in
         the parameter indexes.
@@ -530,11 +531,11 @@ class FactorOracleNavigator(Navigator):
             self.history_and_taboos[i] = 0
 
     def _is_taboo(self, index):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         return self.history_and_taboos[index] is None
 
     def _delete_taboos(self):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """
         Delete all the "taboos" (events that cannot be retrieved) in the navigation mechanisms.
         """
@@ -546,7 +547,7 @@ class FactorOracleNavigator(Navigator):
 
     def _find_matching_label_without_continuation(self, required_label: Label, candidates: List[Candidate],
                                                   equiv: Optional[Callable] = None) -> List[Candidate]:
-        # FIXME[MergeState]: A[], B[], C[], D[], E[]
+        
         # TODO[A]: This should probably return a list of candidates
         """
         Random state in the sequence matching required_label if self.no_empty_event is True (else None).
@@ -597,7 +598,7 @@ class FactorOracleNavigator(Navigator):
         return s, t, length_selected_prefix
 
     def index_last_state(self):
-        # FIXME[MergeState]: A[x], B[], C[], D[], E[]
+        
         """ Index of the last state in the model."""
         return len(self.labels) - 1
 

@@ -1,53 +1,54 @@
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Optional, Union, Callable, List
+from typing import Any, Iterable, Optional, Union, Callable, List, TypeVar, Generic
+
+T = TypeVar('T')
 
 
-class Range(ABC):
+class Range(Generic[T], ABC):
     @abstractmethod
     def __contains__(self, item: Any) -> bool:
         pass
 
 
 class NominalRange(Range):
-    def __init__(self, labels: Iterable[Any]):
-        self.labels: Iterable[Any] = labels
+    def __init__(self, labels: Iterable[T]):
+        self.labels: Iterable[T] = labels
 
     def __contains__(self, item):
         return item in self.labels
 
 
 class OrdinalRange(Range):
-    def __init__(self, lower_bound: Optional[Union[float, int]] = None,
-                 upper_bound: Optional[Union[float, int]] = None):
-        self.lower_bound: Optional[Union[float, int]] = lower_bound
-        self.upper_bound: Optional[Union[float, int]] = upper_bound
+    def __init__(self, lower_bound: Optional[T] = None, upper_bound: Optional[T] = None):
+        self.lower_bound: Optional[T] = lower_bound
+        self.upper_bound: Optional[T] = upper_bound
 
-    def __contains__(self, item: Any) -> bool:
+    def __contains__(self, item: T) -> bool:
         return self.lower_bound <= item <= self.upper_bound
 
 
-class Parameter:
-    def __init__(self, initial_value: Any, value_range: Optional[Range] = None,
-                 setter: Optional[Callable[[Any], None]] = None):
-        self.value = initial_value
-        self.value_range = value_range
-        self.setter = setter
+class Parameter(Generic[T]):
+    def __init__(self, initial_value: T, value_range: Optional[Range] = None,
+                 func: Optional[Callable[[Any], T]] = None):
+        self.value: T = initial_value
+        self.value_range: Optional[Range] = value_range
+        self.func: Optional[Callable[[Any], T]] = func
 
     def set(self, value: Any) -> None:
         """ raises: ValueError if value is outside of the defined range"""
-        if self.value_range is not None:
-            if value in self.value_range:
-                self._set(value)
-            else:
-                raise ValueError(f"Value {value} is outside defined range")
+        if self.func is not None:
+            self._set(self.func(value))
+        else:
+            self._set(value)
 
     def _set(self, value: Any) -> None:
-        if self.setter is not None:
-            self.setter(value)
+        """ raises: ValueError if value is outside of the defined range"""
+        if self.value_range is not None and value not in self.value_range:
+            raise ValueError(f"Value {value} is outside defined range")
         else:
             self.value = value
 
-    def get(self) -> Any:
+    def get(self) -> T:
         return self.value
 
 

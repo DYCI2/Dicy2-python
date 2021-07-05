@@ -31,6 +31,7 @@ from memory import MemoryEvent, Memory
 from model import Model
 from navigator import Navigator, FactorOracleNavigator
 from output import Output
+from parameter import Parametric, Parameter
 from prospector import Prospector
 from utils import format_list_as_list_of_strings, DontKnow
 
@@ -43,7 +44,7 @@ def basic_equiv(x, y):
 
 
 # noinspection PyIncorrectDocstring
-class GenerationScheduler:
+class GenerationScheduler(Parametric):
     """ The class **Generator** embeds a **model navigator** as "memory" (cf. metaclass
     :class:`~MetaModelNavigator.MetaModelNavigator`) and processes **queries** (class :class:`~Query.Query`) to
     generate new sequences. This class uses pattern matching techniques (cf. :mod:`PrefixIndexing`) to enrich the
@@ -112,12 +113,13 @@ class GenerationScheduler:
     def __init__(self, memory: Memory, model_class: Type[Model] = FactorOracle,
                  navigator_class: Type[Navigator] = FactorOracleNavigator,
                  equiv: Optional[Callable] = (lambda x, y: x == y), authorized_tranformations=(0,),
-                 continuity_with_future=(0.0, 1.0)):
+                 continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
 
         if equiv is None:
             equiv = basic_equiv
         self.prospector: Prospector = Prospector(model_class=model_class, navigator_class=navigator_class,
-                                                 memory=memory, equiv=equiv)
+                                                 memory=memory, equiv=equiv,
+                                                 continuity_with_future=continuity_with_future,)
         self.content_type: Type[MemoryEvent] = memory.content_type  # TODO[C]: Should not be here
 
         self.uninitialized: bool = True  # TODO Positive name `initialized` would be better + invert all conditions
@@ -125,7 +127,7 @@ class GenerationScheduler:
 
         self.authorized_transformations: List[DontKnow] = list(authorized_tranformations)
         self.active_transform: Transform = NoTransform()
-        self.continuity_with_future: DontKnow = list(continuity_with_future)
+
         self.performance_time: int = 0
 
         self.generation_process: GenerationProcess = GenerationProcess()
@@ -138,13 +140,11 @@ class GenerationScheduler:
             print("New value of current performance time: {}".format(self.performance_time))
 
     def learn_event(self, event: MemoryEvent) -> None:
-        # FIXME[MergeState]: A[x], B[], C[], D[]
         """ Learn a new event in the memory (model navigator).
             raises: TypeError if event is incompatible with current memory """
         self.prospector.learn_event(event=event)
 
     def learn_sequence(self, sequence: List[MemoryEvent]) -> None:
-        # FIXME[MergeState]: A[x], B[], C[], D[]
         """ Learn a new sequence in the memory (model navigator).
             raises: TypeError if sequence is incompatible with current memory """
         self.prospector.learn_sequence(sequence=sequence)
@@ -226,7 +226,7 @@ class GenerationScheduler:
             self.uninitialized = False
         return output
 
-    def free_generation(self, num_events: int, new_max_continuity: Optional[int] = None,
+    def free_generation(self, num_events: int,
                         forward_context_length_min: int = 0, init: bool = False, equiv: Callable = None,
                         print_info: bool = False) -> List[Optional[Candidate]]:
         """ Free navigation through the sequence.
@@ -256,13 +256,13 @@ class GenerationScheduler:
         """
 
         # self.encode_memory_with_current_transform()
-        equiv = self.prospector.l_prepare_navigation([], equiv, new_max_continuity, init)
+        equiv = self.prospector.l_prepare_navigation([], init)
         sequence: List[Optional[Candidate]] = []
         for i in range(num_events):
             candidates: Candidates
             candidates = self.prospector.navigation_single_step(required_label=None,
                                                                 forward_context_length_min=forward_context_length_min,
-                                                                equiv=equiv, print_info=print_info, shift_index=i)
+                                                                print_info=print_info, shift_index=i)
 
             output: Optional[Candidate] = self.decide(candidates, disable_fallback=False)
             output.transform = self.active_transform
@@ -276,7 +276,7 @@ class GenerationScheduler:
     def simply_guided_generation(self, required_labels: List[Label],
                                  new_max_continuity: Optional[Tuple[float, float]] = None,
                                  forward_context_length_min: int = 0, init: bool = False,
-                                 equiv: Optional[Callable] = None, print_info: bool = False, shift_index: int = 0,
+                                 print_info: bool = False, shift_index: int = 0,
                                  break_when_none: bool = False) -> List[Optional[Candidate]]:
         """ Navigation in the sequence, simply guided step by step by an input sequence of label.
         Naive version of the method handling the navigation in a sequence when it is guided by target labels.
@@ -307,14 +307,14 @@ class GenerationScheduler:
 
         print("HANDLE GENERATION MATCHING LABEL...")
 
-        equiv = self.prospector.l_prepare_navigation(required_labels, equiv, new_max_continuity, init)
+        equiv = self.prospector.l_prepare_navigation(required_labels, init)
 
         sequence: List[Optional[Output]] = []
         for (i, label) in enumerate(required_labels):
             candidates: Candidates
             candidates = self.prospector.navigation_single_step(required_label=label,
                                                                 forward_context_length_min=forward_context_length_min,
-                                                                equiv=equiv, print_info=print_info,
+                                                                print_info=print_info,
                                                                 shift_index=i + shift_index)
 
             if break_when_none and candidates.length() == 0:
@@ -413,9 +413,8 @@ class GenerationScheduler:
             labels=list_of_labels,
             index_in_generation=shift_index,
             use_intervals=self._use_intervals(),
-            continuity_with_future=self.continuity_with_future,
+            continuity_with_future=self.continuity_with_future.get(),
             authorized_transformations=self.authorized_transformations,
-            equiv=self.prospector.model.equiv,
             previous_steps=generated_sequence)
 
         output: Optional[Candidate] = self.decide(candidates, disable_fallback=True)
@@ -460,7 +459,6 @@ class GenerationScheduler:
                                                                           use_intervals=None,
                                                                           continuity_with_future=None,
                                                                           authorized_transformations=None,
-                                                                          equiv=equiv,
                                                                           no_empty_event=False)
 
             output: Optional[Candidate] = self.decide(candidates, disable_fallback=True)
@@ -492,6 +490,9 @@ class GenerationScheduler:
     def start(self):
         """ Sets :attr:`self.current_performance_time` to 0."""
         self.performance_time = 0
+
+    def set_equiv_function(self, equiv: Callable[[Label, Label], bool]):
+        self.prospector.set_equiv_function(equiv=equiv)
 
     # TODO : EPSILON POUR LANCER NOUVELLE GENERATION
     def update_performance_time(self, new_time: Optional[int] = None):
@@ -552,11 +553,11 @@ class GenerationScheduler:
         return format_list_as_list_of_strings(self.generation_trace)
 
     def encode_memory_with_current_transform(self):
-        # FIXME[MergeState]: A[X], B[], C[], D[], E[]
+        
         transform: Transform = self.active_transform
         self.prospector.l_encode_with_transform(transform)
 
     def decode_memory_with_current_transform(self):
-        # FIXME[MergeState]: A[X], B[], C[], D[], E[]
+        
         transform: Transform = self.active_transform
         self.prospector.l_decode_with_transform(transform)

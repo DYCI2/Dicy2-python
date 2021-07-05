@@ -30,11 +30,12 @@ from dyci2.navigator import Navigator
 from label import Label
 from memory import MemoryEvent, Memory
 from model import Model
+from parameter import Parametric
 from transforms import Transform
 from utils import DontKnow
 
 
-class Prospector:
+class Prospector(Parametric):
     """
         **Factor Oracle Navigator class**.
         This class implements heuristics of navigation through a Factor Oracle automaton for creative applications:
@@ -55,7 +56,8 @@ class Prospector:
 
     def __init__(self, model_class: Type[Model], navigator_class: Type[Navigator], memory: Memory, max_continuity=20,
                  control_parameters=(), history_parameters=(), equiv: Callable = (lambda x, y: x == y),
-                 label_type=None, content_type=None):
+                 label_type=None, content_type=None,
+                 continuity_with_future: Tuple[float, float] = (0.0, 1.0),):
         """
         Constructor for the class FactorOracleNavigator.
         :see also: The class FactorOracle in FactorOracleAutomaton.py
@@ -74,7 +76,7 @@ class Prospector:
         self.model: Model = model_class(memory, equiv)
 
         self.navigator: Navigator = navigator_class(memory, equiv, max_continuity, control_parameters,
-                                                    history_parameters)
+                                                    history_parameters, continuity_with_future)
         self.content_type: Type[MemoryEvent] = memory.content_type
         self.label_type: Type[Label] = memory.label_type
 
@@ -105,16 +107,7 @@ class Prospector:
     # TODO: This function should ideally not exist once setting of parameter and initialization is handled correctly
     #       Or rather - this function should probably exist but be a `clear` function, where relevant aspects are
     #       migrated to their corresponding parts
-    def l_prepare_navigation(self, required_labels: List[Label], equiv: Optional[Callable] = None,
-                             new_max_continuity: Optional[int] = None, init: bool = False) -> Callable:
-        # TODO: Don't pass this here, use `set_param`
-        if equiv is None:
-            equiv = self.model.equiv
-
-        # TODO: Don't pass this here, use `set_param`
-        if new_max_continuity is not None:
-            self.navigator.max_continuity = new_max_continuity
-
+    def l_prepare_navigation(self, required_labels: List[Label], init: bool = False) -> Callable:
         if init:
             self.navigator.clear()
 
@@ -133,8 +126,8 @@ class Prospector:
         return equiv
 
     def navigation_single_step(self, required_label: Optional[Label], forward_context_length_min: int = 0,
-                               equiv: Optional[Callable] = None, print_info: bool = False,
-                               shift_index: int = 0, no_empty_event: bool = True) -> Candidates:
+                               print_info: bool = False, shift_index: int = 0,
+                               no_empty_event: bool = True) -> Candidates:
         candidates: Candidates
         # TODO:
         #   current_position_in_sequence: previously output event as defined by feedback function.
@@ -149,7 +142,7 @@ class Prospector:
         candidates = self.model.get_candidates(index_state=self.navigator.current_position_in_sequence,
                                                label=required_label,
                                                forward_context_length_min=forward_context_length_min,
-                                               equiv=equiv, authorize_direct_transition=True)
+                                               authorize_direct_transition=True)
 
         # TODO[B2]: Move filtering to Prospector (after discussion with Jérôme)
         # TODO: I think easiest solution would be to generate a generic binary `index_map` to handle all index-based
@@ -173,8 +166,7 @@ class Prospector:
                                                       shift_index=shift_index,
                                                       all_memory=self.model.l_memory_as_candidates(exclude_last=True),
                                                       required_label=required_label,
-                                                      print_info=print_info, equiv=equiv,
-                                                      no_empty_event=no_empty_event)
+                                                      print_info=print_info, no_empty_event=no_empty_event)
         # TODO[B2]: This should be migrated to feedback function instead
         if candidates.length() > 0:
             self.navigator.set_current_position_in_sequence_with_sideeffects(candidates.at(0).index)
@@ -187,23 +179,19 @@ class Prospector:
     #       of an invariant: E(index_in_scenario=0, authorized_transformations!=None). Creating function calls like this
     #       will really mess up the idea of invariants if we need to pass these arguments...
     def scenario_single_step(self, labels: List[Label], index_in_generation: int, previous_steps: List[Candidate],
-                             use_intervals: bool, continuity_with_future: Tuple[float, float],
-                             authorized_transformations: DontKnow, equiv: Optional[Callable],
+                             use_intervals: bool, authorized_transformations: DontKnow,
                              no_empty_event: bool = True) -> Candidates:
         """ raises: IndexError if `labels` is empty """
         if len(previous_steps) == 0:
             return self._scenario_initial_candidate(labels=labels, use_intervals=use_intervals,
-                                                    continuity_with_future=continuity_with_future,
-                                                    authorized_transformations=authorized_transformations, equiv=equiv)
+                                                    authorized_transformations=authorized_transformations)
         else:
-            return self.navigation_single_step(labels[0], equiv=equiv, shift_index=index_in_generation,
+            return self.navigation_single_step(labels[0], shift_index=index_in_generation,
                                                no_empty_event=no_empty_event)
 
     def _scenario_initial_candidate(self, labels: List[Label], use_intervals: bool,
-                                    continuity_with_future: Tuple[float, float], authorized_transformations: DontKnow,
-                                    equiv: Optional[Callable]) -> Candidates:
-        full_memory: Candidates = self.model.l_memory_as_candidates(exclude_last=False,
-                                                                                   exclude_first=False)
+                                    authorized_transformations: DontKnow) -> Candidates:
+        full_memory: Candidates = self.model.l_memory_as_candidates(exclude_last=False, exclude_first=False)
         full_memory.data = self.navigator.filter_using_history_and_taboos(full_memory.data)
 
         if use_intervals:  # TODO: This should be controlled by prospector (or navigator even?), not passed as argument
@@ -219,11 +207,9 @@ class Prospector:
             candidates=full_memory.data,
             labels=labels,
             full_memory=full_memory,
-            continuity_with_future=continuity_with_future,
             authorized_transformations=authorized_transformations,
             sequence_to_interval_fun=func_intervals_to_labels,
-            equiv_interval=equiv_mod_interval,
-            equiv=equiv)
+            equiv_interval=equiv_mod_interval)
 
         return Candidates(candidates, full_memory.memory)
 
@@ -248,6 +234,10 @@ class Prospector:
 
     def get_memory(self) -> Memory:
         return self.model.memory
+
+    def set_equiv_function(self, equiv: Callable[[Label, Label], bool]):
+        self.model.equiv = equiv
+        self.navigator.equiv = equiv
 
     ################################################################################################################
     #   TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP   #

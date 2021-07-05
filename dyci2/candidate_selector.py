@@ -5,9 +5,10 @@ from typing import List, Optional
 
 from candidate import Candidate
 from candidates import Candidates
+from parameter import Parametric
 
 
-class CandidateSelector(ABC):
+class CandidateSelector(Parametric, ABC):
     @abstractmethod
     def decide(self, candidates: Candidates) -> Optional[Candidate]:
         """ TODO """

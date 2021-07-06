@@ -8,6 +8,9 @@ from model import Model
 
 
 # noinspection PyIncorrectDocstring
+from transforms import Transform
+
+
 class FactorOracle(Model):
     """
     **Factor Oracle automaton class.**
@@ -184,8 +187,8 @@ class FactorOracle(Model):
         else:
             self._add_suffix_link(index, self._from_state_read_label(k, label, equiv))
 
-    def get_candidates(self, index_state: int, label: Optional[Label], forward_context_length_min: int = 1,
-                       authorize_direct_transition: bool = True) -> Candidates:
+    def select_events(self, index_state: int, label: Optional[Label], forward_context_length_min: int = 1,
+                      authorize_direct_transition: bool = True) -> Candidates:
         if label is not None:
             indices: List[int] = self._continuations_with_label(index_state=index_state, required_label=label,
                                                                 forward_context_length_min=forward_context_length_min,
@@ -689,3 +692,11 @@ class FactorOracle(Model):
             i_s1 -= 1
             i_s2 -= 1
         return length
+
+    def encode_with_transform(self, transform: Transform) -> None:
+        self.l_set_labels([None] + transform.encode_sequence(self.labels[1::]))
+
+    def decode_with_transform(self, transform: Transform) -> None:
+        self.l_set_labels([None] + transform.decode_sequence(self.labels[1::]))
+
+

@@ -29,6 +29,7 @@ from candidates import Candidates
 from dyci2.label import *
 from memory import MemoryEvent, Memory
 from parameter import Parametric
+from transforms import Transform
 
 
 class Model(Parametric, ABC):
@@ -86,19 +87,12 @@ class Model(Parametric, ABC):
         """
 
     @abstractmethod
-    def get_candidates(self, index_state: int, label: Optional[Label]) -> Candidates:
-        
+    def select_events(self, index_state: int, label: Optional[Label]) -> Candidates:
         """ TODO """
 
     @abstractmethod
     @property
     def memory(self):
-        """ TODO """
-
-    @abstractmethod
-    def print_model(self):
-        
-        # TODO: Should this really be an enforced method?
         """ TODO """
 
     @abstractmethod
@@ -109,4 +103,13 @@ class Model(Parametric, ABC):
     @abstractmethod
     def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
         """ TODO """
+
+    @abstractmethod
+    def encode_with_transform(self, transform: Transform) -> None:
+        """ TODO """
+
+    @abstractmethod
+    def decode_with_transform(self, transform: Transform) -> None:
+        """ TODO """
+
 

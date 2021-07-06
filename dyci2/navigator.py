@@ -134,6 +134,7 @@ class FactorOracleNavigator(Navigator):
         self.current_navigation_index: int = -1
         self.clear()
 
+        # TODO: Remove? What's the purpose of control_parameters?
         self.control_parameters = ["avoid_repetitions_mode", "max_continuity"]
         if type(control_parameters) != type(None):
             print("argument control_parameters = {}".format(control_parameters))
@@ -160,7 +161,7 @@ class FactorOracleNavigator(Navigator):
 
     def weight_candidates(self, candidates: Candidates, model_direct_transitions: Dict[int, Tuple[Label, int]],
                           shift_index: int, required_label: Optional[Label], print_info: bool = False,
-                          equiv: Optional[Callable] = None, no_empty_event: bool = True) -> Candidates:
+                          no_empty_event: bool = True) -> Candidates:
         str_print_info: str = f"{shift_index} " \
                               f"(cont. = {self.current_continuity}/{self.max_continuity.get()})" \
                               f": {self.current_position_in_sequence}"
@@ -254,7 +255,7 @@ class FactorOracleNavigator(Navigator):
             index_delta_prefixes, _ = PrefixIndexing.filtered_prefix_indexing(
                 sequence=labels,
                 pattern=memory_labels,
-                length_interval=continuity_with_future,
+                length_interval=self.continuity_with_future,
                 authorized_indexes=authorized_indices,
                 equiv=self.equiv,
                 print_info=False)

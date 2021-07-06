@@ -32,7 +32,7 @@ from model import Model
 from navigator import Navigator, FactorOracleNavigator
 from output import Output
 from parameter import Parametric, Parameter
-from prospector import Prospector
+from prospector import Prospector, Dyci2Prospector
 from utils import format_list_as_list_of_strings, DontKnow
 
 
@@ -117,15 +117,14 @@ class GenerationScheduler(Parametric):
 
         if equiv is None:
             equiv = basic_equiv
-        self.prospector: Prospector = Prospector(model_class=model_class, navigator_class=navigator_class,
-                                                 memory=memory, equiv=equiv,
-                                                 continuity_with_future=continuity_with_future,)
+        self.prospector: Dyci2Prospector = Dyci2Prospector(memory=memory, equiv=equiv,
+                                                          continuity_with_future=continuity_with_future)
         self.content_type: Type[MemoryEvent] = memory.content_type  # TODO[C]: Should not be here
 
         self.uninitialized: bool = True  # TODO Positive name `initialized` would be better + invert all conditions
         # self.transfo_current_generation_output: List[Transform] = []  # TODO: Remove completely
 
-        self.authorized_transformations: List[DontKnow] = list(authorized_tranformations)
+        self.authorized_transformations: List[int] = list(authorized_tranformations)
         self.active_transform: Transform = NoTransform()
 
         self.performance_time: int = 0
@@ -236,8 +235,8 @@ class GenerationScheduler(Parametric):
 
         :param num_events: length of the generated sequence
         :type num_events: int
-        :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
-        :type new_max_continuity: int
+        # :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
+        # :type new_max_continuity: int
         :param forward_context_length_min: minimum length of the forward common context
         :type forward_context_length_min: int
         :param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
@@ -365,6 +364,7 @@ class GenerationScheduler(Parametric):
                     # TODO: Should be part of feedback call
                     self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(fallback_output.index)
                 else:
+                    # TODO: Is this equivalent to a reset() instead of a feedback()
                     self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(0)
                 generated_sequence.append(fallback_output)
 
@@ -413,7 +413,6 @@ class GenerationScheduler(Parametric):
             labels=list_of_labels,
             index_in_generation=shift_index,
             use_intervals=self._use_intervals(),
-            continuity_with_future=self.continuity_with_future.get(),
             authorized_transformations=self.authorized_transformations,
             previous_steps=generated_sequence)
 
@@ -521,11 +520,6 @@ class GenerationScheduler(Parametric):
 
         self.update_performance_time(new_time=new_time)
 
-    # TODO: This should live in Prospector, not GenerationScheduler (may vary between different Prospectors)
-    def _use_intervals(self):
-        return self.prospector.model.label_type is not None and self.prospector.model.label_type.use_intervals \
-               and len(self.authorized_transformations) > 0 and self.authorized_transformations != [0]
-
     # TODO PLUS GENERAL FAIRE SLOT "POIGNEE" DANS CLASSE TRANSFORM
     # OU METTRE CETTE METHODE DANS CLASSE TRANSFORM
     def formatted_output_couple_content_transfo(self):
@@ -560,4 +554,4 @@ class GenerationScheduler(Parametric):
     def decode_memory_with_current_transform(self):
         
         transform: Transform = self.active_transform
-        self.prospector.l_decode_with_transform(transform)
+        self.prospector.decode_with_transform(transform)

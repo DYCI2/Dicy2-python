@@ -19,23 +19,27 @@ Tutorial in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`
 
 """
 import random
-from typing import Callable, Tuple, Optional, List, Type
+from abc import abstractmethod, ABC
+from typing import Callable, Tuple, Optional, List, Type, TypeVar, Generic
 
 from candidate import Candidate
 from candidates import Candidates
-from dyci2.navigator import Navigator
+from dyci2.navigator import Navigator, FactorOracleNavigator
 # TODO : surchager set use_taboo pour que tous les -1 passent à 0 si on passe à FALSE
 # TODO : mode 0 : répétitions authorisées, mode 1 = on prend le min, mode 2, interdire les déjà passés
 # TODO : SURCHARGER POUR INTERDIRE LES AUTRES
+from factor_oracle_model import FactorOracle
 from label import Label
 from memory import MemoryEvent, Memory
 from model import Model
 from parameter import Parametric
 from transforms import Transform
-from utils import DontKnow
+
+M = TypeVar('M', bound=Model)
+N = TypeVar('N', bound=Navigator)
 
 
-class Prospector(Parametric):
+class Prospector(Parametric, Generic[M, N], ABC):
     """
         **Factor Oracle Navigator class**.
         This class implements heuristics of navigation through a Factor Oracle automaton for creative applications:
@@ -54,10 +58,7 @@ class Prospector(Parametric):
         >>> #FON = FactorOracleGenerator(sequence, labels)
     """
 
-    def __init__(self, model_class: Type[Model], navigator_class: Type[Navigator], memory: Memory, max_continuity=20,
-                 control_parameters=(), history_parameters=(), equiv: Callable = (lambda x, y: x == y),
-                 label_type=None, content_type=None,
-                 continuity_with_future: Tuple[float, float] = (0.0, 1.0),):
+    def __init__(self, model: M, navigator: N, memory: Memory):
         """
         Constructor for the class FactorOracleNavigator.
         :see also: The class FactorOracle in FactorOracleAutomaton.py
@@ -73,14 +74,22 @@ class Prospector(Parametric):
 
         # TODO: Model and Navigator should not be initialized here - to handle kwargs properly @ init,
         #       it's better to initialize at parse, alt. pass explicit `model_kwargs` and `navigator_kwargs`
-        self.model: Model = model_class(memory, equiv)
+        self.model: M = model
+        self.navigator: N = navigator
 
-        self.navigator: Navigator = navigator_class(memory, equiv, max_continuity, control_parameters,
-                                                    history_parameters, continuity_with_future)
         self.content_type: Type[MemoryEvent] = memory.content_type
         self.label_type: Type[Label] = memory.label_type
 
         self.navigator.clear()
+
+    @abstractmethod
+    def navigation_single_step(self, required_label: Optional[Label], **kwargs) -> Candidates:
+        """ TODO """
+
+    @abstractmethod
+    def scenario_single_step(self, labels: List[Label], index_in_generation: int, previous_steps: List[Candidate],
+                             authorized_transformations: List[int], **kwargs) -> Candidates:
+        """ TODO """
 
     def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
         """ raises: TypeError if event is incompatible with current memory """
@@ -104,9 +113,41 @@ class Prospector(Parametric):
         else:
             raise TypeError(f"Invalid content/label type for sequence")
 
-    # TODO: This function should ideally not exist once setting of parameter and initialization is handled correctly
-    #       Or rather - this function should probably exist but be a `clear` function, where relevant aspects are
-    #       migrated to their corresponding parts
+    def rewind_generation(self, index_in_navigation: int) -> None:
+        self.navigator.rewind_generation(index_in_navigation)
+
+    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
+        self.model.feedback(time, output_event)
+        self.navigator.feedback(time, output_event)
+
+    # TODO: Should be part of interface but perhaps renamed. Could also be just one function with flag `apply_inverse`
+    def l_encode_with_transform(self, transform: Transform):
+        self.model.encode_with_transform(transform)
+
+    # TODO: Should be part of the interface but perhaps renamed
+    def decode_with_transform(self, transform: Transform):
+        self.model.decode_with_transform(transform)
+
+    def get_memory(self) -> Memory:
+        return self.model.memory
+
+    def set_equiv_function(self, equiv: Callable[[Label, Label], bool]):
+        self.model.equiv = equiv
+        self.navigator.equiv = equiv
+
+
+# TODO: this should rather take some abstract FactorOracleLikeModel, FactorOracleLikeNavigator and take these as args.
+class Dyci2Prospector(Prospector[FactorOracle, FactorOracleNavigator]):
+    def __init__(self, memory: Memory, max_continuity=20, control_parameters=(), history_parameters=(),
+                 equiv: Callable = (lambda x, y: x == y), continuity_with_future: Tuple[float, float] = (0.0, 1.0), ):
+        super().__init__(memory=memory,
+                         model=FactorOracle(memory=memory, equiv=equiv),
+                         navigator=FactorOracleNavigator(memory=memory, equiv=equiv,
+                                                         max_continuity=max_continuity,
+                                                         control_parameters=control_parameters,
+                                                         execution_trace_parameters=history_parameters,
+                                                         continuity_with_future=continuity_with_future))
+
     def l_prepare_navigation(self, required_labels: List[Label], init: bool = False) -> Callable:
         if init:
             self.navigator.clear()
@@ -121,6 +162,7 @@ class Prospector(Parametric):
                 new_position: int = random.randint(0, len(init_states) - 1)
                 self.navigator.set_current_position_in_sequence_with_sideeffects(new_position)
             else:
+                # TODO: This would make sense as part of a clear() function
                 new_position: int = random.randint(1, self.model.memory_length())
                 self.navigator.set_current_position_in_sequence_with_sideeffects(new_position)
         return equiv
@@ -128,39 +170,16 @@ class Prospector(Parametric):
     def navigation_single_step(self, required_label: Optional[Label], forward_context_length_min: int = 0,
                                print_info: bool = False, shift_index: int = 0,
                                no_empty_event: bool = True) -> Candidates:
-        candidates: Candidates
-        # TODO:
-        #   current_position_in_sequence: previously output event as defined by feedback function.
-        #                                 Generalize this getter as interface function
-        #   forward_context_length_min:   Don't pass this here, use `set_param`
-        #                                 _
-        #   equiv:                        Don't pass this here, use `set_param`
-        #                                 _
-        #   authorize_direct_transition:  Don't pass this here, use `set_param`. Alt. pass a `**model_kwargs` dict
-        #  ---
-        #  ALSO: return some sort of `navigator_kwargs` from this function
-        candidates = self.model.get_candidates(index_state=self.navigator.current_position_in_sequence,
-                                               label=required_label,
-                                               forward_context_length_min=forward_context_length_min,
-                                               authorize_direct_transition=True)
+        candidates: Candidates = self.model.select_events(index_state=self.navigator.current_position_in_sequence,
+                                                          label=required_label,
+                                                          forward_context_length_min=forward_context_length_min,
+                                                          authorize_direct_transition=True)
 
         # TODO[B2]: Move filtering to Prospector (after discussion with Jérôme)
         # TODO: I think easiest solution would be to generate a generic binary `index_map` to handle all index-based
         #  filtering and just apply this wherever it is needed
         candidates.data = self.navigator.filter_using_history_and_taboos(candidates.data)
 
-        # TODO:
-        #  model_direct_transition: Part of `navigator_kwargs` passed from Model. Or remove: really don't like this dict
-        #                           _
-        #  shift_index:             Part of `navigator_kwargs* passed from outside (not from Model - need strategy)
-        #                           _
-        #  all_memory:              Pass Memory directly instead and convert to whatever format needed
-        #                           _
-        #  required_label:          Should be part of the interface!!!
-        #                           _
-        #  print_info:              Handle with logging solution instead
-        #                           _
-        #  equiv:                   Don't pass this here, use `set_param`
         candidates = self.navigator.weight_candidates(candidates=candidates,
                                                       model_direct_transitions=self.model.direct_transitions,
                                                       shift_index=shift_index,
@@ -173,24 +192,20 @@ class Prospector(Parametric):
 
         return candidates
 
-    # TODO: use_intervals, continuity_with_future and equiv should be parameters and/or handled elsewhere rather than
-    #       passed here as part of the interface. Same for authorized transformations (maybe, at least isn't relevant
-    #       for navigation_single_step so need to handle as optional arg if arg. Actually, this is really the definition
-    #       of an invariant: E(index_in_scenario=0, authorized_transformations!=None). Creating function calls like this
-    #       will really mess up the idea of invariants if we need to pass these arguments...
     def scenario_single_step(self, labels: List[Label], index_in_generation: int, previous_steps: List[Candidate],
-                             use_intervals: bool, authorized_transformations: DontKnow,
-                             no_empty_event: bool = True) -> Candidates:
+                             authorized_transformations: List[int],
+                             no_empty_event: bool = True, **kwargs) -> Candidates:
         """ raises: IndexError if `labels` is empty """
         if len(previous_steps) == 0:
-            return self._scenario_initial_candidate(labels=labels, use_intervals=use_intervals,
+            return self._scenario_initial_candidate(labels=labels,
+                                                    use_intervals=self._use_intervals(authorized_transformations),
                                                     authorized_transformations=authorized_transformations)
         else:
             return self.navigation_single_step(labels[0], shift_index=index_in_generation,
                                                no_empty_event=no_empty_event)
 
     def _scenario_initial_candidate(self, labels: List[Label], use_intervals: bool,
-                                    authorized_transformations: DontKnow) -> Candidates:
+                                    authorized_transformations: List[int]) -> Candidates:
         full_memory: Candidates = self.model.l_memory_as_candidates(exclude_last=False, exclude_first=False)
         full_memory.data = self.navigator.filter_using_history_and_taboos(full_memory.data)
 
@@ -213,67 +228,7 @@ class Prospector(Parametric):
 
         return Candidates(candidates, full_memory.memory)
 
-    def rewind_generation(self, index_in_navigation: int) -> None:
-        self.navigator.rewind_generation(index_in_navigation)
-
-    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
-        self.model.feedback(time, output_event)
-        self.navigator.feedback(time, output_event)
-
-    # TODO: Should be part of interface but perhaps renamed. Could also be just one function with flag `apply_inverse`
-    def l_encode_with_transform(self, transform: Transform):
-        # self.model.l_set_sequence([None] + transform.encode_sequence(self.model.sequence[1::]))
-        # TODO: Just call `model.encode_with_transform` and `navigator.encode_with_transform`
-        self.model.l_set_labels([None] + transform.encode_sequence(self.model.labels[1::]))
-
-    # TODO: Should be part of the interface but perhaps renamed
-    def l_decode_with_transform(self, transform: Transform):
-        # self.model.l_set_sequence([None] + transform.decode_sequence(self.model.sequence[1::]))
-        # TODO: Just call `model.decode_with_transform` and `navigator.decode_with_transform`
-        self.model.l_set_labels([None] + transform.decode_sequence(self.model.labels[1::]))
-
-    def get_memory(self) -> Memory:
-        return self.model.memory
-
-    def set_equiv_function(self, equiv: Callable[[Label, Label], bool]):
-        self.model.equiv = equiv
-        self.navigator.equiv = equiv
-
-    ################################################################################################################
-    #   TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP TEMP   #
-    ################################################################################################################
-
-    # def l_get_no_empty_event(self) -> bool:
-    #     return self.navigator.no_empty_event
-    #
-    # def l_set_no_empty_event(self, v: bool) -> None:
-    #     self.navigator.no_empty_event = v
-    #
-    #     self.navigator.no_empty_event = v
-    #
-    # def l_get_index_last_state(self) -> int:
-    #     return self.model.index_last_state()
-    #
-    # def l_get_sequence_nonmutable(self) -> List[DontKnow]:
-    #     return self.model.sequence
-    #
-    # def l_get_sequence_maybemutable(self) -> List[DontKnow]:
-    #     return self.model.sequence
-    #
-    # def l_set_sequence(self, sequence: List[DontKnow]):
-    #     self.model.sequence = sequence
-    #
-    # def l_get_labels_nonmutable(self) -> List[DontKnow]:
-    #     return self.model.labels
-    #
-    # def l_get_labels_maybemutable(self) -> List[DontKnow]:
-    #     return self.model.labels
-    #
-    # def l_set_labels(self, labels: List[DontKnow]):
-    #     self.model.labels = labels
-    #
-    # def l_get_position_in_sequence(self) -> int:
-    #     return self.navigator.current_position_in_sequence
-    #
-    # def l_set_position_in_sequence(self, index: int):
-    #     self.navigator.set_current_position_in_sequence_with_sideeffects(index)
+    # TODO: This should live in Prospector, not GenerationScheduler (may vary between different Prospectors)
+    def _use_intervals(self, authorized_transformations: List[int]):
+        return self.label_type is not None and self.label_type.use_intervals \
+               and len(authorized_transformations) > 0 and authorized_transformations != [0]

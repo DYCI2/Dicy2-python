@@ -24,7 +24,11 @@ class OrdinalRange(Range):
         self.upper_bound: Optional[T] = upper_bound
 
     def __contains__(self, item: T) -> bool:
-        return self.lower_bound <= item <= self.upper_bound
+        if self.lower_bound is not None and item < self.lower_bound:
+            return False
+        if self.upper_bound is not None and item > self.upper_bound:
+            return False
+        return True
 
 
 class Parameter(Generic[T]):

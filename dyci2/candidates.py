@@ -20,7 +20,6 @@ class Candidates:
         self.data: List[Candidate] = candidates
         self.memory: Memory = memory
         self.index_mask: Optional[Iterable[int]] = index_mask   # TODO: Unused so far
-        warnings.warn("the Candidates class does not handle transforms")
 
     def append(self, candidate: Candidate):
         self.data.append(candidate)

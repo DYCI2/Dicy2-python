@@ -212,7 +212,7 @@ class FactorOracleNavigator(Navigator):
 
         if s is not None:
             # In practise: this will only be a single candidate due to previous function call
-            selected_candidates: List[Candidate] = [c for c in candidates.data if c.index == s]
+            selected_candidates: List[Candidate] = [c for c in candidates.data if c is not None and c.index == s]
             for candidate in selected_candidates:
                 candidate.transform = TransposeTransform(t)
                 candidate.score = length_selected_prefix

@@ -463,25 +463,8 @@ class GenerationScheduler(Parametric):
 
         self.update_performance_time(new_time=new_time)
 
-    # TODO PLUS GENERAL FAIRE SLOT "POIGNEE" DANS CLASSE TRANSFORM
-    # OU METTRE CETTE METHODE DANS CLASSE TRANSFORM
     def formatted_output_couple_content_transfo(self):
-        result = []
-        for i in range(0, len(self.current_generation_output)):
-            # TODO faire plus générique
-            # TODO... CAR POUR L'INSTANT SI ON RENCONTRE UN NONE ON OUTPUT TOUT JUSQU'A AVANT... C'EST TOUT
-            if self.current_generation_output[i]:
-                if self.transfo_current_generation_output[i] and type(
-                        self.transfo_current_generation_output[i]) == TransposeTransform:
-                    result.append(
-                        [self.current_generation_output[i], self.transfo_current_generation_output[i].semitone])
-                else:
-                    result.append([self.current_generation_output[i], 0])
-            else:
-                return result
-        # print("TRANSPO")
-        # print(result)
-        return result
+        return [(c.event, c.transform.renderer_info()) for c in self.generation_process.last_sequence()]
 
     def formatted_output_string(self):
         return format_list_as_list_of_strings(self.current_generation_output)

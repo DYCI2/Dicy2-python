@@ -17,52 +17,28 @@ Class defining transformations on labels and contents.
 
 """
 # TODO : TUTO
-import warnings
 from abc import ABC, abstractmethod
+from typing import Any
 
 from candidate import Candidate
-from dyci2.label import ChordLabel, Label, ListLabel
+from dyci2.label import ChordLabel, Label
+
 
 # from numpy import roll
-
-
-from copy import deepcopy
 
 
 class Transform(ABC):
     @abstractmethod
     def encode(self, obj):
-        """ TODO """
+        """ TODO: Docstring """
 
     @abstractmethod
     def decode(self, obj):
-        """ TODO """
+        """ TODO: Docstring """
 
     @abstractmethod
-    def encode_sequence(self, seq):
-        """ TODO """
-
-    @abstractmethod
-    def decode_sequence(self, seq):
-        """ TODO """
-
-
-class NoTransform(Transform):
-    def __init__(self):
-        # self.admitted_types = [AbstractLabel, AbstractContents] # dictionary of admitted label classes
-        self.admitted_types = [AbstractLabel]  # dictionary of admitted label classes
-
-    def __repr__(self):
-        return "No Transformation"
-
-    def __desc__(self):
-        return 'NoTransformation'
-
-    def encode(self, thing):
-        return thing
-
-    def decode(self, thing):
-        return thing
+    def renderer_info(self) -> Any:
+        """ TODO: Docstring """
 
     def encode_sequence(self, seq):
         encoded_sequence = []
@@ -76,11 +52,32 @@ class NoTransform(Transform):
             decoded_sequence.append(self.decode(elt))
         return decoded_sequence
 
+
+class NoTransform(Transform):
+    def __init__(self):
+        # self.admitted_types = [AbstractLabel, AbstractContents] # dictionary of admitted label classes
+        self.admitted_types = [Label]  # dictionary of admitted label classes
+
+    def __repr__(self):
+        return "No Transformation"
+
+    def __desc__(self):
+        return 'NoTransformation'
+
+    def encode(self, thing):
+        return thing
+
+    def decode(self, thing):
+        return thing
+
     def __eq__(self, a):
         if type(a) == type(self):
             return True
         else:
             return False
+
+    def renderer_info(self) -> Any:
+        return 0
 
     @classmethod
     def get_transformation_patterns(cls):
@@ -94,9 +91,8 @@ class TransposeTransform(Transform):
         self.mod12 = True
         # self.admitted_types = [MelodicLabel, HarmonicLabel, ClassicMIDIContents, ClassicAudioContents]
         # TODO 2021 : ?
-        #self.admitted_types = ["ChordLabel", "Label"]
+        # self.admitted_types = ["ChordLabel", "Label"]
         self.admitted_types = [ChordLabel]
-
 
     def __repr__(self):
         return "Transposition of " + str(self.semitone) + " semi-tones"
@@ -117,7 +113,7 @@ class TransposeTransform(Transform):
         if type(thing) is ChordLabel:
             # new_label = deepcopy(thing)
             # new_label.transpose_root(+self.semitone)# pas precis : rajouter les bornes et les accords
-            #new_label = Label.ChordLabel()
+            # new_label = Label.ChordLabel()
             new_label = ChordLabel()
             new_label.label = thing.label
             new_label.root = thing.root
@@ -150,7 +146,7 @@ class TransposeTransform(Transform):
         #    new_thing.label = self.decode(new_thing.label)
         #    new_thing.contents = self.decode(new_thing.contents)
         #    return new_thing
-        #if type(thing) is Label.ChordLabel:
+        # if type(thing) is Label.ChordLabel:
         if isinstance(thing, Candidate):
             thing.label = self.decode(thing.event.label())
             return thing
@@ -184,6 +180,9 @@ class TransposeTransform(Transform):
         #     return new_content
         else:
             raise TransformError(thing, self)
+
+    def renderer_info(self) -> Any:
+        return self.semitone
 
     def __eq__(self, a):
         if type(a) == NoTransform and self.semitone == 0:

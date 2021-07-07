@@ -14,13 +14,14 @@ Tutorial for the class :class:`~Generator.GenerationHander` defined in :mod:`Gen
 
 """
 import sys
+import warnings
 from typing import List
 
 from dyci2.factor_oracle_model import FactorOracle
 from dyci2.generation_scheduler import GenerationScheduler
 from dyci2.label import from_list_to_labels, ChordLabel
 from dyci2.memory import Memory, DebugEvent
-from dyci2.navigator import FactorOracleNavigator
+from dyci2.factor_oracle_navigator import FactorOracleNavigator
 from dyci2.query import Query, FreeQuery, TimeMode, LabelQuery
 
 if __name__ == '__main__':
@@ -40,9 +41,10 @@ if __name__ == '__main__':
     generation_scheduler: GenerationScheduler = GenerationScheduler(memory=memory, model_class=FactorOracle,
                                                                     navigator_class=FactorOracleNavigator,
                                                                     authorized_tranformations=authorized_intervals)
-    generation_scheduler.prospector.navigator.avoid_repetitions_mode = 1
-    generation_scheduler.prospector.navigator.max_continuity = 3
-    generation_scheduler.prospector.navigator.no_empty_event = False
+    generation_scheduler.prospector.navigator.avoid_repetitions_mode.set(1)
+    generation_scheduler.prospector.navigator.max_continuity.set(3)
+    warnings.warn("This is not a settable parameter anymore: no_empty_event")
+    # generation_scheduler.prospector.navigator.no_empty_event = False
 
     generation_scheduler.start()
 
@@ -54,7 +56,7 @@ if __name__ == '__main__':
     # query = new_temporal_query_sequence_of_events(handle=list_for_scenario, label_type=ChordLabel)
     print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
     generation_scheduler.process_query(query=query)
-    print("Output of the run: {}".format(generation_scheduler.current_generation_output))
+    print("Output of the run: {}".format(generation_scheduler.generation_process.last_sequence()))
     print("With transforfmation: {}".format(generation_scheduler.formatted_output_couple_content_transfo()))
     print(
         "/!\ Updated buffered improvisation: {} /!\ ".format(generation_scheduler.generation_process.generation_trace))
@@ -81,7 +83,7 @@ if __name__ == '__main__':
     # query = new_temporal_query_free_sequence_of_events(length=3, start_date=4, start_type="absolute")
     print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
     generation_scheduler.process_query(query=query)
-    print("Output of the run: {}".format(generation_scheduler.current_generation_output))
+    print("Output of the run: {}".format(generation_scheduler.generation_process.last_sequence()))
     print("With transforfmation: {}".format(generation_scheduler.formatted_output_couple_content_transfo()))
     print(
         "/!\ Updated buffered improvisation: {} /!\ ".format(generation_scheduler.generation_process.generation_trace))
@@ -103,7 +105,7 @@ if __name__ == '__main__':
     query: LabelQuery = LabelQuery(labels_for_scenario, start_date=2, time_mode=TimeMode.RELATIVE, print_info=False)
     print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
     generation_scheduler.process_query(query=query)
-    print("Output of the run: {}".format(generation_scheduler.current_generation_output))
+    print("Output of the run: {}".format(generation_scheduler.generation_process.last_sequence()))
     print(
         "/!\ Updated buffered improvisation: {} /!\ ".format(generation_scheduler.generation_process.generation_trace))
 

@@ -5,8 +5,6 @@ from candidates import Candidates
 from label import Label
 from memory import MemoryEvent, Memory, DebugEvent
 from model import Model
-
-
 # noinspection PyIncorrectDocstring
 from transforms import Transform
 
@@ -89,7 +87,7 @@ class FactorOracle(Model):
         self.build(memory)
 
     def build(self, memory: Memory):
-        
+
         """
         Builds the model.
 
@@ -140,7 +138,7 @@ class FactorOracle(Model):
         if equiv is None:
             equiv = self.equiv
 
-        print(self.content_type)
+        self.logger.debug(self.content_type)
         for event in sequence:
             self.learn_event(event, equiv)
 
@@ -536,7 +534,7 @@ class FactorOracle(Model):
     # TODO : introduce quality with length of the backward context
     def _continuations(self, index_state: int, forward_context_length_min: int = 1, equiv: Optional[Callable] = None,
                        authorize_direct_transition: bool = True) -> List[int]:
-        
+
         """ Possible continuations from the state at index index_state in the automaton, i.e. direct transition and
         states reached using suffix links and reverse suffix links.
         These states follow states sharing a common backward context and a common forward context with the state at
@@ -589,7 +587,7 @@ class FactorOracle(Model):
     def _continuations_with_label(self, index_state: int, required_label: Label,
                                   forward_context_length_min: int = 1, equiv: Optional[Callable] = None,
                                   authorize_direct_transition: bool = True) -> List[int]:
-        
+
         """ Possible continuations labeled by required_label from the state at index index_state in the automaton.
 
         :param index_state: start index
@@ -619,7 +617,7 @@ class FactorOracle(Model):
                 equiv(required_label, self.labels[s])]
 
     def length(self) -> int:
-        
+
         return len(self.sequence)
 
     def feedback(self, output_event: Optional[Candidate]) -> None:
@@ -627,7 +625,7 @@ class FactorOracle(Model):
 
     # TODO : Use prefix indexing algo
     def _length_common_forward_context(self, index_state1, index_state2, equiv: Optional[Callable] = None):
-        
+
         """ Length of the forward context shared by two states in the sequence.
 
         :type index_state1: int
@@ -656,7 +654,7 @@ class FactorOracle(Model):
 
     # TODO : Method of a "sequence" class ? Use LRS ?
     def _length_common_backward_context(self, index_state1, index_state2, equiv=None):
-        
+
         """ Length of the backward context shared by two states in the sequence.
 
         :type index_state1: int
@@ -686,5 +684,3 @@ class FactorOracle(Model):
 
     def decode_with_transform(self, transform: Transform) -> None:
         self.labels = [None] + transform.decode_sequence(self.labels[1::])
-
-

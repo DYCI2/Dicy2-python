@@ -85,13 +85,13 @@ class FactorOracleNavigator(Navigator):
         # TODO: Remove? What's the purpose of control_parameters?
         self.control_parameters = ["avoid_repetitions_mode", "max_continuity"]
         if type(control_parameters) != type(None):
-            print("argument control_parameters = {}".format(control_parameters))
+            self.logger.debug("argument control_parameters = {}".format(control_parameters))
             for param in control_parameters:
                 # TODO : PLUTOT FAIRE AVEC UN TRY ASSERT... POUR ETRE PLUS PROPRE
                 if param in self.__dict__.keys():
                     self.control_parameters.append(param)
         else:
-            print("argument control_parameters = None")
+            self.logger.debug("argument control_parameters = None")
 
         self.execution_trace_parameters = ["current_position_in_sequence", "history_and_taboos", "current_continuity"]
         for param in execution_trace_parameters:
@@ -172,8 +172,7 @@ class FactorOracleNavigator(Navigator):
                 else:
                     str_print_info += " xxnothingxx"
 
-        if print_info:
-            print(str_print_info)
+        self.logger.debug(str_print_info)
 
         return candidates
 
@@ -236,7 +235,7 @@ class FactorOracleNavigator(Navigator):
 
         """
 
-        print("GO TO ANTERIOR STATE USING EXECUTION TRACE\nGoing back to state when {} was generated:\n{}".format(
+        self.logger.debug("GO TO ANTERIOR STATE USING EXECUTION TRACE\nGoing back to state when {} was generated:\n{}".format(
             index_in_navigation, self.execution_trace[index_in_navigation]))
         history_after_generating_prev = self.execution_trace[index_in_navigation]
         for name_slot, value_slot in history_after_generating_prev.items():
@@ -361,12 +360,12 @@ class FactorOracleNavigator(Navigator):
 
         if len(candidates) > 0:
             if self.avoid_repetitions_mode.get() > 0:
-                print(f"\nTrying to avoid repetitions: possible continuations {[c.index for c in candidates]}...")
+                self.logger.debug(f"\nTrying to avoid repetitions: possible continuations {[c.index for c in candidates]}...")
                 # TODO[D]: This nested list comprehension could be optimized
                 minimum_history_taboo_value: int = min([self.history_and_taboos[ch.index] for ch in candidates],
                                                        key=noneIsInfinite)
                 candidates = [c for c in candidates if self.history_and_taboos[c.index] == minimum_history_taboo_value]
-                print(f"... reduced to {[c.index for c in candidates]}.")
+                self.logger.debug(f"... reduced to {[c.index for c in candidates]}.")
 
         return candidates
 
@@ -527,7 +526,7 @@ class FactorOracleNavigator(Navigator):
                 t = s[1]
                 s = s[0]
         else:
-            print("No prefix found")
+            self.logger.debug("No prefix found")
 
         return s, t, length_selected_prefix
 
@@ -539,19 +538,19 @@ class FactorOracleNavigator(Navigator):
         self.current_position_in_sequence = val_attr
         if val_attr is not None and val_attr > -1:
             self.current_navigation_index += 1
-            print("\nNEW POSITION IN SEQUENCE: {}".format(val_attr))
-            print("NEW NAVIGATION INDEX: {}".format(self.current_navigation_index))
-            print("OLD LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
+            self.logger.debug("\nNEW POSITION IN SEQUENCE: {}".format(val_attr))
+            self.logger.debug("NEW NAVIGATION INDEX: {}".format(self.current_navigation_index))
+            self.logger.debug("OLD LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
 
             if self.current_navigation_index > 0 and val_attr == \
                     self.execution_trace[self.current_navigation_index - 1]["current_position_in_sequence"] + 1:
                 self.current_continuity += 1
-                print("Continuity + 1 = {}".format(self.current_continuity))
+                self.logger.debug("Continuity + 1 = {}".format(self.current_continuity))
             else:
                 self.current_continuity = 0
-                print("Continuity set to 0")
+                self.logger.debug("Continuity set to 0")
 
             self._update_history_and_taboos(val_attr)
             self._record_execution_trace(self.current_navigation_index)
-            print("NEW LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
+            self.logger.debug("NEW LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
         # print("NEW EXECUTION TRACE: {}".format(self.execution_trace))

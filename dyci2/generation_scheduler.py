@@ -18,7 +18,6 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 
 """
 import logging
-import warnings
 from typing import Optional, Callable, Tuple, Type, List
 
 from candidate import Candidate
@@ -29,10 +28,10 @@ from dyci2.transforms import TransposeTransform, NoTransform, Transform
 # TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
 # TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
 from factor_oracle_model import FactorOracle
+from factor_oracle_navigator import FactorOracleNavigator
 from generation_process import GenerationProcess
 from label import Label
 from memory import MemoryEvent, Memory
-from navigator import FactorOracleNavigator
 from output import Output
 from parameter import Parametric
 from prospector import Dyci2Prospector

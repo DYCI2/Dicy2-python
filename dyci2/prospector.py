@@ -18,6 +18,7 @@ in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`.
 Tutorial in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`
 
 """
+import logging
 import random
 from abc import abstractmethod, ABC
 from typing import Callable, Tuple, Optional, List, Type, TypeVar, Generic
@@ -68,6 +69,7 @@ class Prospector(Parametric, Generic[M, N], ABC):
         >>> #FON = FactorOracleGenerator(sequence, labels)
 
         """
+        self.logger = logging.getLogger(__name__)
         self.model: M = model
         self.navigator: N = navigator
 

@@ -21,6 +21,7 @@ Main classes: :class:`~Model.Model`, :class:`~Model.FactorOracle`.
 Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
 
 """
+import logging
 from abc import ABC, abstractmethod
 from typing import Callable, List, Optional
 
@@ -47,6 +48,7 @@ class Model(Parametric, ABC):
     # """
 
     def __init__(self, memory: Memory, equiv: Callable = (lambda x, y: x == y)):
+        self.logger = logging.getLogger(__name__)
         self._memory: Memory = memory
         self.equiv: Callable[[Label, Label], Label] = equiv
 

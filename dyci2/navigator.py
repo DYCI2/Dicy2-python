@@ -19,6 +19,7 @@ The classes defined in this module are used in association with models (cf. :mod
 **model navigator** classes (cf. :mod:`ModelNavigator`).
 
 """
+import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional, Callable
 
@@ -31,6 +32,7 @@ from parameter import Parametric
 
 class Navigator(Parametric, ABC):
     def __init__(self, memory: Memory, equiv: Callable = (lambda x, y: x == y), **kwargs):
+        self.logger = logging.getLogger(__name__)
         self.memory: Memory = memory
         self.equiv: Callable = equiv
 

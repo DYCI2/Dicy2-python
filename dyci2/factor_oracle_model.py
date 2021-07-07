@@ -86,7 +86,6 @@ class FactorOracle(Model):
         self.reverse_suffix_links = {}
 
         Model.__init__(self, memory, equiv)
-        # TODO[C] OBS! equiv is always overwritten by label type, so is it really necessary to use equiv???
         self.build(memory)
 
     def build(self, memory: Memory):
@@ -121,15 +120,10 @@ class FactorOracle(Model):
         self.reverse_suffix_links[self.index_last_state()] = []
 
     def index_last_state(self):
-        
         """ Index of the last state in the model."""
         return len(self.labels) - 1
 
-    def memory_length(self):
-        return len(self.labels) - 1
-
     def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
-        
         """
         Learns (appends) a new sequence in the model.
 
@@ -200,10 +194,10 @@ class FactorOracle(Model):
         # TODO: Temp! Should obviously not use DebugEvent once properly handled in __init__
         candidates: List[Candidate] = [Candidate(DebugEvent(self.sequence[i], self.labels[i]), i, 1.0, None)
                                        for i in indices]
-        return Candidates(candidates=candidates, memory=self.l_dummy_memory())
+        return Candidates(candidates=candidates, memory=self.dummy_memory())
 
-    def l_memory_as_candidates(self, exclude_last: bool = False,
-                               exclude_first: bool = True) -> Candidates:
+    def memory_as_candidates(self, exclude_last: bool = False,
+                             exclude_first: bool = True) -> Candidates:
         # TODO: Temp! Neither of these should use DebugEvent once properly handled in __init__
         start: int = 1 if exclude_first else 0
         end: int = len(self.sequence) - 1 if exclude_last else len(self.sequence)
@@ -218,23 +212,17 @@ class FactorOracle(Model):
         # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:-1], start=1)]
         # else:
         # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:], start=1)]
-        return Candidates(candidates, self.l_dummy_memory())
+        return Candidates(candidates, self.dummy_memory())
 
     @property
     def memory(self) -> Memory:
-        return self.l_dummy_memory()
+        return self.dummy_memory()
 
-    def l_dummy_memory(self) -> Memory:
+    def dummy_memory(self) -> Memory:
         # TODO: Temp! This should ideally just return self.memory, but cannot do so currently as it needs to take
         #  applied transforms into account
         return Memory([DebugEvent(s, l) for (i, (s, l)) in enumerate(zip(self.sequence, self.labels))],
                       content_type=self.content_type, label_type=self.label_type)
-
-    def l_set_sequence(self, sequence: List[Optional[MemoryEvent]]):
-        self.sequence = sequence
-
-    def l_set_labels(self, labels: List[Optional[Label]]):
-        self.labels = labels
 
     def print_model(self):
         """
@@ -634,7 +622,7 @@ class FactorOracle(Model):
         
         return len(self.sequence)
 
-    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
+    def feedback(self, output_event: Optional[Candidate]) -> None:
         pass  # TODO: Implement
 
     # TODO : Use prefix indexing algo
@@ -694,9 +682,9 @@ class FactorOracle(Model):
         return length
 
     def encode_with_transform(self, transform: Transform) -> None:
-        self.l_set_labels([None] + transform.encode_sequence(self.labels[1::]))
+        self.labels = [None] + transform.encode_sequence(self.labels[1::])
 
     def decode_with_transform(self, transform: Transform) -> None:
-        self.l_set_labels([None] + transform.decode_sequence(self.labels[1::]))
+        self.labels = [None] + transform.decode_sequence(self.labels[1::])
 
 

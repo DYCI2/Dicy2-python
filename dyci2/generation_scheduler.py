@@ -17,23 +17,26 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 
 
 """
+import logging
+import warnings
 from typing import Optional, Callable, Tuple, Type, List
 
+from candidate import Candidate
 from candidate_selector import CandidateSelector, TempCandidateSelector, DefaultFallbackSelector
 from candidates import Candidates
 from dyci2.query import Query, FreeQuery, LabelQuery, TimeMode
-from dyci2.transforms import *
+from dyci2.transforms import TransposeTransform, NoTransform, Transform
 # TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
 # TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
 from factor_oracle_model import FactorOracle
 from generation_process import GenerationProcess
+from label import Label
 from memory import MemoryEvent, Memory
-from model import Model
-from navigator import Navigator, FactorOracleNavigator
+from navigator import FactorOracleNavigator
 from output import Output
-from parameter import Parametric, Parameter
-from prospector import Prospector, Dyci2Prospector
-from utils import format_list_as_list_of_strings, DontKnow
+from parameter import Parametric
+from prospector import Dyci2Prospector
+from utils import format_list_as_list_of_strings
 
 
 # TODO : SUPPRIMER DANS LA DOC LES FONCTIONS "EQUIV-MOD..." "SEQUENCE TO INTERVAL..."
@@ -107,36 +110,28 @@ class GenerationScheduler(Parametric):
     >>> #authorized_intervals = list(range(-2,6))
     >>> #generator_2 = GenerationHandlerNew(sequence = sequence_2, labels = labels_2, model_navigator = "FactorOracleNavigator", authorized_tranformations = authorized_intervals, sequence_to_interval_fun = chord_labels_sequence_to_interval)
 
-
     """
 
-    def __init__(self, memory: Memory, model_class: Type[Model] = FactorOracle,
-                 navigator_class: Type[Navigator] = FactorOracleNavigator,
+    def __init__(self, memory: Memory, model_class: Type[FactorOracle] = FactorOracle,
+                 navigator_class: Type[FactorOracleNavigator] = FactorOracleNavigator,
                  equiv: Optional[Callable] = (lambda x, y: x == y), authorized_tranformations=(0,),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
-
+        self.logger = logging.getLogger(__name__)
         if equiv is None:
             equiv = basic_equiv
-        self.prospector: Dyci2Prospector = Dyci2Prospector(memory=memory, equiv=equiv,
-                                                          continuity_with_future=continuity_with_future)
-        self.content_type: Type[MemoryEvent] = memory.content_type  # TODO[C]: Should not be here
+        self.prospector: Dyci2Prospector = Dyci2Prospector(model=model_class, navigator=navigator_class, memory=memory,
+                                                           equiv=equiv, continuity_with_future=continuity_with_future)
 
-        self.uninitialized: bool = True  # TODO Positive name `initialized` would be better + invert all conditions
-        # self.transfo_current_generation_output: List[Transform] = []  # TODO: Remove completely
+        self.initialized: bool = True
 
         self.authorized_transformations: List[int] = list(authorized_tranformations)
         self.active_transform: Transform = NoTransform()
 
-        self.performance_time: int = 0
+        self._performance_time: int = 0
 
         self.generation_process: GenerationProcess = GenerationProcess()
         self.candidate_selector: CandidateSelector = TempCandidateSelector()
         self.fallback_selector: CandidateSelector = DefaultFallbackSelector()
-
-    def __setattr__(self, name_attr, val_attr):
-        object.__setattr__(self, name_attr, val_attr)
-        if name_attr == "current_performance_time":
-            print("New value of current performance time: {}".format(self.performance_time))
 
     def learn_event(self, event: MemoryEvent) -> None:
         """ Learn a new event in the memory (model navigator).
@@ -149,84 +144,70 @@ class GenerationScheduler(Parametric):
         self.prospector.learn_sequence(sequence=sequence)
 
     def process_query(self, query: Query) -> int:
-        # TODO[B]: This entire function is basically a long list of side effects to distribute all over the system given
-        #   various cases. A better solution would be to clean most of these up and pass along. The only important thing
-        #   here is go_to_anterior_state_using_execution_trace
         """ raises: RuntimeError if receiving a relative query as the first query. """
-        print("\n--------------------")
-        print(f"current_performance_time: {self.performance_time}")
-        print(f"current_generation_time: {self.generation_process.generation_time}")
+        self.logger.debug("\n--------------------")
+        self.logger.debug(f"current_performance_time: {self._performance_time}")
+        self.logger.debug(f"current_generation_time: {self.generation_process.generation_time}")
 
-        if not self.uninitialized and self.performance_time < 0 and query.time_mode == TimeMode.RELATIVE:
-            # TODO: Is this really a good strategy? Or should it just assume this as ABSOLUTE(NOW)?
+        if self.initialized and self._performance_time < 0 and query.time_mode == TimeMode.RELATIVE:
+            # TODO[Jerome]: Is this really a good strategy? Or should it just assume this as ABSOLUTE(NOW)?
             raise RuntimeError("Cannot handle a relative query as the first query")
 
-        # TODO[B] If invariant above is useless or if we can handle this elsewhere,
-        #  handle query.to_absolute in scheduler instead
-        print("PROCESS QUERY\n", query)
+        self.logger.debug("PROCESS QUERY\n", query)
         if query.time_mode == TimeMode.RELATIVE:
-            query.to_absolute(self.performance_time)
-            print("QUERY ABSOLUTE\n", query)
+            query.to_absolute(self._performance_time)
+            self.logger.debug("QUERY ABSOLUTE\n", query)
 
-        if self.uninitialized:
-            self.performance_time = 0
+        if not self.initialized:
+            self._performance_time = 0
+
         generation_index: int = query.start_date
-        print(f"generation_index: {generation_index}")
+        self.logger.debug(f"generation_index: {generation_index}")
         if 0 < generation_index < self.generation_process.generation_time:
-            print(f"USING EXECUTION TRACE : generation_index = {generation_index} : "
-                  f"generation_time = {self.generation_process.generation_time}")
+            self.logger.debug(f"USING EXECUTION TRACE : generation_index = {generation_index} : "
+                              f"generation_time = {self.generation_process.generation_time}")
             self.prospector.rewind_generation(generation_index - 1)
 
-        # TODO[B] UNSOLVED! Massive side-effect. Exactly what is current_navigation_index?
+        # TODO[Jerome] UNSOLVED! Strategy for execution trace is still not solved
         self.prospector.navigator.current_navigation_index = generation_index - 1
-        # TODO[B]: UNSOLVED! generator_process_query should return output, not store it in current_generation_output
+
         output: List[Optional[Candidate]] = self._process_query(query)
 
-        print(f"self.current_generation_output {output}")
+        self.logger.debug(f"self.current_generation_output {output}")
         self.generation_process.add_output(generation_index, output)
 
-        # TODO[B] Can this return generation_index instead? Or is query.start_date changed somewhere along the line?
-        return query.start_date
+        return generation_index
 
     def _process_query(self, query: Query) -> List[Optional[Candidate]]:
-        print("**********************************\nPROCESS QUERY: QUERY = \n**********************************", query)
-        print("**********************************\nGENERATION MATCHING QUERY: QUERY = \n**********************", query)
+        self.logger.debug("****************************\nPROCESS QUERY: QUERY = \n****************************", query)
+        self.logger.debug("****************************\nGENERATION MATCHING QUERY: QUERY = \n****************", query)
+
         output: List[Optional[Candidate]]
-        # TODO[B]: UNSOLVED! probably unnecessary side-effect but discuss w/ Jerome before removing
-        # self.transfo_current_generation_output = []
         if isinstance(query, FreeQuery):
-            print("GENERATION MATCHING QUERY FREE ...")
-            output = self.free_generation(num_events=query.num_events, init=self.uninitialized,
+            self.logger.debug("GENERATION MATCHING QUERY FREE ...")
+            output = self.free_generation(num_events=query.num_events, init=not self.initialized,
                                           print_info=query.print_info)
-            print("... GENERATION MATCHING QUERY FREE OK")
-            # self.transfo_current_generation_output = [self.active_transform] * len(output)
+            self.logger.debug("... GENERATION MATCHING QUERY FREE OK")
 
         elif isinstance(query, LabelQuery) and len(query.labels) == 1:
-            print("GENERATION MATCHING QUERY LABEL ...")
-            # self.encode_memory_with_current_transform()
-            output = self.simply_guided_generation(required_labels=query.labels, init=self.uninitialized,
+            self.logger.debug("GENERATION MATCHING QUERY LABEL ...")
+            output = self.simply_guided_generation(required_labels=query.labels, init=not self.initialized,
                                                    print_info=query.print_info)
-            # self.decode_memory_with_current_transform()
-            # self.transfo_current_generation_output = [self.active_transform] * len(output)
-            print("... GENERATION MATCHING QUERY LABEL OK")
+            self.logger.debug("... GENERATION MATCHING QUERY LABEL OK")
 
         elif isinstance(query, LabelQuery) and len(query.labels) > 1:
-            print("GENERATION MATCHING QUERY SCENARIO ...")
+            self.logger.debug("GENERATION MATCHING QUERY SCENARIO ...")
             output = self.scenario_based_generation(list_of_labels=query.labels, print_info=query.print_info)
-            warnings.warn("This doesn't seem to handle transfo_current_generation_output consistently "
-                          "with surrounding code")
-            print("... GENERATION MATCHING QUERY SCENARIO OK")
+            self.logger.debug("... GENERATION MATCHING QUERY SCENARIO OK")
 
         else:
             raise RuntimeError(f"Invalid query type: {query.__class__.__name__}")
 
-        # TODO[B] Again with the side effects...
         if len(output) > 0:
-            self.uninitialized = False
+            self.initialized = True
         return output
 
-    def free_generation(self, num_events: int,
-                        forward_context_length_min: int = 0, init: bool = False, equiv: Callable = None,
+    def free_generation(self, num_events: int, forward_context_length_min: int = 0, init: bool = False,
                         print_info: bool = False) -> List[Optional[Candidate]]:
         """ Free navigation through the sequence.
         Naive version of the method handling the free navigation in a sequence (random).
@@ -254,8 +235,7 @@ class GenerationScheduler(Parametric):
             self.avoid_repetitions_mode, self.no_empty_event.
         """
 
-        # self.encode_memory_with_current_transform()
-        equiv = self.prospector.l_prepare_navigation([], init)
+        self.prospector.prepare_navigation([], init=init)
         sequence: List[Optional[Candidate]] = []
         for i in range(num_events):
             candidates: Candidates
@@ -264,16 +244,16 @@ class GenerationScheduler(Parametric):
                                                                 print_info=print_info, shift_index=i)
 
             output: Optional[Candidate] = self.decide(candidates, disable_fallback=False)
-            output.transform = self.active_transform
-            warnings.warn("Feedback does not have access to generation time")
-            self.feedback(-1, output)
+            if output is not None:
+                output.transform = self.active_transform
+                self.feedback(output)
+
+            # TODO[Jerome]: Unlike corresponding lines in scenario-based, this one may add None. Intentional?
             sequence.append(output)
 
-        # self.decode_memory_with_current_transform()
         return sequence
 
     def simply_guided_generation(self, required_labels: List[Label],
-                                 new_max_continuity: Optional[Tuple[float, float]] = None,
                                  forward_context_length_min: int = 0, init: bool = False,
                                  print_info: bool = False, shift_index: int = 0,
                                  break_when_none: bool = False) -> List[Optional[Candidate]]:
@@ -285,8 +265,8 @@ class GenerationScheduler(Parametric):
 
         :param required_labels: guiding sequence of labels
         :type required_labels: list
-        :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
-        :type new_max_continuity: int
+        # :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
+        # :type new_max_continuity: int
         :param forward_context_length_min: minimum length of the forward common context
         :type forward_context_length_min: int
         :param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
@@ -304,9 +284,9 @@ class GenerationScheduler(Parametric):
         self.avoid_repetitions_mode, self.no_empty_event.
         """
 
-        print("HANDLE GENERATION MATCHING LABEL...")
+        self.logger.debug("HANDLE GENERATION MATCHING LABEL...")
 
-        equiv = self.prospector.l_prepare_navigation(required_labels, init)
+        self.prospector.prepare_navigation(required_labels, init)
 
         sequence: List[Optional[Output]] = []
         for (i, label) in enumerate(required_labels):
@@ -320,13 +300,11 @@ class GenerationScheduler(Parametric):
                 break
             else:
                 output: Optional[Candidate] = self.decide(candidates, disable_fallback=False)
-                output.transform = self.active_transform
-                warnings.warn("Feedback does not have access to generation time")
-                self.feedback(-1, output)
-                sequence.append(output)
+                if output is not None:
+                    output.transform = self.active_transform
+                    self.feedback(output)
 
-        # TODO: This was most likely a misinterpretation of the original code and should probably be removed
-        # sequence: List[Candidate] = [c for c in sequence if c is not None]
+                sequence.append(output)
 
         return sequence
 
@@ -345,7 +323,7 @@ class GenerationScheduler(Parametric):
 
         """
         generated_sequence: List[Optional[Candidate]] = []
-        print("SCENARIO BASED GENERATION 0")
+        self.logger.debug("SCENARIO BASED GENERATION 0")
         while len(generated_sequence) < len(list_of_labels):
             current_index: int = len(generated_sequence)
             seq: List[Candidate]
@@ -360,33 +338,18 @@ class GenerationScheduler(Parametric):
                 # TODO: Clunky to create Candidates instance for this. Also - doesn't have access to taboo/mask.
                 fallback_output: Optional[Candidate] = self.decide(Candidates([], self.prospector.get_memory()))
                 if fallback_output is not None:
-                    fallback_output.transform = self.active_transform  # TODO: Active or NoTransform()?
-                    # TODO: Should be part of feedback call
-                    self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(fallback_output.index)
+                    fallback_output.transform = self.active_transform
+                    # New code:
+                    self.feedback(fallback_output)
+                    # Old code for compatibility with line below:
+                    #   self.prospector.navigator.set_position_in_sequence(fallback_output.index)
                 else:
-                    # TODO: Is this equivalent to a reset() instead of a feedback()
-                    self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(0)
+                    # TODO[Jerome]: Is this really a good idea? Shouldn't it be random state?
+                    self.prospector.navigator.set_position_in_sequence(0)
                 generated_sequence.append(fallback_output)
 
         return generated_sequence
 
-    # # TODO: We need a strategy to handle the default case in a modular manner
-    # def l_scenario_default_case(self) -> Optional[Candidate]:
-    #     if self.prospector.navigator.no_empty_event and \
-    #             self.prospector.navigator.current_position_in_sequence < self.prospector.model.index_last_state():
-    #         print("NO EMPTY EVENT")
-    #         next_index: int = self.prospector.navigator.current_position_in_sequence + 1
-    #         self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(next_index)
-    #         # TODO[CRITICAL]: This does not handle transforms coherently with surrounding code
-    #         #  (original code didn't either)
-    #         return Candidate(self.prospector.model.sequence[next_index], next_index, 1.0, NoTransform())
-    #
-    #     else:
-    #         print("EMPTY EVENT")
-    #         self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(0)
-    #         return None
-
-    # TODO : PAS OPTIMAL DU TOUT D'ENCODER DECODER A CHAQUE ETAPE !!!!!!!!
     def handle_scenario_based_generation_one_phase(self, list_of_labels: List[Label], original_query_length: int,
                                                    print_info: bool = False, shift_index: int = 0) -> List[Candidate]:
         """
@@ -401,83 +364,64 @@ class GenerationScheduler(Parametric):
             :meth:`~Navigator.Navigator.simply_guided_generation` until launching a new phase is necessary.
 
         """
-        print("SCENARIO ONE PHASE 0")
+        self.logger.debug("SCENARIO ONE PHASE 0")
 
-        # Inverse apply transform to memory
+        # Inverse apply transform to memory to reset to initial state of memory (no transform)
         self.decode_memory_with_current_transform()
         self.active_transform = NoTransform()
 
         generated_sequence: List[Candidate] = []
 
+        # Initial candidate (prefix indexing)
         candidates: Candidates = self.prospector.scenario_single_step(
             labels=list_of_labels,
             index_in_generation=shift_index,
-            use_intervals=self._use_intervals(),
             authorized_transformations=self.authorized_transformations,
             previous_steps=generated_sequence)
 
         output: Optional[Candidate] = self.decide(candidates, disable_fallback=True)
         if output is None:
             return []
-        else:
-            generated_sequence.append(output)
 
-        # TODO: Feedback here!!!!
-        # self.feedback(..)
+        generated_sequence.append(output)
+        self.active_transform = output.transform
+        self.feedback(output)
 
-        print(f"SCENARIO BASED ONE PHASE SETS POSITION: {output.index}")
-        # TODO: Replace with feedback function
-        self.prospector.navigator.set_current_position_in_sequence_with_sideeffects(output.index)
-        print(f"current_position_in_sequence: {output.index}")
+        self.logger.debug(f"SCENARIO BASED ONE PHASE SETS POSITION: {output.index}")
+        self.logger.debug(f"current_position_in_sequence: {output.index}")
+        self.logger.debug(f"{shift_index} NEW STARTING POINT {output.event.label()} (orig. --): {output.index}\n"
+                          f"length future = {output.score} - FROM NOW {self.active_transform}")
 
-        # if output.transform is not None and output.transform != 0:
-        #     transform: Transform = TransposeTransform(output.transform)
-        #     # NOTE! ContentType was never set in orig. Therefore commented out
-        #     # output: [Candidate] = transform.encode(output)
-        #     output.transform = transform
-        #     # TODO: Side effect
-        #     self.current_transformation_memory = transform
-        self.active_transform = output.transform if output is not None else NoTransform()
-
-        if print_info:
-            print(f"{shift_index} NEW STARTING POINT {output.event.label()} (orig. --): {output.index}\n"
-                  f"length future = {output.score} - FROM NOW {self.active_transform}")
-
-        # TODO: Remove. This is already stored directly in the Candidate in GenerationProcess
-        # self.transfo_current_generation_output.append(self.active_transform)
-
-        # Apply transform from initial output to memory # TODO: Rewrite this as function of `output.transform`
         self.encode_memory_with_current_transform()
 
-        equiv = self.prospector.l_prepare_navigation(list_of_labels[1:])
+        # TODO[Jerome]: This is probably redundant here no?
+        self.prospector.prepare_navigation(list_of_labels[1:])
+
+        # Consecutive candidates
         shift_index: int = original_query_length - len(list_of_labels) + 1
         for (i, label) in enumerate(list_of_labels[1:]):  # type: int, Label
             candidates: Candidates = self.prospector.scenario_single_step(labels=[label],
                                                                           index_in_generation=shift_index + i,
                                                                           previous_steps=generated_sequence,
-                                                                          use_intervals=None,
-                                                                          continuity_with_future=None,
-                                                                          authorized_transformations=None,
                                                                           no_empty_event=False)
 
             output: Optional[Candidate] = self.decide(candidates, disable_fallback=True)
+
             if output is not None:
-                output.transform = self.active_transform
-                warnings.warn("Feedback does not have access to generation time")
-                self.feedback(-1, output)
                 generated_sequence.append(output)
-                # TODO: Remove. This is already stored directly in the Candidate in GenerationProcess
-                # self.transfo_current_generation_output.append(self.active_transform)
+                output.transform = self.active_transform
+                self.feedback(output)
+
             else:
-                # Break loop if output is None
+                # End phase if no candidates are found
                 break
 
-        print(f"---------END handle_scenario_based ->> Return {generated_sequence}")
+        self.logger.debug(f"---------END handle_scenario_based ->> Return {generated_sequence}")
         return generated_sequence
 
-    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
-        self.candidate_selector.feedback(time, output_event)
-        self.prospector.feedback(time, output_event)
+    def feedback(self, output_event: Optional[Candidate]) -> None:
+        self.candidate_selector.feedback(output_event)
+        self.prospector.feedback(output_event)
 
     def decide(self, candidates: Candidates, disable_fallback: bool = False) -> Optional[Candidate]:
         output: Optional[Candidate] = self.candidate_selector.decide(candidates)
@@ -488,7 +432,7 @@ class GenerationScheduler(Parametric):
 
     def start(self):
         """ Sets :attr:`self.current_performance_time` to 0."""
-        self.performance_time = 0
+        self._performance_time = 0
 
     def set_equiv_function(self, equiv: Callable[[Label, Label], bool]):
         self.prospector.set_equiv_function(equiv=equiv)
@@ -496,19 +440,19 @@ class GenerationScheduler(Parametric):
     # TODO : EPSILON POUR LANCER NOUVELLE GENERATION
     def update_performance_time(self, new_time: Optional[int] = None):
         if new_time is not None:
-            self.performance_time = new_time
+            self._performance_time = new_time
         else:
-            self.performance_time = -1
+            self._performance_time = -1
 
-        print(f"NEW PERF TIME = {self.performance_time}")
+        print(f"NEW PERF TIME = {self._performance_time}")
         # TODO : EPSILON POUR LANCER NOUVELLE GENERATION
-        if self.generation_process.generation_time < self.performance_time:
+        if self.generation_process.generation_time < self._performance_time:
             old = self.generation_process.generation_time
-            self.generation_process.update_generation_time(self.performance_time)
+            self.generation_process.update_generation_time(self._performance_time)
             print(f"CHANGED PERF TIME = {old} --> {self.generation_process.generation_time}")
 
     def inc_performance_time(self, increment: Optional[int] = None):
-        old_time = self.performance_time
+        old_time = self._performance_time
 
         new_time: Optional[int] = None
 
@@ -547,11 +491,18 @@ class GenerationScheduler(Parametric):
         return format_list_as_list_of_strings(self.generation_trace)
 
     def encode_memory_with_current_transform(self):
-        
         transform: Transform = self.active_transform
-        self.prospector.l_encode_with_transform(transform)
+        self.prospector.encode_with_transform(transform)
 
     def decode_memory_with_current_transform(self):
-        
         transform: Transform = self.active_transform
         self.prospector.decode_with_transform(transform)
+
+    @property
+    def performance_time(self) -> int:
+        return self._performance_time
+
+    @performance_time.setter
+    def performance_time(self, value: int):
+        self._performance_time = value
+        print("New value of current performance time: {}".format(self._performance_time))

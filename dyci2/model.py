@@ -22,18 +22,17 @@ Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/Factor
 
 """
 from abc import ABC, abstractmethod
-from typing import Callable
+from typing import Callable, List, Optional
 
 from candidate import Candidate
 from candidates import Candidates
-from dyci2.label import *
+from dyci2.label import Label
 from memory import MemoryEvent, Memory
 from parameter import Parametric
 from transforms import Transform
 
 
 class Model(Parametric, ABC):
-    
     """The class :class:`~Model.Model` is an **abstract class**.
     Any new model of sequence must inherit from this class.
 
@@ -45,18 +44,14 @@ class Model(Parametric, ABC):
     :type equiv: function
 
     :!: **equiv** has to be consistent with the type of the elements in labels.
-    """
+    # """
 
     def __init__(self, memory: Memory, equiv: Callable = (lambda x, y: x == y)):
-        """ TODO[B]: Note that memory must always exist (as it may be necessary to call some sort of `build` or
-             `init_memory` from constructor) but it may be empty. """
-        
         self._memory: Memory = memory
         self.equiv: Callable[[Label, Label], Label] = equiv
 
     @abstractmethod
     def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
-        
         """
         Learns (appends) a new sequence in the model.
 
@@ -73,7 +68,6 @@ class Model(Parametric, ABC):
 
     @abstractmethod
     def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
-        
         """
         Learns (appends) a new state in the model.
 
@@ -88,28 +82,16 @@ class Model(Parametric, ABC):
 
     @abstractmethod
     def select_events(self, index_state: int, label: Optional[Label]) -> Candidates:
-        """ TODO """
+        """ TODO: Docstring """
 
     @abstractmethod
-    @property
-    def memory(self):
-        """ TODO """
-
-    @abstractmethod
-    def memory_length(self):
-        
-        """ TODO """
-
-    @abstractmethod
-    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
-        """ TODO """
+    def feedback(self, output_event: Optional[Candidate]) -> None:
+        """ TODO: Docstring """
 
     @abstractmethod
     def encode_with_transform(self, transform: Transform) -> None:
-        """ TODO """
+        """ TODO: Docstring """
 
     @abstractmethod
     def decode_with_transform(self, transform: Transform) -> None:
-        """ TODO """
-
-
+        """ TODO: Docstring """

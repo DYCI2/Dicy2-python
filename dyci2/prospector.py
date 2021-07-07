@@ -24,11 +24,9 @@ from typing import Callable, Tuple, Optional, List, Type, TypeVar, Generic
 
 from candidate import Candidate
 from candidates import Candidates
-from dyci2.navigator import Navigator, FactorOracleNavigator
-# TODO : surchager set use_taboo pour que tous les -1 passent à 0 si on passe à FALSE
-# TODO : mode 0 : répétitions authorisées, mode 1 = on prend le min, mode 2, interdire les déjà passés
-# TODO : SURCHARGER POUR INTERDIRE LES AUTRES
+from dyci2.navigator import Navigator
 from factor_oracle_model import FactorOracle
+from factor_oracle_navigator import FactorOracleNavigator
 from label import Label
 from memory import MemoryEvent, Memory
 from model import Model
@@ -70,10 +68,6 @@ class Prospector(Parametric, Generic[M, N], ABC):
         >>> #FON = FactorOracleGenerator(sequence, labels)
 
         """
-        # TODO: Assert compatibility between model_class and navigator_class
-
-        # TODO: Model and Navigator should not be initialized here - to handle kwargs properly @ init,
-        #       it's better to initialize at parse, alt. pass explicit `model_kwargs` and `navigator_kwargs`
         self.model: M = model
         self.navigator: N = navigator
 
@@ -84,12 +78,12 @@ class Prospector(Parametric, Generic[M, N], ABC):
 
     @abstractmethod
     def navigation_single_step(self, required_label: Optional[Label], **kwargs) -> Candidates:
-        """ TODO """
+        """ TODO: Docstring """
 
     @abstractmethod
     def scenario_single_step(self, labels: List[Label], index_in_generation: int, previous_steps: List[Candidate],
                              authorized_transformations: List[int], **kwargs) -> Candidates:
-        """ TODO """
+        """ TODO: Docstring """
 
     def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
         """ raises: TypeError if event is incompatible with current memory """
@@ -101,10 +95,7 @@ class Prospector(Parametric, Generic[M, N], ABC):
 
     def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
         """ raises: TypeError if sequence is incompatible with current memory """
-        # TODO[D]: This is never called! In original code it is called from Model.__init__, which obviously isn't
-        #  possible. Need to call this from outside when simplifying calls
-
-        # TODO[C]: Ensure that the sequence always is validated at top level so that the list of MemoryEvents always
+        # TODO: Ensure that the sequence always is validated at top level so that the list of MemoryEvents always
         #  has (1) a single LabelType and (2) a single ContentType. OR simply parse with all([isinstance(e) for e in a])
         if len(sequence) > 0 and isinstance(sequence[0], self.content_type) and isinstance(sequence[0].label(),
                                                                                            self.label_type):
@@ -116,15 +107,13 @@ class Prospector(Parametric, Generic[M, N], ABC):
     def rewind_generation(self, index_in_navigation: int) -> None:
         self.navigator.rewind_generation(index_in_navigation)
 
-    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
-        self.model.feedback(time, output_event)
-        self.navigator.feedback(time, output_event)
+    def feedback(self, output_event: Optional[Candidate]) -> None:
+        self.model.feedback(output_event)
+        self.navigator.feedback(output_event)
 
-    # TODO: Should be part of interface but perhaps renamed. Could also be just one function with flag `apply_inverse`
-    def l_encode_with_transform(self, transform: Transform):
+    def encode_with_transform(self, transform: Transform):
         self.model.encode_with_transform(transform)
 
-    # TODO: Should be part of the interface but perhaps renamed
     def decode_with_transform(self, transform: Transform):
         self.model.decode_with_transform(transform)
 
@@ -136,36 +125,35 @@ class Prospector(Parametric, Generic[M, N], ABC):
         self.navigator.equiv = equiv
 
 
-# TODO: this should rather take some abstract FactorOracleLikeModel, FactorOracleLikeNavigator and take these as args.
+# TODO: this could rather take some abstract FactorOracleLikeModel, FactorOracleLikeNavigator and take these as args.
 class Dyci2Prospector(Prospector[FactorOracle, FactorOracleNavigator]):
-    def __init__(self, memory: Memory, max_continuity=20, control_parameters=(), history_parameters=(),
+    def __init__(self, model: Type[FactorOracle], navigator: Type[FactorOracleNavigator],
+                 memory: Memory, max_continuity=20, control_parameters=(), history_parameters=(),
                  equiv: Callable = (lambda x, y: x == y), continuity_with_future: Tuple[float, float] = (0.0, 1.0), ):
         super().__init__(memory=memory,
-                         model=FactorOracle(memory=memory, equiv=equiv),
-                         navigator=FactorOracleNavigator(memory=memory, equiv=equiv,
-                                                         max_continuity=max_continuity,
-                                                         control_parameters=control_parameters,
-                                                         execution_trace_parameters=history_parameters,
-                                                         continuity_with_future=continuity_with_future))
+                         model=model(memory=memory, equiv=equiv),
+                         navigator=navigator(memory=memory, equiv=equiv,
+                                             max_continuity=max_continuity,
+                                             control_parameters=control_parameters,
+                                             execution_trace_parameters=history_parameters,
+                                             continuity_with_future=continuity_with_future))
 
-    def l_prepare_navigation(self, required_labels: List[Label], init: bool = False) -> Callable:
+    # TODO[Jerome]: This one needs some more attention - inconsistencies between randoms ([1..length] vs [0..len-1])
+    def prepare_navigation(self, required_labels: List[Label], init: bool = False) -> None:
         if init:
             self.navigator.clear()
 
-        # TODO: This is not a good solution, this should be part of an explicit `init/clear` function or smth.
         if self.navigator.current_position_in_sequence < 0:
             if len(required_labels) > 0:
-                init_states: List[int] = [i for i in range(1, self.model.memory_length()) if
+                init_states: List[int] = [i for i in range(1, self.model.index_last_state()) if
                                           self.model.direct_transitions.get(i)
                                           and equiv(self.model.direct_transitions.get(i)[0], required_labels[0])]
                 # TODO: Handle case where init_states is empty?
                 new_position: int = random.randint(0, len(init_states) - 1)
-                self.navigator.set_current_position_in_sequence_with_sideeffects(new_position)
+                self.navigator.set_position_in_sequence(new_position)
             else:
-                # TODO: This would make sense as part of a clear() function
-                new_position: int = random.randint(1, self.model.memory_length())
-                self.navigator.set_current_position_in_sequence_with_sideeffects(new_position)
-        return equiv
+                new_position: int = random.randint(1, self.model.index_last_state())
+                self.navigator.set_position_in_sequence(new_position)
 
     def navigation_single_step(self, required_label: Optional[Label], forward_context_length_min: int = 0,
                                print_info: bool = False, shift_index: int = 0,
@@ -175,41 +163,37 @@ class Dyci2Prospector(Prospector[FactorOracle, FactorOracleNavigator]):
                                                           forward_context_length_min=forward_context_length_min,
                                                           authorize_direct_transition=True)
 
-        # TODO[B2]: Move filtering to Prospector (after discussion with Jérôme)
-        # TODO: I think easiest solution would be to generate a generic binary `index_map` to handle all index-based
-        #  filtering and just apply this wherever it is needed
+        # TODO[Jerome]: I think easiest solution would be to generate a generic binary `index_map` to handle all
+        #               index-based filtering and just apply this wherever it is needed
         candidates.data = self.navigator.filter_using_history_and_taboos(candidates.data)
 
         candidates = self.navigator.weight_candidates(candidates=candidates,
+                                                      required_label=required_label,
                                                       model_direct_transitions=self.model.direct_transitions,
                                                       shift_index=shift_index,
-                                                      all_memory=self.model.l_memory_as_candidates(exclude_last=True),
-                                                      required_label=required_label,
                                                       print_info=print_info, no_empty_event=no_empty_event)
-        # TODO[B2]: This should be migrated to feedback function instead
-        if candidates.length() > 0:
-            self.navigator.set_current_position_in_sequence_with_sideeffects(candidates.at(0).index)
 
         return candidates
 
     def scenario_single_step(self, labels: List[Label], index_in_generation: int, previous_steps: List[Candidate],
-                             authorized_transformations: List[int],
-                             no_empty_event: bool = True, **kwargs) -> Candidates:
+                             authorized_transformations: Optional[List[int]] = None, no_empty_event: bool = True,
+                             **kwargs) -> Candidates:
         """ raises: IndexError if `labels` is empty """
         if len(previous_steps) == 0:
             return self._scenario_initial_candidate(labels=labels,
-                                                    use_intervals=self._use_intervals(authorized_transformations),
                                                     authorized_transformations=authorized_transformations)
         else:
             return self.navigation_single_step(labels[0], shift_index=index_in_generation,
                                                no_empty_event=no_empty_event)
 
-    def _scenario_initial_candidate(self, labels: List[Label], use_intervals: bool,
-                                    authorized_transformations: List[int]) -> Candidates:
-        full_memory: Candidates = self.model.l_memory_as_candidates(exclude_last=False, exclude_first=False)
-        full_memory.data = self.navigator.filter_using_history_and_taboos(full_memory.data)
+    def _scenario_initial_candidate(self, labels: List[Label], authorized_transformations: List[int]) -> Candidates:
+        authorized_indices: List[int] = [c.index for c in
+                                         self.navigator.filter_using_history_and_taboos(
+                                             self.model.memory_as_candidates(exclude_last=False,
+                                                                             exclude_first=False).data)]
 
-        if use_intervals:  # TODO: This should be controlled by prospector (or navigator even?), not passed as argument
+        use_intervals: bool = self._use_intervals(authorized_transformations)
+        if use_intervals:
             func_intervals_to_labels: Optional[Callable]
             func_intervals_to_labels = self.label_type.make_sequence_of_intervals_from_sequence_of_labels
             equiv_mod_interval: Optional[Callable] = self.label_type.equiv_mod_interval
@@ -217,18 +201,19 @@ class Dyci2Prospector(Prospector[FactorOracle, FactorOracleNavigator]):
             func_intervals_to_labels = None
             equiv_mod_interval = None
 
-        candidates: List[Candidate] = self.navigator.find_prefix_matching_with_labels(
+        full_memory: Candidates = self.model.memory_as_candidates(exclude_last=False, exclude_first=False)
+
+        candidates: Candidates = self.navigator.find_prefix_matching_with_labels(
             use_intervals=use_intervals,
-            candidates=full_memory.data,
+            candidates=full_memory,
             labels=labels,
-            full_memory=full_memory,
+            authorized_indices=authorized_indices,
             authorized_transformations=authorized_transformations,
             sequence_to_interval_fun=func_intervals_to_labels,
             equiv_interval=equiv_mod_interval)
 
-        return Candidates(candidates, full_memory.memory)
+        return candidates
 
-    # TODO: This should live in Prospector, not GenerationScheduler (may vary between different Prospectors)
     def _use_intervals(self, authorized_transformations: List[int]):
         return self.label_type is not None and self.label_type.use_intervals \
                and len(authorized_transformations) > 0 and authorized_transformations != [0]

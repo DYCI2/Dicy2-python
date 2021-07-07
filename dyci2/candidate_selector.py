@@ -14,7 +14,7 @@ class CandidateSelector(Parametric, ABC):
         """ TODO """
 
     @abstractmethod
-    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
+    def feedback(self, output_event: Optional[Candidate]) -> None:
         """ TODO """
 
 
@@ -25,7 +25,7 @@ class TempCandidateSelector(CandidateSelector):
         else:
             return candidates.at(0)
 
-    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
+    def feedback(self, output_event: Optional[Candidate]) -> None:
         pass
 
 
@@ -49,5 +49,5 @@ class DefaultFallbackSelector(CandidateSelector):
 
         return None
 
-    def feedback(self, time: int, output_event: Optional[Candidate]) -> None:
+    def feedback(self, output_event: Optional[Candidate]) -> None:
         self.previous_output = output_event

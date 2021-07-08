@@ -19,11 +19,8 @@ Label
 Definition of alphabets of labels to build sequences and use them in creative applications.
 
 """
-# TODO
 # **Tutorial in** :file:`_Tutorials_/Label_tutorial.py`.
 
-# TODO 2021 : imports circulaires Label <-> Transforms regles temporairement en supprimant les "available transforms" des labels
-# from dyci2.Transforms import *
 from copy import deepcopy, copy
 from typing import List, Optional, Type
 
@@ -32,9 +29,7 @@ class Label(object):
     use_intervals = False
 
     def __init__(self, label=None):
-        # TODO 2021 : imports circulaires Label <-> Transforms regles temporairement en supprimant les "available transforms" des labels
-        # self.available_transforms = self.get_available_transforms()
-        if not label is None and label != []:
+        if label is not None and label != []:
             self.set_label(label)
 
     def __repr__(self):
@@ -57,7 +52,7 @@ class Label(object):
         self.label = deepcopy(label)
 
     def get_label(self):
-        '''accessors for label'''
+        """accessors for label"""
         return copy(self.label)
 
     # custom equality function for customized comparison

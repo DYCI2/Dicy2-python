@@ -16,25 +16,28 @@ See the different tutorials accompanied with Max patches.
 
 """
 
-# DOC AND TUTO : TODO
+import logging
+import random
 import time
 from multiprocessing import Process
-from random import random
-from typing import Optional, Any, Union, List, Tuple, Dict, Callable, Type
+from typing import Optional, Any, Union, List, Tuple, Dict, Type, Callable
 
-# TODO[JB]: Don't forget to add maxosc and python-osc to requirements.txt
+from dyci2.legacy.Temporary_parse_file import TemporaryParser
 from maxosc import Sender, SendFormat
 from maxosc.caller import Caller
+from maxosc.exceptions import MaxOscError
 from maxosc.maxformatter import MaxFormatter
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
 
-from dyci2 import label, query
 from dyci2 import generator_builder, save_send_format
+from dyci2 import label, query
 from generation_scheduler import GenerationScheduler
-from dyci2.legacy.Temporary_parse_file import TemporaryParser
-
 # TODO[JB]: This is a placeholder for all places where you're expected to specify the real type of the input value!
+from label import Label
+from memory import MemoryEvent, BasicEvent, Memory
+from parameter import Parameter
+
 TODO_INSERTTYPE = Union[None, List, Tuple, Dict, int, float, str]
 
 
@@ -49,7 +52,6 @@ class Target:
         self._client.send(address, content)
 
 
-# TODO 2021 : https://openclassrooms.com/forum/sujet/tkinter-et-multiprocessing
 class Server(Process, Caller):
     DEFAULT_IP = "127.0.0.1"
     SERVER_ADDRESS = "/server"
@@ -60,6 +62,10 @@ class Server(Process, Caller):
     def __init__(self, inport: int = DEFAULT_INPORT, outport: int = DEFAULT_OUTPORT, *args, **kwargs):
         Process.__init__(self, *args, **kwargs)
         Caller.__init__(self, parse_parenthesis_as_list=True, discard_duplicate_args=False)
+
+        self.logger = logging.getLogger(__name__)
+        logging.basicConfig(level=logging.DEBUG, format='%(message)s')
+
         self._inport: int = inport
         self._outport: int = outport
         self._server: Optional[BlockingOSCUDPServer] = None  # Initialized on `run` call
@@ -83,23 +89,17 @@ class Server(Process, Caller):
         args_str: str = MaxFormatter.format_as_string(*args)
         try:
             self.call(args_str)
-        # TODO[JB]: Error handling strategy
-        #           As a reference: this is how it's handled in somax
+        except MaxOscError as e:
+            self.logger.error(f"Incorrectly formatted input: {str(e)}.")
+            return
         except Exception as e:
-            # self.logger.error(e)
-            # self.logger.debug(repr(e))
+            self.logger.error(e)
+            self.logger.debug(repr(e))
             if self.DEBUG:
                 raise
-        # TODO[JB]: Another solution could be
-        # except MaxOscError as e:
-        #     # TODO[JB]: Input incorrectly formatted: print something here but no need to crash the app
-        #     return
-        # except Exception as e:
-        #     # TODO[JB]: Strategy here
-        #     raise
 
     def __unmatched_osc(self, address: str, *_args, **_kwargs) -> None:
-        """ TODO[JB]: Handle messages sent on invalid addresses"""
+        self.logger.error(f"OSC address {address} is not registered. Use {self.SERVER_ADDRESS} for communication.")
 
     def stop_server(self):
         self._server.shutdown()
@@ -112,20 +112,22 @@ class Server(Process, Caller):
 
 class OSCAgent(Server):
     DEFAULT_OSC_MAX_LEN = 100
+    PATH_SEPARATOR = "::"
 
     def __init__(self, inport: int = Server.DEFAULT_INPORT, outport: int = Server.DEFAULT_OUTPORT,
-                 sequence: Union[list, tuple] = (), labels: Union[list, tuple] = (),
-                 # TODO 2021 : Initially "equiv: Callable = (lambda x, y: x == y)" but problem with pickle
-                 # TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
-                 model_type: str = "FactorOracleNavigator", equiv: Callable = None,
-                 label_type: Optional[TODO_INSERTTYPE] = None, content_type: Optional[TODO_INSERTTYPE] = None,
+                 equiv: Optional[Callable] = None,
+                 label_type: Type[Label] = Label, content_type: Type[MemoryEvent] = BasicEvent,
                  authorized_transformations: Union[list, tuple] = (0,),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0),
                  max_length_osc_mess: int = DEFAULT_OSC_MAX_LEN, *args, **kwargs):
         Server.__init__(self, inport=inport, outport=outport, *args, **kwargs)
-        self.generation_handler: GenerationScheduler = GenerationScheduler(sequence, labels, model_type, equiv, label_type,
-                                                                           content_type, authorized_transformations,
-                                                                           continuity_with_future)
+        self.logger = logging.getLogger(__name__)
+        self.generation_handler: GenerationScheduler = GenerationScheduler(
+            memory=Memory.new_empty(content_type=content_type, label_type=label_type),
+            equiv=equiv,
+            authorized_tranformations=authorized_transformations,
+            continuity_with_future=continuity_with_future)
+
         self.max_length_osc_mess: int = max_length_osc_mess
 
     def run(self) -> None:
@@ -134,42 +136,44 @@ class OSCAgent(Server):
 
     def start(self):
         Server.start(self)
-        # TODO: START GENERATOR ??
 
-    def set_performance_time(self, TODO_UNKNOWN_ARGUMENT_3: TODO_INSERTTYPE, time_in_beat: TODO_INSERTTYPE, TODO_UNKNOWN_ARGUMENT: TODO_INSERTTYPE,
-                             time_in_event: TODO_INSERTTYPE, TODO_UNKNOWN_ARGUMENT_2: TODO_INSERTTYPE,
-                             time_in_ms: TODO_INSERTTYPE):
-        # TODO: What to do with beats?
-        # TODO : Manage the case where the two aren't updated
-        #time_in_beat = int(time_in_beat)
+    def set_performance_time(self, time_in_event: TODO_INSERTTYPE):
         time_in_event = int(time_in_event)
-        time_in_ms = int(time_in_ms)
-        # if type(time_in_event) == int:
-        # 	time_in_event = None
-        # if type(time_in_ms) == int:
-        # 	time_in_ms = None
-        self.generation_handler.update_performance_time(new_time=time_in_event, date_ms=time_in_ms)
+        self.generation_handler.update_performance_time(new_time=time_in_event)
 
+    # TODO: NOTE! Breaking change, original code commented out below
     def send_init_control_parameters(self):
-        message: list = []
-        count_types: dict = {}
-        for slot in self.generation_handler.prospector.control_parameters:
-            value = self.generation_handler.prospector.__dict__[slot]
-            type_param: str = str(type(value))
-            if type_param in count_types.keys():
-                count_types[type_param] += 1
-            else:
-                count_types[type_param] = 1
-            message.extend([type_param, count_types[type_param], slot, value])
-        print(message)
-        self._client.send("/control_parameters", message)
+        parameters: List[Tuple[List[str], Parameter]] = self.generation_handler.get_parameters()
+        for parameter_path, parameter in parameters:
+            path: str = self.PATH_SEPARATOR.join(parameter_path)
+            value: Any = parameter.get()
+            self._client.send("/control_parameter", [path, value])
 
-    def set_control_parameters(self, slot: TODO_INSERTTYPE, value: TODO_INSERTTYPE):
-        slot = str(slot)
-        self.generation_handler.prospector.__dict__[slot] = value
+    # def send_init_control_parameters(self):
+    #     message: list = []
+    #     count_types: dict = {}
+    #     for slot in self.generation_handler.prospector.control_parameters:
+    #         value = self.generation_handler.prospector.__dict__[slot]
+    #         type_param: str = str(type(value))
+    #         if type_param in count_types.keys():
+    #             count_types[type_param] += 1
+    #         else:
+    #             count_types[type_param] = 1
+    #         message.extend([type_param, count_types[type_param], slot, value])
+    #     print(message)
+    #     self._client.send("/control_parameters", message)
+
+    # TODO: NOTE! Breaking change: will have to address full parameter path from max
+    def set_control_parameter(self, parameter_path_str: str, value: Any):
+        try:
+            parameter_path: List[str] = parameter_path_str.split(self.PATH_SEPARATOR)
+            self.generation_handler.set_parameter(parameter_path, value)
+        except ValueError as e:
+            self.logger.error(f"Could not set control parameter: {str(e)}")
 
     def set_delta_transformation(self, delta: int):
-        self.generation_handler.authorized_transformations = range(-delta, delta)
+        # TODO: is a range past 12 valid or should this one check for range [-12, 12]?
+        self.generation_handler.authorized_transforms = list(range(-delta, delta))
 
     def load_generation_handler_from_json_file(self, dict_memory: TODO_INSERTTYPE, keys_label: TODO_INSERTTYPE,
                                                keys_content: TODO_INSERTTYPE):
@@ -177,13 +181,13 @@ class OSCAgent(Server):
         # TODO[JB]: Handle this with a simple Label.from_string implementation instead
         # TODO 2021 : CHECK THAT IT WORKS...
         label_type = label.from_string(str(keys_label))
-        #exec("%s = %s" % ("label_type", keys_label))
+        # exec("%s = %s" % ("label_type", keys_label))
         content_type: Optional[TODO_INSERTTYPE] = None
         # TODO[JB]: Handle this with a simple TODO_INSERTTYPE.from_string implementation instead
         if keys_content != "state":
             # TODO 2021 : CHECK THAT IT WORKS...
             content_type = label.from_string(str(keys_content))
-            #exec("%s = %s" % ("content_type", keys_content))
+            # exec("%s = %s" % ("content_type", keys_content))
 
         # TODO: Manage parameters from max
         self.generation_handler = generator_builder.new_generation_handler_from_json_file(
@@ -230,15 +234,16 @@ class OSCAgent(Server):
         # TODO[JB]: Handle this with a simple Label.from_string implementation instead
         # TODO 2021 : CHECK THAT IT WORKS...
         label_type = label.from_string(str(keys_label))
-        #exec("%s = %s" % ("label_type", keys_label))
+        # exec("%s = %s" % ("label_type", keys_label))
         content_type: Optional[TODO_INSERTTYPE] = None
         # TODO[JB]: Handle this with a simple TODO_INSERTTYPE.from_string implementation instead
         if keys_content != "state":
             # TODO 2021 : CHECK THAT IT WORKS...
             content_type = label.from_string(str(keys_content))
-            #exec("%s = %s" % ("content_type", keys_content))
+            # exec("%s = %s" % ("content_type", keys_content))
 
-        self.generation_handler: GenerationScheduler = GenerationScheduler(label_type=label_type, content_type=content_type)
+        self.generation_handler: GenerationScheduler = GenerationScheduler(label_type=label_type,
+                                                                           content_type=content_type)
         self._client.send("/new_empty_memory", keys_label)
         self.send_init_control_parameters()
 
@@ -250,13 +255,13 @@ class OSCAgent(Server):
         label_type: Type[label] = label
         # TODO 2021 : CHECK THAT IT WORKS...
         label_type = label.from_string(str(keys_label))
-        #exec("%s = %s" % ("label_type", keys_label))
+        # exec("%s = %s" % ("label_type", keys_label))
         content_type: Optional[TODO_INSERTTYPE] = None
         # TODO[JB]: Handle this with a simple TODO_INSERTTYPE.from_string implementation instead
         if keys_content != "state":
             # TODO 2021 : CHECK THAT IT WORKS...
             content_type = label.from_string(str(keys_content))
-            #exec("%s = %s" % ("content_type", keys_content))
+            # exec("%s = %s" % ("content_type", keys_content))
 
         self.generation_handler.learn_event(state=value_content, label=value_label)
         index_last_state: TODO_INSERTTYPE = self.generation_handler.prospector.index_last_state()
@@ -288,7 +293,7 @@ class OSCAgent(Server):
             # TODO[JB]: Handle this with a simple Label.from_string implementation instead
             print(label_type)
             print(received_elements[6])
-            #exec('%s = %s' % ("label_type", str(received_elements[6])))
+            # exec('%s = %s' % ("label_type", str(received_elements[6])))
             # exec("label_type = {}".format(str(received_elements[6])))
             # TODO 2021 : CHECK THAT IT WORKS...
             label_type = label.from_string(str(received_elements[6]))
@@ -310,7 +315,7 @@ class OSCAgent(Server):
         print(f"Output of the run of {name}: {self.generation_handler.current_generation_output}")
 
         message: list = [str(name), abs_start_date, start_unit, "absolute", scope_duration, scope_unit,
-                         self.generation_handler.formatted_output_string()]  # TODO[JB]: is the "absolute" intentional?
+                         self.generation_handler.formatted_output_string()]
         self._client.send("/result_run_query", message)
         self._client.send("/updated_buffered_impro", self.generation_handler.formatted_generation_trace_string())
         self._send_to_antescofo(self.generation_handler.formatted_output_couple_content_transfo(), abs_start_date)

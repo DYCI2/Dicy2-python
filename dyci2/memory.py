@@ -1,16 +1,18 @@
 import copy
 from abc import ABC, abstractmethod
-from typing import Any, List, Union, Type
+from typing import Any, List, Union, Type, TypeVar, Generic
 
 from label import Label
 
+T = TypeVar('T')
 
-class MemoryEvent(ABC):
+
+class MemoryEvent(ABC, Generic[T]):
     def __init__(self):
         pass
 
     @abstractmethod
-    def data(self) -> Any:
+    def data(self) -> T:
         """ TODO """
 
     @abstractmethod
@@ -18,27 +20,27 @@ class MemoryEvent(ABC):
         """ TODO """
 
     @abstractmethod
-    def max_representation(self) -> Any:
+    def renderer_info(self) -> str:
         """ TODO """
 
 
-class BasicEvent(MemoryEvent):
+class BasicEvent(MemoryEvent[Union[int, float, str]]):
     def __init__(self, data: Union[int, float, str], label: Label):
         super().__init__()
         self._data: Union[int, float, str] = data
         self._label: Label = label
 
-    def data(self) -> Any:
+    def data(self) -> Union[int, float, str]:
         return self._data
 
     def label(self) -> Label:
         return self._label
 
-    def max_representation(self) -> Any:
-        raise NotImplementedError("BasicEvent.max_representation is not implemented")
+    def renderer_info(self) -> str:
+        return str(self._data)
 
 
-class DebugEvent(MemoryEvent):
+class DebugEvent(MemoryEvent[Label]):
     def __init__(self, data: Label, label: Label):
         super().__init__()
         self._data: Label = data
@@ -53,7 +55,7 @@ class DebugEvent(MemoryEvent):
     def label(self) -> Label:
         return self._label
 
-    def max_representation(self) -> Any:
+    def renderer_info(self) -> str:
         raise NotImplementedError("DebugEvent.max_representation is not implemented")
 
 

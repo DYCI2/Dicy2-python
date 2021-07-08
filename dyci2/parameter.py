@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, Optional, Callable, List, TypeVar, Generic
+from typing import Any, Iterable, Optional, Callable, List, TypeVar, Generic, Type, Tuple
 
 T = TypeVar('T')
 
@@ -7,7 +7,11 @@ T = TypeVar('T')
 class Range(Generic[T], ABC):
     @abstractmethod
     def __contains__(self, item: Any) -> bool:
-        pass
+        """ TODO: Docstring """
+
+    @abstractmethod
+    def renderer_info(self) -> str:
+        """ TODO: Docstring """
 
 
 class NominalRange(Range):
@@ -16,6 +20,9 @@ class NominalRange(Range):
 
     def __contains__(self, item):
         return item in self.labels
+
+    def renderer_info(self) -> str:
+        return "nominal" + " ".join(self.labels)
 
 
 class OrdinalRange(Range):
@@ -29,6 +36,9 @@ class OrdinalRange(Range):
         if self.upper_bound is not None and item > self.upper_bound:
             return False
         return True
+
+    def renderer_info(self) -> str:
+        return "ordinal" + self.lower_bound + self.upper_bound
 
 
 class Parameter(Generic[T]):
@@ -55,6 +65,9 @@ class Parameter(Generic[T]):
     def get(self) -> T:
         return self.value
 
+    def get_type(self) -> Tuple[Type[T], Optional[Range]]:
+        return type(self.value), self.value_range
+
 
 class Parametric:
 
@@ -76,3 +89,15 @@ class Parametric:
         except IndexError:
             # case: parameter_path is empty on initialization
             raise KeyError("No valid path was provided")
+
+    def get_parameters(self) -> List[Tuple[List[str], Parameter]]:
+        return self._get_parameters([])
+
+    def _get_parameters(self, parent_names: List[str]) -> List[Tuple[List[str], Parameter]]:
+        parameters: List[Tuple[List[str], Parameter]] = []
+        for name, obj in self.__dict__.items():
+            if isinstance(obj, Parametric):
+                parameters.extend(obj._get_parameters(parent_names=parent_names + [name]))
+            elif isinstance(obj, Parameter):
+                parameters.append((parent_names + [name], obj))
+        return parameters

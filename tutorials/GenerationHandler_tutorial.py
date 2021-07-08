@@ -13,7 +13,6 @@ Generation Handler Tutorial
 Tutorial for the class :class:`~Generator.GenerationHander` defined in :mod:`Generator` (cf. also :mod:`OSCAgent_tutorial`).
 
 """
-import logging
 import random
 import sys
 import warnings
@@ -21,11 +20,12 @@ from typing import List, Tuple
 
 from candidate import Candidate
 from dyci2.factor_oracle_model import FactorOracle
+from dyci2.factor_oracle_navigator import FactorOracleNavigator
 from dyci2.generation_scheduler import GenerationScheduler
 from dyci2.label import from_list_to_labels, ChordLabel
 from dyci2.memory import Memory, DebugEvent
-from dyci2.factor_oracle_navigator import FactorOracleNavigator
 from dyci2.query import Query, FreeQuery, TimeMode, LabelQuery
+
 
 def chord_format(lst: List[Tuple[DebugEvent, int]]):
     return [[e.data(), t] for (e, t) in lst]

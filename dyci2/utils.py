@@ -1,8 +1,6 @@
 from typing import Any
 
-
-DontKnow = Any  # TODO[C]
-
+DontKnow = Any
 
 
 def format_list_as_list_of_strings(l):
@@ -27,9 +25,6 @@ def format_obj_as_string(o):
     else:
         s = format(o)
     return s
-
-
-
 
 
 def noneIsInfinite(value):

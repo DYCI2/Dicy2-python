@@ -24,7 +24,7 @@ from candidate import Candidate
 from candidate_selector import CandidateSelector, TempCandidateSelector, DefaultFallbackSelector
 from candidates import Candidates
 from dyci2.query import Query, FreeQuery, LabelQuery, TimeMode
-from dyci2.transforms import TransposeTransform, NoTransform, Transform
+from dyci2.transforms import NoTransform, Transform
 # TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
 # TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
 from factor_oracle_model import FactorOracle
@@ -32,7 +32,6 @@ from factor_oracle_navigator import FactorOracleNavigator
 from generation_process import GenerationProcess
 from label import Label
 from memory import MemoryEvent, Memory
-from output import Output
 from parameter import Parametric
 from prospector import Dyci2Prospector
 from utils import format_list_as_list_of_strings
@@ -45,7 +44,6 @@ def basic_equiv(x, y):
     return x == y
 
 
-# noinspection PyIncorrectDocstring
 class GenerationScheduler(Parametric):
     """ The class **Generator** embeds a **model navigator** as "memory" (cf. metaclass
     :class:`~MetaModelNavigator.MetaModelNavigator`) and processes **queries** (class :class:`~Query.Query`) to
@@ -123,7 +121,7 @@ class GenerationScheduler(Parametric):
 
         self.initialized: bool = True
 
-        self.authorized_transformations: List[int] = list(authorized_tranformations)
+        self._authorized_transformations: List[int] = list(authorized_tranformations)
         self.active_transform: Transform = NoTransform()
 
         self._performance_time: int = 0
@@ -287,7 +285,7 @@ class GenerationScheduler(Parametric):
 
         self.prospector.prepare_navigation(required_labels, init)
 
-        sequence: List[Optional[Output]] = []
+        sequence: List[Optional[Candidate]] = []
         for (i, label) in enumerate(required_labels):
             candidates: Candidates
             candidates = self.prospector.navigation_single_step(required_label=label,
@@ -375,7 +373,7 @@ class GenerationScheduler(Parametric):
         candidates: Candidates = self.prospector.scenario_single_step(
             labels=list_of_labels,
             index_in_generation=shift_index,
-            authorized_transformations=self.authorized_transformations,
+            authorized_transformations=self._authorized_transformations,
             previous_steps=generated_sequence)
 
         output: Optional[Candidate] = self.decide(candidates, disable_fallback=True)
@@ -488,3 +486,11 @@ class GenerationScheduler(Parametric):
     def performance_time(self, value: int):
         self._performance_time = value
         print("New value of current performance time: {}".format(self._performance_time))
+
+    @property
+    def authorized_transforms(self) -> List[int]:
+        return self._authorized_transformations
+
+    @authorized_transforms.setter
+    def authorized_transforms(self, value: List[int]):
+        self._authorized_transformations = value

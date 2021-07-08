@@ -13,10 +13,13 @@ Generation Handler Tutorial
 Tutorial for the class :class:`~Generator.GenerationHander` defined in :mod:`Generator` (cf. also :mod:`OSCAgent_tutorial`).
 
 """
+import logging
+import random
 import sys
 import warnings
-from typing import List
+from typing import List, Tuple
 
+from candidate import Candidate
 from dyci2.factor_oracle_model import FactorOracle
 from dyci2.generation_scheduler import GenerationScheduler
 from dyci2.label import from_list_to_labels, ChordLabel
@@ -24,7 +27,21 @@ from dyci2.memory import Memory, DebugEvent
 from dyci2.factor_oracle_navigator import FactorOracleNavigator
 from dyci2.query import Query, FreeQuery, TimeMode, LabelQuery
 
+def chord_format(lst: List[Tuple[DebugEvent, int]]):
+    return [[e.data(), t] for (e, t) in lst]
+
+def candidate_format(lst: List[Candidate]):
+    return [e.event.data() for e in lst]
+
+
 if __name__ == '__main__':
+
+    # logging.basicConfig(level=logging.DEBUG, format='%(message)s')
+    random.seed(0)
+    warnings.filterwarnings("ignore")
+    original_stdout = sys.stdout
+    sys.stdout = None
+
     list_for_labels = ["d m7", "d m7", "g 7", "g 7", "c maj7", "c maj7", "c# maj7", "c# maj7", "d# m7", "d# m7", "g# 7",
                        "g# 7", "c# maj7", "c# maj7"]
     list_for_sequence = ["d m7(1)", "d m7(2)", "g 7(3)", "g 7(4)", "c maj7(5)", "c maj7(6)", "c# maj7(7)", "c# maj7(8)",
@@ -57,9 +74,16 @@ if __name__ == '__main__':
     print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
     generation_scheduler.process_query(query=query)
     print("Output of the run: {}".format(generation_scheduler.generation_process.last_sequence()))
-    print("With transforfmation: {}".format(generation_scheduler.formatted_output_couple_content_transfo()))
+
+    sys.stdout = original_stdout
+    print("With transforfmation: {}".format(chord_format(generation_scheduler.formatted_output_couple_content_transfo())))
+
+    sys.stdout = None
+
     print(
         "/!\ Updated buffered improvisation: {} /!\ ".format(generation_scheduler.generation_process.generation_trace))
+
+
 
     print("\n --- ... and starting simulation of performance time (beat, 60 BPM) --- ")
 
@@ -79,12 +103,20 @@ if __name__ == '__main__':
         generation_scheduler.performance_time,
         generation_scheduler.generation_process.generation_trace[generation_scheduler.performance_time]))
 
+
+
     query: Query = FreeQuery(3, 4, TimeMode.ABSOLUTE, print_info=False)
     # query = new_temporal_query_free_sequence_of_events(length=3, start_date=4, start_type="absolute")
     print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
     generation_scheduler.process_query(query=query)
     print("Output of the run: {}".format(generation_scheduler.generation_process.last_sequence()))
-    print("With transforfmation: {}".format(generation_scheduler.formatted_output_couple_content_transfo()))
+
+    sys.stdout = original_stdout
+
+    print("With transforfmation: {}".format(chord_format(generation_scheduler.formatted_output_couple_content_transfo())))
+
+    sys.stdout = None
+
     print(
         "/!\ Updated buffered improvisation: {} /!\ ".format(generation_scheduler.generation_process.generation_trace))
 
@@ -105,9 +137,18 @@ if __name__ == '__main__':
     query: LabelQuery = LabelQuery(labels_for_scenario, start_date=2, time_mode=TimeMode.RELATIVE, print_info=False)
     print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
     generation_scheduler.process_query(query=query)
-    print("Output of the run: {}".format(generation_scheduler.generation_process.last_sequence()))
+
+    sys.stdout = original_stdout
+
+    print("Output of the run: {}".format(candidate_format(generation_scheduler.generation_process.last_sequence())))
+
+
+
     print(
-        "/!\ Updated buffered improvisation: {} /!\ ".format(generation_scheduler.generation_process.generation_trace))
+        "/!\ Updated buffered improvisation: {} /!\ ".format(candidate_format(generation_scheduler.generation_process.generation_trace)))
+
+    sys.stdout = None
+    sys.exit(0)
 
     for i in range(0, 4):
         # time.sleep(1)

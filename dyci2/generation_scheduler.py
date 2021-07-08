@@ -152,10 +152,10 @@ class GenerationScheduler(Parametric):
             # TODO[Jerome]: Is this really a good strategy? Or should it just assume this as ABSOLUTE(NOW)?
             raise RuntimeError("Cannot handle a relative query as the first query")
 
-        self.logger.debug("PROCESS QUERY\n", query)
+        self.logger.debug(f"PROCESS QUERY\n {query}")
         if query.time_mode == TimeMode.RELATIVE:
             query.to_absolute(self._performance_time)
-            self.logger.debug("QUERY ABSOLUTE\n", query)
+            self.logger.debug(f"QUERY ABSOLUTE\n {query}")
 
         if not self.initialized:
             self._performance_time = 0
@@ -178,8 +178,8 @@ class GenerationScheduler(Parametric):
         return generation_index
 
     def _process_query(self, query: Query) -> List[Optional[Candidate]]:
-        self.logger.debug("****************************\nPROCESS QUERY: QUERY = \n****************************", query)
-        self.logger.debug("****************************\nGENERATION MATCHING QUERY: QUERY = \n****************", query)
+        self.logger.debug(f"****************************\nPROCESS QUERY: QUERY = \n**************************\n{query}")
+        self.logger.debug(f"****************************\nGENERATION MATCHING QUERY: QUERY = \n**************\n{query}")
 
         output: List[Optional[Candidate]]
         if isinstance(query, FreeQuery):

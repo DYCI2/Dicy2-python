@@ -119,7 +119,7 @@ class GenerationScheduler(Parametric):
         self.prospector: Dyci2Prospector = Dyci2Prospector(model=model_class, navigator=navigator_class, memory=memory,
                                                            equiv=equiv, continuity_with_future=continuity_with_future)
 
-        self.initialized: bool = True
+        self.initialized: bool = False
 
         self._authorized_transformations: List[int] = list(authorized_tranformations)
         self.active_transform: Transform = NoTransform()

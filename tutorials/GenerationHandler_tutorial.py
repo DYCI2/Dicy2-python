@@ -23,11 +23,11 @@ from dyci2.factor_oracle_model import FactorOracle
 from dyci2.factor_oracle_navigator import FactorOracleNavigator
 from dyci2.generation_scheduler import GenerationScheduler
 from dyci2.label import from_list_to_labels, ChordLabel
-from dyci2.memory import Memory, DebugEvent
+from dyci2.memory import Memory, LabelEvent
 from dyci2.query import Query, FreeQuery, TimeMode, LabelQuery
 
 
-def chord_format(lst: List[Tuple[DebugEvent, int]]):
+def chord_format(lst: List[Tuple[LabelEvent, int]]):
     return [[e.data(), t] for (e, t) in lst]
 
 def candidate_format(lst: List[Candidate]):
@@ -48,8 +48,8 @@ if __name__ == '__main__':
                          "d# m7(9)", "d# m7(10)", "g# 7(11)", "g# 7(12)", "c# maj7(13)", "c# maj7(14)"]
     labels: List[ChordLabel] = from_list_to_labels(labels=list_for_labels, label_type=ChordLabel)
     sequence: List[ChordLabel] = from_list_to_labels(labels=list_for_sequence, label_type=ChordLabel)
-    memory: Memory = Memory([DebugEvent(event, label) for (event, label) in zip(sequence, labels)],
-                            content_type=DebugEvent, label_type=ChordLabel)
+    memory: Memory = Memory([LabelEvent(event, label) for (event, label) in zip(sequence, labels)],
+                            content_type=LabelEvent, label_type=ChordLabel)
 
     print("\nCreation of a Generation Handler"
           "\nModel type = Factor Oracle\nSequence: {}\nLabels: {}".format(sequence, labels))

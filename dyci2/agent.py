@@ -102,7 +102,7 @@ class Server(Process, Caller):
     def stop_server(self):
         self._server.shutdown()
 
-    def output_random(self, type_received_elements: TODO_INSERTTYPE, received_elements: TODO_INSERTTYPE):
+    def output_random(self, type_received_elements: str, received_elements: List[Any]):
         for i in range(len(received_elements)):
             print(f"Element {i}: type = {type_received_elements}, value= {received_elements[i]}")
         self._client.send("/random", random.random())
@@ -135,7 +135,7 @@ class OSCAgent(Server):
     def start(self):
         Server.start(self)
 
-    def set_performance_time(self, time_in_event: TODO_INSERTTYPE):
+    def set_performance_time(self, time_in_event: int):
         time_in_event = int(time_in_event)
         self.generation_handler.update_performance_time(new_time=time_in_event)
 

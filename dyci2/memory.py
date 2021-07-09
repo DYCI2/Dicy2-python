@@ -1,6 +1,6 @@
 import copy
 from abc import ABC, abstractmethod
-from typing import Any, List, Union, Type, TypeVar, Generic
+from typing import List, Union, Type, TypeVar, Generic
 
 from label import Label
 
@@ -12,16 +12,20 @@ class MemoryEvent(ABC, Generic[T]):
         pass
 
     @abstractmethod
+    def __str__(self):
+        """ TODO: Docstring """
+
+    @abstractmethod
     def data(self) -> T:
-        """ TODO """
+        """ TODO: Docstring """
 
     @abstractmethod
     def label(self) -> Label:
-        """ TODO """
+        """ TODO: Docstring """
 
     @abstractmethod
     def renderer_info(self) -> str:
-        """ TODO """
+        """ TODO: Docstring """
 
 
 class BasicEvent(MemoryEvent[Union[int, float, str]]):
@@ -29,6 +33,9 @@ class BasicEvent(MemoryEvent[Union[int, float, str]]):
         super().__init__()
         self._data: Union[int, float, str] = data
         self._label: Label = label
+
+    def __str__(self):
+        return f"({self._data},{self._label})"
 
     def data(self) -> Union[int, float, str]:
         return self._data
@@ -40,11 +47,14 @@ class BasicEvent(MemoryEvent[Union[int, float, str]]):
         return str(self._data)
 
 
-class DebugEvent(MemoryEvent[Label]):
+class LabelEvent(MemoryEvent[Label]):
     def __init__(self, data: Label, label: Label):
         super().__init__()
         self._data: Label = data
         self._label: Label = copy.deepcopy(label)
+
+    def __str__(self):
+        return f"({self._data},{self._label})"
 
     def __repr__(self):
         return f"{self.__class__.__name__}(data={self.data()},label={self.label()})"

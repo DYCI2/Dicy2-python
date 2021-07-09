@@ -30,6 +30,18 @@ class Query(ABC):
             self.start_date: int = max(performance_time + self.start_date, performance_time)
             self.time_mode = TimeMode.ABSOLUTE
 
+    # @staticmethod
+    # def from_string(query_str: str) -> Type['Query']:
+    #     """ raises: KeyError if `label_str` doesn't match a class.
+    #         note: Case insensitive """
+    #     classes: Dict[str, Type[Query]] = {
+    #         k.lower(): v for (k, v) in
+    #         inspect.getmembers(sys.modules[__name__], lambda member: inspect.isclass(member)
+    #                                                                  and not inspect.isabstract(member)
+    #                                                                  and member.__module__ == __name__)
+    #     }
+    #     return classes[query_str.lower()]
+
 
 class FreeQuery(Query):
     def __init__(self, num_events: int, start_date: int = 0, time_mode: TimeMode = TimeMode.ABSOLUTE,

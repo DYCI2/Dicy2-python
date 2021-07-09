@@ -25,7 +25,7 @@ from copy import deepcopy, copy
 from typing import List, Optional, Type
 
 
-class Label(object):
+class Label:
     use_intervals = False
 
     def __init__(self, label=None):
@@ -40,13 +40,16 @@ class Label(object):
         return "Label"
 
     @classmethod
-    def from_string(cls, s):
+    def from_string(cls, s) -> Type['Label']:
+        """ raises: TypeError if string doesn't match a type"""
         if s == "Label":
             return Label
         elif s == "ListLabel":
             return ListLabel
         elif s == "ChordLabel":
             return ChordLabel
+        else:
+            raise ValueError(f"No label '{s}' exists")
 
     def set_label(self, label):
         self.label = deepcopy(label)

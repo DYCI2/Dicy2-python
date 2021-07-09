@@ -3,7 +3,7 @@ from typing import Optional, Callable, List, Type, Any
 from candidate import Candidate
 from candidates import Candidates
 from label import Label
-from memory import MemoryEvent, Memory, DebugEvent
+from memory import MemoryEvent, Memory, LabelEvent
 from model import Model
 # noinspection PyIncorrectDocstring
 from transforms import Transform
@@ -190,7 +190,7 @@ class FactorOracle(Model):
                                                      forward_context_length_min=forward_context_length_min,
                                                      authorize_direct_transition=authorize_direct_transition)
         # TODO: Temp! Should obviously not use DebugEvent once properly handled in __init__
-        candidates: List[Candidate] = [Candidate(DebugEvent(self.sequence[i], self.labels[i]), i, 1.0, None)
+        candidates: List[Candidate] = [Candidate(LabelEvent(self.sequence[i], self.labels[i]), i, 1.0, None)
                                        for i in indices]
         return Candidates(candidates=candidates, memory=self.dummy_memory())
 
@@ -204,7 +204,7 @@ class FactorOracle(Model):
             if self.sequence[i] is None or self.labels[i] is None:
                 candidates.append(None)
             else:
-                candidates.append(Candidate(DebugEvent(self.sequence[i], self.labels[i]), i, 1.0, None))
+                candidates.append(Candidate(LabelEvent(self.sequence[i], self.labels[i]), i, 1.0, None))
         # if exclude_last:
         # This is used in the case of simply guided navigation, don't know why
         # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:-1], start=1)]
@@ -219,7 +219,7 @@ class FactorOracle(Model):
     def dummy_memory(self) -> Memory:
         # TODO: Temp! This should ideally just return self.memory, but cannot do so currently as it needs to take
         #  applied transforms into account
-        return Memory([DebugEvent(s, l) for (i, (s, l)) in enumerate(zip(self.sequence, self.labels))],
+        return Memory([LabelEvent(s, l) for (i, (s, l)) in enumerate(zip(self.sequence, self.labels))],
                       content_type=self.content_type, label_type=self.label_type)
 
     def print_model(self):

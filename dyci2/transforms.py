@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from candidate import Candidate
-from dyci2.label import ChordLabel, Label
+from dyci2.dyci2_label import ChordLabel, Dyci2Label
 
 
 # from numpy import roll
@@ -56,7 +56,7 @@ class Transform(ABC):
 class NoTransform(Transform):
     def __init__(self):
         # self.admitted_types = [AbstractLabel, AbstractContents] # dictionary of admitted label classes
-        self.admitted_types = [Label]  # dictionary of admitted label classes
+        self.admitted_types = [Dyci2Label]  # dictionary of admitted label classes
 
     def __repr__(self):
         return "No Transformation"

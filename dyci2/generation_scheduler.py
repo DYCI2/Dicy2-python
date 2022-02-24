@@ -30,8 +30,9 @@ from dyci2.transforms import NoTransform, Transform
 from factor_oracle_model import FactorOracle
 from factor_oracle_navigator import FactorOracleNavigator
 from generation_process import GenerationProcess
-from label import Label
-from memory import MemoryEvent, Memory
+from dyci2_label import Dyci2Label
+from dyci2_corpus_event import MemoryEvent
+from dyci2_corpus import Memory
 from parameter import Parametric
 from prospector import Dyci2Prospector
 from utils import format_list_as_list_of_strings
@@ -250,7 +251,7 @@ class GenerationScheduler(Parametric):
 
         return sequence
 
-    def simply_guided_generation(self, required_labels: List[Label],
+    def simply_guided_generation(self, required_labels: List[Dyci2Label],
                                  forward_context_length_min: int = 0, init: bool = False,
                                  print_info: bool = False, shift_index: int = 0,
                                  break_when_none: bool = False) -> List[Optional[Candidate]]:
@@ -305,7 +306,7 @@ class GenerationScheduler(Parametric):
 
         return sequence
 
-    def scenario_based_generation(self, list_of_labels: List[Label],
+    def scenario_based_generation(self, list_of_labels: List[Dyci2Label],
                                   print_info: bool = False) -> List[Optional[Candidate]]:
         """
         Generates a sequence matching a "scenario" (a list of labels). The generation process takes advantage of the
@@ -347,7 +348,7 @@ class GenerationScheduler(Parametric):
 
         return generated_sequence
 
-    def handle_scenario_based_generation_one_phase(self, list_of_labels: List[Label], original_query_length: int,
+    def handle_scenario_based_generation_one_phase(self, list_of_labels: List[Dyci2Label], original_query_length: int,
                                                    print_info: bool = False, shift_index: int = 0) -> List[Candidate]:
         """
 
@@ -396,7 +397,7 @@ class GenerationScheduler(Parametric):
 
         # Consecutive candidates
         shift_index: int = original_query_length - len(list_of_labels) + 1
-        for (i, label) in enumerate(list_of_labels[1:]):  # type: int, Label
+        for (i, label) in enumerate(list_of_labels[1:]):  # type: int, Dyci2Label
             candidates: Candidates = self.prospector.scenario_single_step(labels=[label],
                                                                           index_in_generation=shift_index + i,
                                                                           previous_steps=generated_sequence,
@@ -431,7 +432,7 @@ class GenerationScheduler(Parametric):
         """ Sets :attr:`self.current_performance_time` to 0."""
         self._performance_time = 0
 
-    def set_equiv_function(self, equiv: Callable[[Label, Label], bool]):
+    def set_equiv_function(self, equiv: Callable[[Dyci2Label, Dyci2Label], bool]):
         self.prospector.set_equiv_function(equiv=equiv)
 
     # TODO : EPSILON POUR LANCER NOUVELLE GENERATION

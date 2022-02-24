@@ -31,8 +31,9 @@ from pythonosc.osc_server import BlockingOSCUDPServer
 from dyci2 import save_send_format
 from generation_scheduler import GenerationScheduler
 # TODO[JB]: This is a placeholder for all places where you're expected to specify the real type of the input value!
-from label import Label
-from memory import MemoryEvent, BasicEvent, Memory
+from dyci2_label import Dyci2Label
+from dyci2_corpus_event import MemoryEvent, BasicEvent
+from dyci2_corpus import Memory
 from parameter import Parameter
 from query import Query, FreeQuery, TimeMode, LabelQuery
 
@@ -114,7 +115,7 @@ class OSCAgent(Server):
 
     def __init__(self, inport: int = Server.DEFAULT_INPORT, outport: int = Server.DEFAULT_OUTPORT,
                  equiv: Optional[Callable] = None,
-                 label_type: Type[Label] = Label, content_type: Type[MemoryEvent] = BasicEvent,
+                 label_type: Type[Dyci2Label] = Dyci2Label, content_type: Type[MemoryEvent] = BasicEvent,
                  authorized_transformations: Union[list, tuple] = (0,),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0),
                  max_length_osc_mess: int = DEFAULT_OSC_MAX_LEN, *args, **kwargs):
@@ -250,8 +251,8 @@ class OSCAgent(Server):
     # def learn_event(self, label_type_str: str, label_value: Any, content_type_str: str, content_value: str):
     def learn_event(self, label_type_str: str, label_value: Any, content_value: str):
         try:
-            label_type: Type[Label] = Label.from_string(str(label_type_str))
-            label: Label = label_type(label_value)
+            label_type: Type[Dyci2Label] = Dyci2Label.from_string(str(label_type_str))
+            label: Dyci2Label = label_type(label_value)
         except ValueError as e:
             self.logger.error(f"{str(e)}. Could not learn event")
             return
@@ -260,7 +261,7 @@ class OSCAgent(Server):
 
         self.generation_handler.learn_event(event=content)
         index_last_state: int = self.generation_handler.prospector.model.index_last_state()
-        label_last_state: Label = self.generation_handler.prospector.model.labels[index_last_state]
+        label_last_state: Dyci2Label = self.generation_handler.prospector.model.labels[index_last_state]
         content_last_state: Any = self.generation_handler.prospector.model.sequence[index_last_state]
         self.logger.debug(f"index last state = {index_last_state}")
         self.logger.debug(f"associated label = {label_last_state} ({type(label_last_state)})")
@@ -287,8 +288,8 @@ class OSCAgent(Server):
             query: Query = FreeQuery(num_events=query_scope, start_date=start_date, time_mode=time_mode)
         elif label_type_str is not None and labels_str is not None and query_scope == len(labels_str):
             try:
-                label_type: Type[Label] = Label.from_string(label_type_str)
-                labels: List[Label] = [label_type(s) for s in labels_str]
+                label_type: Type[Dyci2Label] = Dyci2Label.from_string(label_type_str)
+                labels: List[Dyci2Label] = [label_type(s) for s in labels_str]
                 query: Query = LabelQuery(labels=labels, start_date=start_date, time_mode=time_mode)
             except ValueError as e:
                 self.logger.error(f"{str(e)}. Query was ignored.")

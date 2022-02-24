@@ -25,8 +25,9 @@ from typing import List, Optional, Callable
 
 from candidate import Candidate
 from candidates import Candidates
-from label import Label
-from memory import MemoryEvent, Memory
+from dyci2_label import Dyci2Label
+from dyci2_corpus_event import MemoryEvent
+from dyci2_corpus import Memory
 from parameter import Parametric
 
 
@@ -49,7 +50,7 @@ class Navigator(Parametric, ABC):
         """ TODO: Docstring """
 
     @abstractmethod
-    def weight_candidates(self, candidates: Candidates, required_label: Optional[Label], **kwargs) -> Candidates:
+    def weight_candidates(self, candidates: Candidates, required_label: Optional[Dyci2Label], **kwargs) -> Candidates:
         """ TODO: Docstring """
 
     @abstractmethod

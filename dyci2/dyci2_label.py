@@ -24,8 +24,10 @@ Definition of alphabets of labels to build sequences and use them in creative ap
 from copy import deepcopy, copy
 from typing import List, Optional, Type
 
+from merge.main.label import Label
 
-class Label:
+
+class Dyci2Label(Label):
     use_intervals = False
 
     def __init__(self, label=None):
@@ -40,10 +42,10 @@ class Label:
         return "Label"
 
     @classmethod
-    def from_string(cls, s) -> Type['Label']:
+    def from_string(cls, s) -> Type['Dyci2Label']:
         """ raises: TypeError if string doesn't match a type"""
         if s == "Label":
-            return Label
+            return Dyci2Label
         elif s == "ListLabel":
             return ListLabel
         elif s == "ChordLabel":
@@ -60,7 +62,7 @@ class Label:
 
     # custom equality function for customized comparison
     def __eq__(self, a):
-        if isinstance(a, Label):
+        if isinstance(a, Dyci2Label):
             return self.label == a.label
         else:
             try:
@@ -86,13 +88,13 @@ class Label:
     def get_label_from_data(cls, data, *args, **kwargs):
         '''class method constructing a label object from raw data'''
         label = data
-        return Label(label)
+        return Dyci2Label(label)
 
     @classmethod
     def make_sequence_of_labels_from_list(cls, init_list, *args, **kwargs):
         sequence = []
         for l in init_list:
-            new_label = Label(l)
+            new_label = Dyci2Label(l)
             sequence.append(new_label)
             previous_label = new_label
         return sequence
@@ -134,14 +136,14 @@ def normalized_note(note):
     return normalized_note
 
 
-class ChordLabel(Label):
+class ChordLabel(Dyci2Label):
     use_intervals = True
 
     def __init__(self, label=None, first_chord_label=None, previous_chord_label=None):
         if type(label) == list and len(label) == 2:
             label = str(label[0]) + " " + str(label[1])
         self.label = label
-        Label.__init__(self, label)
+        Dyci2Label.__init__(self, label)
         if self.label is None:
             self.root = None
             self.chordtype = None
@@ -296,7 +298,7 @@ class ChordLabel(Label):
 # PAR EXEMPLE DANS learn D'UN MODELE OU DE GENERATOR
 # MAIS NON ! METHODE DE LA CLASSE LABEL !
 
-class ListLabel(Label):
+class ListLabel(Dyci2Label):
     use_intervals = False
 
     def __init__(self, label=[None], depth=None):
@@ -305,7 +307,7 @@ class ListLabel(Label):
                 label = label.split(" ")
             else:
                 label = [label]
-        Label.__init__(self, label)
+        Dyci2Label.__init__(self, label)
         if depth is None:
             self.depth = len(self.label)
         else:
@@ -381,21 +383,21 @@ class ListLabel(Label):
 # (defmacro TransposeNote (root int) `(nth (mod ,int 12) (member (NormalizeNote ,root) '(c c# d eb e f f# g g# a bb b c c# d eb e f f# g g# a bb b))))
 
 
-def from_list_to_labels(labels: List[str], label_type: Optional[Type[Label]] = None):
+def from_list_to_labels(labels: List[str], label_type: Optional[Type[Dyci2Label]] = None):
     labels_to_learn = labels
     # TODO 2021: No ! SHOULD BE INSTANCES OF SUBCLASSES OF LABEL !
     if label_type is None:
         return labels_to_learn
     else:
         try:
-            assert issubclass(label_type, Label)
+            assert issubclass(label_type, Dyci2Label)
         except AssertionError as exception:
             print("label_type must inherit from the class Label.", exception)
             return None
         else:
             # equiv_function = label_type.__eq__
             if len(labels) > 0:
-                if isinstance(labels[0], Label):
+                if isinstance(labels[0], Dyci2Label):
                     if not isinstance(labels[0], label_type):
                         print(
                             "Error: the elements in the input sequence already inherit from an other subclass of Label.")
@@ -415,7 +417,7 @@ def from_list_to_contents(sequence=[], content_type=None):
         return sequence_to_learn
     else:
         try:
-            assert issubclass(content_type, Label)
+            assert issubclass(content_type, Dyci2Label)
         except AssertionError as exception:
             print("content_type must inherit from the class Label.", exception)
             return None
@@ -423,7 +425,7 @@ def from_list_to_contents(sequence=[], content_type=None):
             # equiv_function = content_type.__eq__
             if len(sequence) > 0:
                 print("FICHIER LABEL === CONTENT EST INSTANCE 0")
-                if isinstance(sequence[0], Label):
+                if isinstance(sequence[0], Dyci2Label):
                     if not isinstance(sequence[0], content_type):
                         print(
                             "Error: the elements in the input sequence already inherit from an other subclass of Label.")

@@ -2,8 +2,9 @@ from typing import Optional, Callable, List, Type, Any
 
 from candidate import Candidate
 from candidates import Candidates
-from label import Label
-from memory import MemoryEvent, Memory, LabelEvent
+from dyci2_label import Dyci2Label
+from dyci2_corpus_event import MemoryEvent, LabelEvent
+from dyci2_corpus import Memory
 from model import Model
 # noinspection PyIncorrectDocstring
 from transforms import Transform
@@ -75,9 +76,9 @@ class FactorOracle(Model):
         # TODO: Separation of sequence/labels should be removed and replaced by a
         #  single `memory: List[MemoryEvent]` or simply `memory: Memory`.
         self.sequence: List[Optional[Any]] = []
-        self.labels: List[Optional[Label]] = []
+        self.labels: List[Optional[Dyci2Label]] = []
         self.content_type: Type[MemoryEvent] = memory.content_type
-        self.label_type: Type[Label] = memory.label_type
+        self.label_type: Type[Dyci2Label] = memory.label_type
         self.direct_transitions = {}
         self.factor_links = {}
         self.suffix_links = {}
@@ -179,7 +180,7 @@ class FactorOracle(Model):
         else:
             self._add_suffix_link(index, self._from_state_read_label(k, label, equiv))
 
-    def select_events(self, index_state: int, label: Optional[Label], forward_context_length_min: int = 1,
+    def select_events(self, index_state: int, label: Optional[Dyci2Label], forward_context_length_min: int = 1,
                       authorize_direct_transition: bool = True) -> Candidates:
         if label is not None:
             indices: List[int] = self._continuations_with_label(index_state=index_state, required_label=label,
@@ -584,7 +585,7 @@ class FactorOracle(Model):
 
         return continuations
 
-    def _continuations_with_label(self, index_state: int, required_label: Label,
+    def _continuations_with_label(self, index_state: int, required_label: Dyci2Label,
                                   forward_context_length_min: int = 1, equiv: Optional[Callable] = None,
                                   authorize_direct_transition: bool = True) -> List[int]:
 

@@ -27,8 +27,9 @@ from typing import Callable, List, Optional
 
 from candidate import Candidate
 from candidates import Candidates
-from dyci2.label import Label
-from memory import MemoryEvent, Memory
+from dyci2.dyci2_label import Dyci2Label
+from dyci2_corpus_event import MemoryEvent
+from dyci2_corpus import Memory
 from parameter import Parametric
 from transforms import Transform
 
@@ -50,7 +51,7 @@ class Model(Parametric, ABC):
     def __init__(self, memory: Memory, equiv: Callable = (lambda x, y: x == y)):
         self.logger = logging.getLogger(__name__)
         self._memory: Memory = memory
-        self.equiv: Callable[[Label, Label], Label] = equiv
+        self.equiv: Callable[[Dyci2Label, Dyci2Label], Dyci2Label] = equiv
 
     @abstractmethod
     def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
@@ -83,7 +84,7 @@ class Model(Parametric, ABC):
         """
 
     @abstractmethod
-    def select_events(self, index_state: int, label: Optional[Label]) -> Candidates:
+    def select_events(self, index_state: int, label: Optional[Dyci2Label]) -> Candidates:
         """ TODO: Docstring """
 
     @abstractmethod

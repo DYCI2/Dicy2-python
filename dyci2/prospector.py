@@ -28,8 +28,9 @@ from candidates import Candidates
 from dyci2.navigator import Navigator
 from factor_oracle_model import FactorOracle
 from factor_oracle_navigator import FactorOracleNavigator
-from label import Label
-from memory import MemoryEvent, Memory
+from dyci2_label import Dyci2Label
+from dyci2_corpus_event import MemoryEvent
+from dyci2_corpus import Memory
 from model import Model
 from parameter import Parametric
 from transforms import Transform
@@ -74,16 +75,16 @@ class Prospector(Parametric, Generic[M, N], ABC):
         self.navigator: N = navigator
 
         self.content_type: Type[MemoryEvent] = memory.content_type
-        self.label_type: Type[Label] = memory.label_type
+        self.label_type: Type[Dyci2Label] = memory.label_type
 
         self.navigator.clear()
 
     @abstractmethod
-    def navigation_single_step(self, required_label: Optional[Label], **kwargs) -> Candidates:
+    def navigation_single_step(self, required_label: Optional[Dyci2Label], **kwargs) -> Candidates:
         """ TODO: Docstring """
 
     @abstractmethod
-    def scenario_single_step(self, labels: List[Label], index_in_generation: int, previous_steps: List[Candidate],
+    def scenario_single_step(self, labels: List[Dyci2Label], index_in_generation: int, previous_steps: List[Candidate],
                              authorized_transformations: List[int], **kwargs) -> Candidates:
         """ TODO: Docstring """
 
@@ -122,7 +123,7 @@ class Prospector(Parametric, Generic[M, N], ABC):
     def get_memory(self) -> Memory:
         return self.model.memory
 
-    def set_equiv_function(self, equiv: Callable[[Label, Label], bool]):
+    def set_equiv_function(self, equiv: Callable[[Dyci2Label, Dyci2Label], bool]):
         self.model.equiv = equiv
         self.navigator.equiv = equiv
 
@@ -141,7 +142,7 @@ class Dyci2Prospector(Prospector[FactorOracle, FactorOracleNavigator]):
                                              continuity_with_future=continuity_with_future))
 
     # TODO[Jerome]: This one needs some more attention - inconsistencies between randoms ([1..length] vs [0..len-1])
-    def prepare_navigation(self, required_labels: List[Label], init: bool = False) -> None:
+    def prepare_navigation(self, required_labels: List[Dyci2Label], init: bool = False) -> None:
         if init:
             self.navigator.clear()
 
@@ -157,7 +158,7 @@ class Dyci2Prospector(Prospector[FactorOracle, FactorOracleNavigator]):
                 new_position: int = random.randint(1, self.model.index_last_state())
                 self.navigator.set_position_in_sequence(new_position)
 
-    def navigation_single_step(self, required_label: Optional[Label], forward_context_length_min: int = 0,
+    def navigation_single_step(self, required_label: Optional[Dyci2Label], forward_context_length_min: int = 0,
                                print_info: bool = False, shift_index: int = 0,
                                no_empty_event: bool = True) -> Candidates:
         candidates: Candidates = self.model.select_events(index_state=self.navigator.current_position_in_sequence,
@@ -177,7 +178,7 @@ class Dyci2Prospector(Prospector[FactorOracle, FactorOracleNavigator]):
 
         return candidates
 
-    def scenario_single_step(self, labels: List[Label], index_in_generation: int, previous_steps: List[Candidate],
+    def scenario_single_step(self, labels: List[Dyci2Label], index_in_generation: int, previous_steps: List[Candidate],
                              authorized_transformations: Optional[List[int]] = None, no_empty_event: bool = True,
                              **kwargs) -> Candidates:
         """ raises: IndexError if `labels` is empty """
@@ -188,7 +189,7 @@ class Dyci2Prospector(Prospector[FactorOracle, FactorOracleNavigator]):
             return self.navigation_single_step(labels[0], shift_index=index_in_generation,
                                                no_empty_event=no_empty_event)
 
-    def _scenario_initial_candidate(self, labels: List[Label], authorized_transformations: List[int]) -> Candidates:
+    def _scenario_initial_candidate(self, labels: List[Dyci2Label], authorized_transformations: List[int]) -> Candidates:
         authorized_indices: List[int] = [c.index for c in
                                          self.navigator.filter_using_history_and_taboos(
                                              self.model.memory_as_candidates(exclude_last=False,

@@ -1,45 +1,43 @@
 import random
 import warnings
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import List, Optional
 
-from candidate import Candidate
-from candidates import Candidates
+from merge.main.candidate import Candidate
+from merge.main.candidates import Candidates
+from merge.main.jury import Jury
 from parameter import Parametric
 
 
-class CandidateSelector(Parametric, ABC):
-    @abstractmethod
-    def decide(self, candidates: Candidates) -> Optional[Candidate]:
-        """ TODO """
-
-    @abstractmethod
-    def feedback(self, output_event: Optional[Candidate]) -> None:
-        """ TODO """
+class CandidateSelector(Jury, Parametric, ABC):
+    pass
 
 
 class TempCandidateSelector(CandidateSelector):
     def decide(self, candidates: Candidates) -> Optional[Candidate]:
-        if candidates.length() == 0:
+        if candidates.size() == 0:
             return None
         else:
-            return candidates.at(0)
+            return candidates.get_candidate(0)
 
-    def feedback(self, output_event: Optional[Candidate]) -> None:
+    def feedback(self, candidate: Optional[Candidate], **kwargs) -> None:
+        pass
+
+    def clear(self) -> None:
         pass
 
 
 class DefaultFallbackSelector(CandidateSelector):
     def __init__(self):
-        self.previous_output: Optional[
-            Candidate] = None  # TODO: Need to handle execution/generation trace properly here
+        # TODO: Need to handle execution/generation trace properly here
+        self.previous_output: Optional[Candidate] = None
 
     def decide(self, candidates: Candidates) -> Optional[Candidate]:
         print("NO EMPTY EVENT")
-        all_memory: List[Candidate] = candidates.memory_as_candidates()
+        all_memory: List[Candidate] = candidates.get_candidates()
         if self.previous_output is not None:
             warnings.warn("This will probably cause issues if the FOModel's initial None still is a part of the Memory")
-            next_index: int = self.previous_output.index + 1
+            next_index: int = self.previous_output.event.index + 1
             if next_index < len(all_memory):
                 return all_memory[next_index]
 
@@ -49,5 +47,8 @@ class DefaultFallbackSelector(CandidateSelector):
 
         return None
 
-    def feedback(self, output_event: Optional[Candidate]) -> None:
-        self.previous_output = output_event
+    def feedback(self, candidate: Optional[Candidate], **kwargs) -> None:
+        self.previous_output = candidate
+
+    def clear(self) -> None:
+        self.previous_output = None

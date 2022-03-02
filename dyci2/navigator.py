@@ -23,26 +23,26 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional, Callable
 
-from candidate import Candidate
-from candidates import Candidates
 from dyci2_label import Dyci2Label
-from dyci2_corpus_event import MemoryEvent
-from dyci2_corpus import Memory
+from merge.corpus import Corpus
+from merge.main.candidate import Candidate
+from merge.main.candidates import Candidates
+from merge.main.corpus_event import CorpusEvent
 from parameter import Parametric
 
 
 class Navigator(Parametric, ABC):
-    def __init__(self, memory: Memory, equiv: Callable = (lambda x, y: x == y), **kwargs):
+    def __init__(self, memory: Corpus, equiv: Callable = (lambda x, y: x == y), **kwargs):
         self.logger = logging.getLogger(__name__)
-        self.memory: Memory = memory
+        self.memory: Corpus = memory
         self.equiv: Callable = equiv
 
     @abstractmethod
-    def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
+    def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
         """ TODO: Docstring """
 
     @abstractmethod
-    def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
+    def learn_event(self, event: CorpusEvent, equiv: Optional[Callable] = None):
         """ TODO: Docstring """
 
     @abstractmethod

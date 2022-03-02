@@ -23,13 +23,13 @@ Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/Factor
 """
 import logging
 from abc import ABC, abstractmethod
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Type
 
-from candidate import Candidate
-from candidates import Candidates
 from dyci2.dyci2_label import Dyci2Label
-from dyci2_corpus_event import MemoryEvent
-from dyci2_corpus import Memory
+from merge.corpus import Corpus
+from merge.main.candidate import Candidate
+from merge.main.candidates import Candidates
+from merge.main.corpus_event import CorpusEvent
 from parameter import Parametric
 from transforms import Transform
 
@@ -42,19 +42,19 @@ class Model(Parametric, ABC):
     # :type sequence: list or str
     # :param labels: sequence of labels chosen to describe the sequence.
     # :type labels: list or str
-    :param equiv: compararison function given as a lambda function, default if no parameter is given: self.equiv.
-    :type equiv: function
+    # :param equiv: compararison function given as a lambda function, default if no parameter is given: self.equiv.
+    # :type equiv: function
 
-    :!: **equiv** has to be consistent with the type of the elements in labels.
+    # :!: **equiv** has to be consistent with the type of the elements in labels.
     # """
 
-    def __init__(self, memory: Memory, equiv: Callable = (lambda x, y: x == y)):
+    def __init__(self, memory: Corpus, equiv: Callable = (lambda x, y: x == y)):
         self.logger = logging.getLogger(__name__)
-        self._memory: Memory = memory
+        self._memory: Corpus = memory
         self.equiv: Callable[[Dyci2Label, Dyci2Label], Dyci2Label] = equiv
 
     @abstractmethod
-    def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
+    def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
         """
         Learns (appends) a new sequence in the model.
 
@@ -70,7 +70,7 @@ class Model(Parametric, ABC):
         """
 
     @abstractmethod
-    def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
+    def learn_event(self, event: CorpusEvent, equiv: Optional[Callable] = None):
         """
         Learns (appends) a new state in the model.
 

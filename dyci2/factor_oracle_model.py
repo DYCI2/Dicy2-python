@@ -1,10 +1,10 @@
 from typing import Optional, Callable, List, Type, Any
 
-from candidate import Candidate
-from candidates import Candidates
 from dyci2_label import Dyci2Label
-from dyci2_corpus_event import MemoryEvent, LabelEvent
-from dyci2_corpus import Memory
+from merge.corpus import Corpus
+from merge.main.candidate import Candidate
+from merge.main.candidates import Candidates, BaseCandidates
+from merge.main.corpus_event import CorpusEvent
 from model import Model
 # noinspection PyIncorrectDocstring
 from transforms import Transform
@@ -53,7 +53,7 @@ class FactorOracle(Model):
 
     """
 
-    def __init__(self, memory: Memory, equiv: Callable = (lambda x, y: x == y)):
+    def __init__(self, memory: Corpus, label_type: Type[Dyci2Label], equiv: Callable = (lambda x, y: x == y)):
         """ Constructor for the class FactorOracle.
         :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
 
@@ -77,8 +77,8 @@ class FactorOracle(Model):
         #  single `memory: List[MemoryEvent]` or simply `memory: Memory`.
         self.sequence: List[Optional[Any]] = []
         self.labels: List[Optional[Dyci2Label]] = []
-        self.content_type: Type[MemoryEvent] = memory.content_type
-        self.label_type: Type[Dyci2Label] = memory.label_type
+        self.content_type: Type[CorpusEvent] = memory.get_content_type()
+        self.label_type: Type[Dyci2Label] = label_type
         self.direct_transitions = {}
         self.factor_links = {}
         self.suffix_links = {}
@@ -87,7 +87,7 @@ class FactorOracle(Model):
         Model.__init__(self, memory, equiv)
         self.build(memory)
 
-    def build(self, memory: Memory):
+    def build(self, memory: Corpus):
 
         """
         Builds the model.
@@ -122,7 +122,7 @@ class FactorOracle(Model):
         """ Index of the last state in the model."""
         return len(self.labels) - 1
 
-    def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
+    def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
         """
         Learns (appends) a new sequence in the model.
 
@@ -143,7 +143,7 @@ class FactorOracle(Model):
         for event in sequence:
             self.learn_event(event, equiv)
 
-    def learn_event(self, event: MemoryEvent, equiv: Optional[Callable] = None):
+    def learn_event(self, event: CorpusEvent, equiv: Optional[Callable] = None):
         """
         Learns (appends) a new state in the Factor Oracle automaton.
 
@@ -191,9 +191,12 @@ class FactorOracle(Model):
                                                      forward_context_length_min=forward_context_length_min,
                                                      authorize_direct_transition=authorize_direct_transition)
         # TODO: Temp! Should obviously not use DebugEvent once properly handled in __init__
-        candidates: List[Candidate] = [Candidate(LabelEvent(self.sequence[i], self.labels[i]), i, 1.0, None)
+        candidates: List[Candidate] = [Candidate(CorpusEvent(self.sequence[i], {}, {self.label_type: self.labels[i]}),
+                                                 1.0,
+                                                 None,
+                                                 self.memory)
                                        for i in indices]
-        return Candidates(candidates=candidates, memory=self.dummy_memory())
+        return BaseCandidates(candidates=candidates, associated_corpus=self.dummy_memory())
 
     def memory_as_candidates(self, exclude_last: bool = False,
                              exclude_first: bool = True) -> Candidates:
@@ -214,13 +217,13 @@ class FactorOracle(Model):
         return Candidates(candidates, self.dummy_memory())
 
     @property
-    def memory(self) -> Memory:
+    def memory(self) -> Corpus:
         return self.dummy_memory()
 
-    def dummy_memory(self) -> Memory:
+    def dummy_memory(self) -> Corpus:
         # TODO: Temp! This should ideally just return self.memory, but cannot do so currently as it needs to take
         #  applied transforms into account
-        return Memory([LabelEvent(s, l) for (i, (s, l)) in enumerate(zip(self.sequence, self.labels))],
+        return Corpus([CorpusEvent(s, l) for (i, (s, l)) in enumerate(zip(self.sequence, self.labels))],
                       content_type=self.content_type, label_type=self.label_type)
 
     def print_model(self):

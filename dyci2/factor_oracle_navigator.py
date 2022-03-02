@@ -4,11 +4,11 @@ import warnings
 from typing import List, Optional, Callable, Dict, Tuple
 
 import intervals
-from candidate import Candidate
-from candidates import Candidates
 from dyci2_label import Dyci2Label
-from dyci2_corpus_event import MemoryEvent
-from dyci2_corpus import Memory
+from merge.corpus import Corpus
+from merge.main.candidate import Candidate
+from merge.main.candidates import Candidates
+from merge.main.corpus_event import CorpusEvent
 from navigator import Navigator
 from parameter import Parameter, OrdinalRange
 from prefix_indexing import PrefixIndexing
@@ -64,12 +64,12 @@ class FactorOracleNavigator(Navigator):
     :type execution_trace: dict
     """
 
-    def __init__(self, memory: Memory, equiv: Optional[Callable] = (lambda x, y: x == y), max_continuity=20,
+    def __init__(self, memory: Corpus, equiv: Optional[Callable] = (lambda x, y: x == y), max_continuity=20,
                  control_parameters=(), execution_trace_parameters=(),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
         super().__init__(memory, equiv)
 
-        self.sequence: List[MemoryEvent] = memory.events
+        self.sequence: List[CorpusEvent] = memory.events
         self.labels: List[Dyci2Label] = [e.label() for e in memory.events]
         self.equiv: Callable = equiv
         self.max_continuity: Parameter[int] = Parameter(max_continuity, OrdinalRange(0, None))
@@ -134,16 +134,18 @@ class FactorOracleNavigator(Navigator):
 
         # Case 1: Transition to state immediately following the previous one if reachable and matching
         # candidates = self._follow_continuation_using_transition(candidates, model_direct_transitions)
-        candidates.data = self._follow_continuation_using_transition(original_candidates.data, model_direct_transitions)
-        if candidates.length() > 0:
+        candidates.data = self._follow_continuation_using_transition(original_candidates.get_candidates(),
+                                                                     model_direct_transitions)
+        if candidates.size() > 0:
             # TODO[C]: Remove this once follow_continuation_using_transition returns all candidates.
-            str_print_info += f" -{candidates.at(0).event.label()}-> {candidates.at(0).index}"
+            str_print_info += f" -{candidates.get_candidate(0).event.get_label(self.label_type)}-> {candidates.get_candidate(0).index}"
         else:
             # Case 2: Transition to any other filtered, reachable candidate matching the required_label
             # TODO[C]: NOTE! This one will remove the actual candidate selected in the previous step if called.
             # TODO[B]: Migrate the random choice performed in this step to top level
             # candidates = self._follow_continuation_with_jump(candidates, model_direct_transitions)
-            candidates.data = self._follow_continuation_with_jump(original_candidates.data, model_direct_transitions)
+            candidates.data = self._follow_continuation_with_jump(original_candidates.get_candidates(),
+                                                                  model_direct_transitions)
 
             if candidates.length() > 0:
                 prev_index: int = candidates.at(0).index - 1
@@ -225,7 +227,7 @@ class FactorOracleNavigator(Navigator):
         else:
             selected_candidates = []
 
-        return Candidates(candidates=selected_candidates, memory=candidates.memory)
+        return Candidates(candidates=selected_candidates, memory=candidates.corpus)
 
     def _go_to_anterior_state_using_execution_trace(self, index_in_navigation):
 
@@ -256,7 +258,7 @@ class FactorOracleNavigator(Navigator):
         self.current_position_in_sequence = -1
         self.current_navigation_index = - 1
 
-    def learn_sequence(self, sequence: List[MemoryEvent], equiv: Optional[Callable] = None):
+    def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
         """
         Learns (appends) a new sequence in the model.
 
@@ -276,7 +278,7 @@ class FactorOracleNavigator(Navigator):
         for event in sequence:
             self.learn_event(event, equiv)
 
-    def learn_event(self, event: MemoryEvent, equiv: Callable = None):
+    def learn_event(self, event: CorpusEvent, equiv: Callable = None):
         # TODO : TEST TO AVOID "UNDEF"
         current_last_idx = len(self.history_and_taboos) - 1
         self._authorize_indexes([current_last_idx])

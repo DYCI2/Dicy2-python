@@ -32,31 +32,34 @@ from parameter import Parametric
 
 
 class Navigator(Parametric, ABC):
-    def __init__(self, memory: Corpus, equiv: Callable = (lambda x, y: x == y), **kwargs):
-        self.logger = logging.getLogger(__name__)
-        self.memory: Corpus = memory
-        self.equiv: Callable = equiv
+    """ """
 
-    @abstractmethod
-    def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
-        """ TODO: Docstring """
+    # def __init__(self, memory: Corpus, equiv: Callable = (lambda x, y: x == y), **kwargs):
+    #     self.logger = logging.getLogger(__name__)
+    #     self.memory: Corpus = memory
+    #     self.equiv: Callable = equiv
 
-    @abstractmethod
-    def learn_event(self, event: CorpusEvent, equiv: Optional[Callable] = None):
-        """ TODO: Docstring """
-
-    @abstractmethod
-    def rewind_generation(self, index_state: int):
-        """ TODO: Docstring """
-
-    @abstractmethod
-    def weight_candidates(self, candidates: Candidates, required_label: Optional[Dyci2Label], **kwargs) -> Candidates:
-        """ TODO: Docstring """
-
-    @abstractmethod
-    def clear(self):
-        """ TODO: Docstring """
-
-    @abstractmethod
-    def feedback(self, output_event: Optional[Candidate]) -> None:
-        """ TODO: Docstring """
+    # TODO: Update signatures
+    # @abstractmethod
+    # def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
+    #     """ TODO: Docstring """
+    #
+    # @abstractmethod
+    # def learn_event(self, event: CorpusEvent, equiv: Optional[Callable] = None):
+    #     """ TODO: Docstring """
+    #
+    # @abstractmethod
+    # def rewind_generation(self, index_state: int):
+    #     """ TODO: Docstring """
+    #
+    # @abstractmethod
+    # def weight_candidates(self, candidates: Candidates, required_label: Optional[Dyci2Label], **kwargs) -> Candidates:
+    #     """ TODO: Docstring """
+    #
+    # @abstractmethod
+    # def clear(self):
+    #     """ TODO: Docstring """
+    #
+    # @abstractmethod
+    # def feedback(self, output_event: Optional[Candidate]) -> None:
+    #     """ TODO: Docstring """

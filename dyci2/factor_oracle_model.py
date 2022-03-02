@@ -1,4 +1,5 @@
-from typing import Optional, Callable, List, Type, Any
+import logging
+from typing import Optional, Callable, List, Type, Any, TypeVar, Generic
 
 from dyci2_label import Dyci2Label
 from merge.corpus import Corpus
@@ -9,8 +10,9 @@ from model import Model
 # noinspection PyIncorrectDocstring
 from transforms import Transform
 
+T = TypeVar('T')
 
-class FactorOracle(Model):
+class FactorOracle(Generic[T], Model):
     """
     **Factor Oracle automaton class.**
     Implementation of the Factor Oracle Automaton (Allauzen, Crochemore, Raffinot, 1999).
@@ -53,7 +55,11 @@ class FactorOracle(Model):
 
     """
 
-    def __init__(self, memory: Corpus, label_type: Type[Dyci2Label], equiv: Callable = (lambda x, y: x == y)):
+    def __init__(self,
+                 sequence: List[Optional[T]],
+                 labels: List[Optional[Dyci2Label]],
+                 label_type: Type[Dyci2Label] = Dyci2Label,
+                 equiv: Callable = (lambda x, y: x == y)):
         """ Constructor for the class FactorOracle.
         :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
 
@@ -73,27 +79,25 @@ class FactorOracle(Model):
         >>> #FO = FactorOracle(sequence, labels, equiv_AC_BD)
         """
 
-        # TODO: Separation of sequence/labels should be removed and replaced by a
-        #  single `memory: List[MemoryEvent]` or simply `memory: Memory`.
-        self.sequence: List[Optional[Any]] = []
+        self.logger = logging.getLogger(__name__)
+        self.sequence: List[Optional[T]] = []
         self.labels: List[Optional[Dyci2Label]] = []
-        self.content_type: Type[CorpusEvent] = memory.get_content_type()
         self.label_type: Type[Dyci2Label] = label_type
         self.direct_transitions = {}
         self.factor_links = {}
         self.suffix_links = {}
         self.reverse_suffix_links = {}
+        self.equiv: Callable = equiv
 
-        Model.__init__(self, memory, equiv)
-        self.build(memory)
+        self.build(sequence, labels)
 
-    def build(self, memory: Corpus):
+    def build(self, sequence: List[Optional[T]], labels: List[Optional[Dyci2Label]]):
 
         """
         Builds the model.
 
-        :param memory: sequence learnt in the model.
-        :type memory: list or str
+        # :param memory: sequence learnt in the model.
+        # :type memory: list or str
         # :param labels: sequence of labels chosen to describe the sequence
         # :type labels: list or str
         #:param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
@@ -104,10 +108,11 @@ class FactorOracle(Model):
         """
         # TODO: Not a good place to overwrite the equiv function - hidden side effect
         #   Also - this condition is always true as memory.label_type must be valid.
-        if self.memory.label_type is not None:
-            self.equiv: Callable = self.memory.label_type.__eq__
+        if self.label_type is not None:
+            self.equiv: Callable = self.label_type.__eq__
+
         self.init_model()
-        self.learn_sequence(memory.events, self.equiv)
+        self.learn_sequence(sequence, labels, self.equiv)
 
     def init_model(self):
         """
@@ -122,44 +127,46 @@ class FactorOracle(Model):
         """ Index of the last state in the model."""
         return len(self.labels) - 1
 
-    def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
+    def learn_sequence(self,
+                       sequence: List[Optional[T]],
+                       labels: List[Optional[Dyci2Label]],
+                       equiv: Optional[Callable] = None):
         """
         Learns (appends) a new sequence in the model.
 
-        :param sequence: sequence learnt in the Factor Oracle automaton
-        :type sequence: list or str
+        # :param sequence: sequence learnt in the Factor Oracle automaton
+        # :type sequence: list or str
         # :param labels: sequence of labels chosen to describe the sequence
         # :type labels: list or str
-        :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-        :type equiv: function
+        # :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
+        # :type equiv: function
 
-        :!: **equiv** has to be consistent with the type of the elements in labels.
+        # :!: **equiv** has to be consistent with the type of the elements in labels.
 
         """
         if equiv is None:
             equiv = self.equiv
 
-        self.logger.debug(self.content_type)
-        for event in sequence:
-            self.learn_event(event, equiv)
+        for (event, label) in zip(sequence, labels):
+            self.learn_event(event, label, equiv)
 
-    def learn_event(self, event: CorpusEvent, equiv: Optional[Callable] = None):
+    def learn_event(self, event: Optional[T], label: Optional[Dyci2Label], equiv: Optional[Callable] = None):
         """
         Learns (appends) a new state in the Factor Oracle automaton.
 
-        :param event:
-        :param equiv: Comparison function given as a lambda function, default if no parameter is given: self.equiv.
-        :type equiv: function
+        # :param event:
+        # :param equiv: Comparison function given as a lambda function, default if no parameter is given: self.equiv.
+        # :type equiv: function
 
-        :!: **equiv** has to be consistent with the type of label.
+        # :!: **equiv** has to be consistent with the type of label.
 
         """
 
         if equiv is None:
             equiv = self.equiv
 
-        self.sequence.append(event.data())
-        self.labels.append(event.label())
+        self.sequence.append(event)
+        self.labels.append(label)
 
         index = self.index_last_state()
 
@@ -180,8 +187,8 @@ class FactorOracle(Model):
         else:
             self._add_suffix_link(index, self._from_state_read_label(k, label, equiv))
 
-    def select_events(self, index_state: int, label: Optional[Dyci2Label], forward_context_length_min: int = 1,
-                      authorize_direct_transition: bool = True) -> Candidates:
+    def get_authorized_indices(self, index_state: int, label: Optional[Dyci2Label], forward_context_length_min: int = 1,
+                               authorize_direct_transition: bool = True) -> List[int]:
         if label is not None:
             indices: List[int] = self._continuations_with_label(index_state=index_state, required_label=label,
                                                                 forward_context_length_min=forward_context_length_min,
@@ -190,41 +197,18 @@ class FactorOracle(Model):
             indices: List[int] = self._continuations(index_state=index_state,
                                                      forward_context_length_min=forward_context_length_min,
                                                      authorize_direct_transition=authorize_direct_transition)
-        # TODO: Temp! Should obviously not use DebugEvent once properly handled in __init__
-        candidates: List[Candidate] = [Candidate(CorpusEvent(self.sequence[i], {}, {self.label_type: self.labels[i]}),
-                                                 1.0,
-                                                 None,
-                                                 self.memory)
-                                       for i in indices]
-        return BaseCandidates(candidates=candidates, associated_corpus=self.dummy_memory())
 
-    def memory_as_candidates(self, exclude_last: bool = False,
-                             exclude_first: bool = True) -> Candidates:
-        # TODO: Temp! Neither of these should use DebugEvent once properly handled in __init__
-        start: int = 1 if exclude_first else 0
-        end: int = len(self.sequence) - 1 if exclude_last else len(self.sequence)
-        candidates: List[Optional[Candidate]] = []
-        for i in range(start, end):
-            if self.sequence[i] is None or self.labels[i] is None:
-                candidates.append(None)
-            else:
-                candidates.append(Candidate(LabelEvent(self.sequence[i], self.labels[i]), i, 1.0, None))
-        # if exclude_last:
-        # This is used in the case of simply guided navigation, don't know why
-        # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:-1], start=1)]
-        # else:
-        # return [Candidate(e, i, 1.0, None) for (i, e) in enumerate(self.sequence[1:], start=1)]
-        return Candidates(candidates, self.dummy_memory())
+        return indices
 
-    @property
-    def memory(self) -> Corpus:
-        return self.dummy_memory()
+    # @property
+    # def memory(self) -> Corpus:
+    #     return self.dummy_memory()
 
-    def dummy_memory(self) -> Corpus:
-        # TODO: Temp! This should ideally just return self.memory, but cannot do so currently as it needs to take
-        #  applied transforms into account
-        return Corpus([CorpusEvent(s, l) for (i, (s, l)) in enumerate(zip(self.sequence, self.labels))],
-                      content_type=self.content_type, label_type=self.label_type)
+    # def dummy_memory(self) -> Corpus:
+    #     # TODO: Temp! This should ideally just return self.memory, but cannot do so currently as it needs to take
+    #     #  applied transforms into account
+    #     return Corpus([CorpusEvent(s, l) for (i, (s, l)) in enumerate(zip(self.sequence, self.labels))],
+    #                   content_type=self.content_type, label_type=self.label_type)
 
     def print_model(self):
         """

@@ -48,53 +48,54 @@ class Model(Parametric, ABC):
     # :!: **equiv** has to be consistent with the type of the elements in labels.
     # """
 
-    def __init__(self, memory: Corpus, equiv: Callable = (lambda x, y: x == y)):
-        self.logger = logging.getLogger(__name__)
-        self._memory: Corpus = memory
-        self.equiv: Callable[[Dyci2Label, Dyci2Label], Dyci2Label] = equiv
+    # def __init__(self, memory: Corpus, equiv: Callable = (lambda x, y: x == y)):
+    #     self.logger = logging.getLogger(__name__)
+    #     self._memory: Corpus = memory
+    #     self.equiv: Callable[[Dyci2Label, Dyci2Label], Dyci2Label] = equiv
 
-    @abstractmethod
-    def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
-        """
-        Learns (appends) a new sequence in the model.
-
-        :param sequence: sequence learnt in the Factor Oracle automaton
-        :type sequence: list or str
-        # :param labels: sequence of labels chosen to describe the sequence
-        # :type labels: list or str
-        :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-        :type equiv: function
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        """
-
-    @abstractmethod
-    def learn_event(self, event: CorpusEvent, equiv: Optional[Callable] = None):
-        """
-        Learns (appends) a new state in the model.
-
-        :param event:
-        # :param label:
-        :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-        :type equiv: function
-
-        :!: **equiv** has to be consistent with the type of label.
-
-        """
-
-    @abstractmethod
-    def select_events(self, index_state: int, label: Optional[Dyci2Label]) -> Candidates:
-        """ TODO: Docstring """
-
-    @abstractmethod
-    def feedback(self, output_event: Optional[Candidate]) -> None:
-        """ TODO: Docstring """
-
-    @abstractmethod
-    def encode_with_transform(self, transform: Transform) -> None:
-        """ TODO: Docstring """
-
-    @abstractmethod
-    def decode_with_transform(self, transform: Transform) -> None:
-        """ TODO: Docstring """
+    # TODO: Update model with correct type signatures
+    # @abstractmethod
+    # def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
+    #     """
+    #     Learns (appends) a new sequence in the model.
+    #
+    #     :param sequence: sequence learnt in the Factor Oracle automaton
+    #     :type sequence: list or str
+    #     # :param labels: sequence of labels chosen to describe the sequence
+    #     # :type labels: list or str
+    #     :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
+    #     :type equiv: function
+    #
+    #     :!: **equiv** has to be consistent with the type of the elements in labels.
+    #
+    #     """
+    #
+    # @abstractmethod
+    # def learn_event(self, event: CorpusEvent, equiv: Optional[Callable] = None):
+    #     """
+    #     Learns (appends) a new state in the model.
+    #
+    #     :param event:
+    #     # :param label:
+    #     :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
+    #     :type equiv: function
+    #
+    #     :!: **equiv** has to be consistent with the type of label.
+    #
+    #     """
+    #
+    # @abstractmethod
+    # def select_events(self, index_state: int, label: Optional[Dyci2Label]) -> Candidates:
+    #     """ TODO: Docstring """
+    #
+    # @abstractmethod
+    # def feedback(self, output_event: Optional[Candidate]) -> None:
+    #     """ TODO: Docstring """
+    #
+    # @abstractmethod
+    # def encode_with_transform(self, transform: Transform) -> None:
+    #     """ TODO: Docstring """
+    #
+    # @abstractmethod
+    # def decode_with_transform(self, transform: Transform) -> None:
+    #     """ TODO: Docstring """

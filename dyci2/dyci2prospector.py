@@ -30,7 +30,7 @@ from factor_oracle_model import FactorOracle
 from factor_oracle_navigator import FactorOracleNavigator
 from merge.corpus import Corpus
 from merge.main.candidate import Candidate
-from merge.main.candidates import Candidates
+from merge.main.candidates import Candidates, BaseCandidates
 from merge.main.corpus_event import CorpusEvent
 from merge.main.exceptions import QueryError, StateError
 from merge.main.influence import Influence, LabelInfluence, NoInfluence
@@ -169,14 +169,17 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
                  history_parameters=(),
                  equiv: Callable = (lambda x, y: x == y),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
-        super().__init__(corpus=corpus,
-                         model=model(memory=corpus, equiv=equiv),
-                         navigator=navigator(memory=corpus, equiv=equiv,
+        super().__init__(model=model(sequence=corpus.events,
+                                     labels=[event.get_label(label_type) for event in self.corpus.events],
+                                     equiv=equiv),
+                         navigator=navigator(sequence=corpus.events,
+                                             labels=[event.get_label(label_type) for event in self.corpus.events],
+                                             equiv=equiv,
                                              max_continuity=max_continuity,
                                              control_parameters=control_parameters,
                                              execution_trace_parameters=history_parameters,
                                              continuity_with_future=continuity_with_future),
-                         content_type=corpus.get_content_type(),
+                         corpus=corpus,
                          label_type=label_type)
         self.next_output: Optional[Candidates] = None
 
@@ -218,24 +221,29 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
             raise QueryError(f"class {self.__class__.__name__} cannot handle "
                              f"influences of type {influence.__class__.__name__}")
 
-        candidates: Candidates = self.model.select_events(index_state=self.navigator.current_position_in_sequence,
-                                                          label=required_label,
-                                                          forward_context_length_min=forward_context_length_min,
-                                                          authorize_direct_transition=True)
+        authorized_indices: List[int] = self.model.get_authorized_indices(
+            index_state=self.navigator.current_position_in_sequence,
+            label=required_label,
+            forward_context_length_min=forward_context_length_min,
+            authorize_direct_transition=True
+        )
 
-        # TODO[Jerome]: I think easiest solution would be to generate a generic binary `index_map` to handle all
+        # TODO[Jerome]: I think an easier solution would be to generate a generic binary `index_map` to handle all
         #               index-based filtering and just apply this wherever it is needed
-        candidates.data = self.navigator.filter_using_history_and_taboos(candidates.data)
+        authorized_indices = self.navigator.filter_using_history_and_taboos(authorized_indices)
 
-        candidates = self.navigator.weight_candidates(candidates=candidates,
-                                                      required_label=required_label,
-                                                      model_direct_transitions=self.model.direct_transitions,
-                                                      shift_index=shift_index,
-                                                      print_info=print_info, no_empty_event=no_empty_event)
+        authorized_indices = self.navigator.weight_candidates(authorized_indices=authorized_indices,
+                                                              required_label=required_label,
+                                                              model_direct_transitions=self.model.direct_transitions,
+                                                              shift_index=shift_index,
+                                                              print_info=print_info, no_empty_event=no_empty_event)
+
         if self.next_output is not None:
             warnings.warn(f"Existing state in {self.__class__.__name__} overwritten without output")
 
-        self.next_output = candidates
+        warnings.warn("This may return the wrong index, not sure how the initial `None` breaks things")
+        events: List[CorpusEvent] = [self.corpus.events[i] for i in authorized_indices]
+        self.next_output = BaseCandidates([Candidate(e, 1.0, None, self.corpus) for e in events], self.corpus)
 
     def peek_candidates(self) -> Candidates:
         if self.next_output is None:
@@ -304,10 +312,8 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
 
     def _scenario_initial_candidate(self, labels: List[Dyci2Label],
                                     authorized_transformations: List[int]) -> Candidates:
-        authorized_indices: List[int] = [c.index for c in
-                                         self.navigator.filter_using_history_and_taboos(
-                                             self.model.memory_as_candidates(exclude_last=False,
-                                                                             exclude_first=False).data)]
+        authorized_indices: List[int] = [c.event.index for c in self.corpus.events]
+        authorized_indices = self.navigator.filter_using_history_and_taboos(authorized_indices)
 
         use_intervals: bool = self._use_intervals(authorized_transformations)
         if use_intervals:
@@ -318,7 +324,8 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
             func_intervals_to_labels = None
             equiv_mod_interval = None
 
-        full_memory: Candidates = self.model.memory_as_candidates(exclude_last=False, exclude_first=False)
+        full_memory: Candidates = BaseCandidates([Candidate(e, 1.0, None, self.corpus)
+                                                  for e in self.corpus.events], self.corpus)
 
         candidates: Candidates = self.navigator.find_prefix_matching_with_labels(
             use_intervals=use_intervals,

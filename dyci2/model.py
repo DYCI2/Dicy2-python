@@ -30,8 +30,8 @@ from merge.corpus import Corpus
 from merge.main.candidate import Candidate
 from merge.main.candidates import Candidates
 from merge.main.corpus_event import CorpusEvent
-from parameter import Parametric
-from transforms import Transform
+from dyci2.parameter import Parametric
+from dyci2.transforms import Transform
 
 
 class Model(Parametric, ABC):

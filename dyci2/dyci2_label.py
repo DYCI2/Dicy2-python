@@ -164,7 +164,7 @@ class ChordLabel(Dyci2Label):
 
     def __repr__(self):
         # return str(self.label)
-        return "Chord " + str(self.label)
+        return f"{self.__class__.__name__}({str(self.label)}))"
 
     @classmethod
     def __desc__(self):

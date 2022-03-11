@@ -20,21 +20,21 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 import logging
 from typing import Optional, Callable, Tuple, Type, List
 
-from dyci2_label import Dyci2Label
+from dyci2.dyci2_label import Dyci2Label
 # TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
 # TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
-from factor_oracle_model import FactorOracle
-from factor_oracle_navigator import FactorOracleNavigator
-from generation_process import GenerationProcess
-from generator import Dyci2Generator
+from dyci2.factor_oracle_model import FactorOracle
+from dyci2.factor_oracle_navigator import FactorOracleNavigator
+from dyci2.generation_process import GenerationProcess
+from dyci2.generator import Dyci2Generator
 from merge.corpus import Corpus
 from merge.main.candidate import Candidate
 from merge.main.corpus_event import CorpusEvent
 from merge.main.generation_scheduler import GenerationScheduler
 from merge.main.query import Query
-from parameter import Parametric
-from query import Dyci2Time, TimeMode
-from utils import format_list_as_list_of_strings
+from dyci2.parameter import Parametric
+from dyci2.query import Dyci2Time, TimeMode
+from dyci2.utils import format_list_as_list_of_strings
 
 
 # TODO : SUPPRIMER DANS LA DOC LES FONCTIONS "EQUIV-MOD..." "SEQUENCE TO INTERVAL..."

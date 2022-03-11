@@ -25,20 +25,20 @@ from abc import ABC
 from typing import Callable, Tuple, Optional, List, Type, TypeVar, Generic
 
 from dyci2.navigator import Navigator
-from dyci2_label import Dyci2Label
-from factor_oracle_model import FactorOracle
-from factor_oracle_navigator import FactorOracleNavigator
+from dyci2.dyci2_label import Dyci2Label
+from dyci2.factor_oracle_model import FactorOracle
+from dyci2.factor_oracle_navigator import FactorOracleNavigator
 from merge.corpus import Corpus
 from merge.main.candidate import Candidate
-from merge.main.candidates import Candidates, BaseCandidates
+from merge.main.candidates import Candidates, ListCandidates
 from merge.main.corpus_event import CorpusEvent
 from merge.main.exceptions import QueryError, StateError
 from merge.main.influence import Influence, LabelInfluence, NoInfluence
 from merge.main.label import Label
 from merge.main.prospector import Prospector
-from model import Model
-from parameter import Parametric
-from transforms import Transform
+from dyci2.model import Model
+from dyci2.parameter import Parametric
+from dyci2.transforms import Transform
 
 M = TypeVar('M', bound=Model)
 N = TypeVar('N', bound=Navigator)
@@ -111,8 +111,8 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
 
         label: Optional[Label] = event.get_label(self.label_type)
         if isinstance(event, self.corpus.get_content_type()) and label is not None:
-            self.model.learn_event(event, equiv)
-            self.navigator.learn_event(event, equiv)
+            self.model.learn_event(event, label)
+            self.navigator.learn_event(event)
             self.corpus.append(event)
         else:
             raise TypeError(f"Invalid content/label type for event {str(event)}")
@@ -160,7 +160,7 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
 # TODO: this could rather take some abstract FactorOracleLikeModel, FactorOracleLikeNavigator and take these as args.
 class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator]):
     def __init__(self,
-                 model: Type[FactorOracle],
+                 model: Type[FactorOracle[CorpusEvent]],
                  navigator: Type[FactorOracleNavigator],
                  corpus: Corpus,
                  label_type: Type[Dyci2Label],
@@ -170,10 +170,10 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
                  equiv: Callable = (lambda x, y: x == y),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
         super().__init__(model=model(sequence=corpus.events,
-                                     labels=[event.get_label(label_type) for event in self.corpus.events],
+                                     labels=[event.get_label(label_type) for event in corpus.events],
                                      equiv=equiv),
                          navigator=navigator(sequence=corpus.events,
-                                             labels=[event.get_label(label_type) for event in self.corpus.events],
+                                             labels=[event.get_label(label_type) for event in corpus.events],
                                              equiv=equiv,
                                              max_continuity=max_continuity,
                                              control_parameters=control_parameters,
@@ -195,7 +195,7 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
             if len(influences) > 0:
                 init_states: List[int] = [i for i in range(1, self.model.index_last_state()) if
                                           self.model.direct_transitions.get(i)
-                                          and equiv(self.model.direct_transitions.get(i)[0], influences[0])]
+                                          and self.model.equiv(self.model.direct_transitions.get(i)[0], influences[0])]
                 # TODO: Handle case where init_states is empty?
                 new_position: int = random.randint(0, len(init_states) - 1)
                 self.navigator.set_position_in_sequence(new_position)
@@ -243,7 +243,7 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
 
         warnings.warn("This may return the wrong index, not sure how the initial `None` breaks things")
         events: List[CorpusEvent] = [self.corpus.events[i] for i in authorized_indices]
-        self.next_output = BaseCandidates([Candidate(e, 1.0, None, self.corpus) for e in events], self.corpus)
+        self.next_output = ListCandidates([Candidate(e, 1.0, None, self.corpus) for e in events], self.corpus)
 
     def peek_candidates(self) -> Candidates:
         if self.next_output is None:
@@ -312,7 +312,7 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
 
     def _scenario_initial_candidate(self, labels: List[Dyci2Label],
                                     authorized_transformations: List[int]) -> Candidates:
-        authorized_indices: List[int] = [c.event.index for c in self.corpus.events]
+        authorized_indices: List[int] = [c.index for c in self.corpus.events]
         authorized_indices = self.navigator.filter_using_history_and_taboos(authorized_indices)
 
         use_intervals: bool = self._use_intervals(authorized_transformations)
@@ -324,12 +324,13 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
             func_intervals_to_labels = None
             equiv_mod_interval = None
 
-        full_memory: Candidates = BaseCandidates([Candidate(e, 1.0, None, self.corpus)
+        full_memory: Candidates = ListCandidates([Candidate(e, 1.0, None, self.corpus)
                                                   for e in self.corpus.events], self.corpus)
 
         candidates: Candidates = self.navigator.find_prefix_matching_with_labels(
             use_intervals=use_intervals,
             candidates=full_memory,
+            label_type=self.label_type,
             labels=labels,
             authorized_indices=authorized_indices,
             authorized_transformations=authorized_transformations,

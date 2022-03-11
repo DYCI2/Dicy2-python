@@ -1,18 +1,18 @@
 import copy
 import logging
 import random
-from typing import List, Optional, Callable, Dict, Tuple, Generic, TypeVar
+from typing import List, Optional, Callable, Dict, Tuple, Generic, TypeVar, Type
 
-import intervals
-from dyci2_label import Dyci2Label
+from dyci2 import intervals
+from dyci2.dyci2_label import Dyci2Label
 from merge.main.candidate import Candidate
-from merge.main.candidates import Candidates
+from merge.main.candidates import Candidates, ListCandidates
 from merge.main.corpus_event import CorpusEvent
-from navigator import Navigator
-from parameter import Parameter, OrdinalRange
-from prefix_indexing import PrefixIndexing
-from transforms import TransposeTransform
-from utils import noneIsInfinite, DontKnow
+from dyci2.navigator import Navigator
+from dyci2.parameter import Parameter, OrdinalRange
+from dyci2.prefix_indexing import PrefixIndexing
+from dyci2.transforms import TransposeTransform
+from dyci2.utils import noneIsInfinite, DontKnow
 
 T = TypeVar('T')
 
@@ -185,14 +185,15 @@ class FactorOracleNavigator(Generic[T], Navigator):
     def find_prefix_matching_with_labels(self,
                                          use_intervals: bool,
                                          candidates: Candidates,
+                                         label_type: Type[Dyci2Label],
                                          labels: List[Dyci2Label],
                                          authorized_indices: List[int],
                                          authorized_transformations: List[int],
                                          sequence_to_interval_fun: Optional[Callable],
                                          equiv_interval: Optional[Callable]) -> Candidates:
 
-        memory_labels: List[Optional[Dyci2Label]] = [c.event.label() if c is not None else None for c in
-                                                     candidates.data]
+        memory_labels: List[Optional[Dyci2Label]] = [c.event.get_label(label_type) if c is not None else None for c in
+                                                     candidates.get_candidates()]
 
         index_delta_prefixes: Dict[int, List[DontKnow]]
         if use_intervals:
@@ -204,7 +205,8 @@ class FactorOracleNavigator(Generic[T], Navigator):
                 authorized_intervals=authorized_transformations,
                 sequence_to_interval_fun=sequence_to_interval_fun,
                 equiv=equiv_interval,
-                print_info=False)
+                print_info=False
+            )
 
         else:
             index_delta_prefixes, _ = PrefixIndexing.filtered_prefix_indexing(
@@ -213,7 +215,8 @@ class FactorOracleNavigator(Generic[T], Navigator):
                 length_interval=self.continuity_with_future,
                 authorized_indexes=authorized_indices,
                 equiv=self.equiv,
-                print_info=False)
+                print_info=False
+            )
 
         s: Optional[int]
         t: int
@@ -222,14 +225,15 @@ class FactorOracleNavigator(Generic[T], Navigator):
 
         if s is not None:
             # In practise: this will only be a single candidate due to previous function call
-            selected_candidates: List[Candidate] = [c for c in candidates.data if c is not None and c.index == s]
+            selected_candidates: List[Candidate] = [c for c in candidates.get_candidates()
+                                                    if c is not None and c.event.index == s]
             for candidate in selected_candidates:
                 candidate.transform = TransposeTransform(t)
                 candidate.score = length_selected_prefix
         else:
             selected_candidates = []
 
-        return Candidates(candidates=selected_candidates, memory=candidates.corpus)
+        return ListCandidates(candidates=selected_candidates, associated_corpus=candidates.associated_corpora()[0])
 
     def _go_to_anterior_state_using_execution_trace(self, index_in_navigation):
 

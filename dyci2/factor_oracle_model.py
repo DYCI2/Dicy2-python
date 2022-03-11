@@ -1,16 +1,13 @@
 import logging
-from typing import Optional, Callable, List, Type, Any, TypeVar, Generic
+from typing import Optional, Callable, List, Type, TypeVar, Generic
 
-from dyci2_label import Dyci2Label
-from merge.corpus import Corpus
+from dyci2.dyci2_label import Dyci2Label
 from merge.main.candidate import Candidate
-from merge.main.candidates import Candidates, BaseCandidates
-from merge.main.corpus_event import CorpusEvent
-from model import Model
-# noinspection PyIncorrectDocstring
-from transforms import Transform
+from dyci2.model import Model
+from dyci2.transforms import Transform
 
 T = TypeVar('T')
+
 
 class FactorOracle(Generic[T], Model):
     """

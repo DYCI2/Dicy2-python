@@ -6,7 +6,7 @@ from typing import List, Optional
 from merge.main.candidate import Candidate
 from merge.main.candidates import Candidates
 from merge.main.jury import Jury
-from parameter import Parametric
+from dyci2.parameter import Parametric
 
 
 class CandidateSelector(Jury, Parametric, ABC):

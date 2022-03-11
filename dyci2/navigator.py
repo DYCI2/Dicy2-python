@@ -23,12 +23,12 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional, Callable
 
-from dyci2_label import Dyci2Label
+from dyci2.dyci2_label import Dyci2Label
 from merge.corpus import Corpus
 from merge.main.candidate import Candidate
 from merge.main.candidates import Candidates
 from merge.main.corpus_event import CorpusEvent
-from parameter import Parametric
+from dyci2.parameter import Parametric
 
 
 class Navigator(Parametric, ABC):

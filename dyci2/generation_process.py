@@ -3,7 +3,7 @@ import itertools
 import logging
 from typing import List, Optional
 
-from candidate import Candidate
+from merge.main.candidate import Candidate
 
 
 class GenerationProcess:

@@ -31,11 +31,11 @@ from pythonosc.osc_server import BlockingOSCUDPServer
 from dyci2 import save_send_format
 from generation_scheduler import GenerationScheduler
 # TODO[JB]: This is a placeholder for all places where you're expected to specify the real type of the input value!
-from dyci2_label import Dyci2Label
-from dyci2_corpus_event import MemoryEvent, BasicEvent
-from dyci2_corpus import Memory
-from parameter import Parameter
-from query import Query, FreeQuery, TimeMode, LabelQuery
+from dyci2.dyci2_label import Dyci2Label
+from dyci2.dyci2_corpus_event import MemoryEvent, BasicEvent
+from dyci2.dyci2_corpus import Memory
+from dyci2.parameter import Parameter
+from dyci2.query import Query, FreeQuery, TimeMode, LabelQuery
 
 TODO_INSERTTYPE = Union[None, List, Tuple, Dict, int, float, str]
 

@@ -20,11 +20,12 @@ Class defining transformations on labels and contents.
 from abc import ABC, abstractmethod
 from typing import Any
 
-from candidate import Candidate
+
 from dyci2.dyci2_label import ChordLabel, Dyci2Label
 
 
 # from numpy import roll
+from merge.main.candidate import Candidate
 
 
 class Transform(ABC):

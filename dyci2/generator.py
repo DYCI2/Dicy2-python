@@ -1,21 +1,21 @@
 import logging
 from typing import Optional, Type, Callable, Tuple, List
 
-from candidate_selector import TempCandidateSelector, DefaultFallbackSelector
-from dyci2_label import Dyci2Label
-from dyci2prospector import FactorOracleProspector
-from factor_oracle_model import FactorOracle
-from factor_oracle_navigator import FactorOracleNavigator
+from dyci2.candidate_selector import TempCandidateSelector, DefaultFallbackSelector
+from dyci2.dyci2_label import Dyci2Label
+from dyci2.dyci2prospector import FactorOracleProspector
+from dyci2.factor_oracle_model import FactorOracle
+from dyci2.factor_oracle_navigator import FactorOracleNavigator
 from merge.corpus import Corpus
 from merge.main.candidate import Candidate
-from merge.main.candidates import Candidates, BaseCandidates
+from merge.main.candidates import Candidates, ListCandidates
 from merge.main.corpus_event import CorpusEvent
 from merge.main.generator import Generator
 from merge.main.influence import NoInfluence, Influence
 from merge.main.jury import Jury
 from merge.main.query import TriggerQuery, InfluenceQuery
-from query import Query
-from transforms import Transform, NoTransform
+from merge.main.query import Query
+from dyci2.transforms import Transform, NoTransform
 
 
 def basic_equiv(x, y):
@@ -221,7 +221,7 @@ class Dyci2Generator(Generator):
                 generated_sequence.extend(seq)
             else:
                 # TODO: Clunky to create Candidates instance for this. Also - doesn't have access to taboo/mask.
-                fallback_output: Optional[Candidate] = self.decide(BaseCandidates([], self.prospector.get_corpus()))
+                fallback_output: Optional[Candidate] = self.decide(ListCandidates([], self.prospector.get_corpus()))
                 if fallback_output is not None:
                     fallback_output.transform = self.active_transform
                     # New code:

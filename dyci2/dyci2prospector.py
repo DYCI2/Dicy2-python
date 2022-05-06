@@ -22,12 +22,15 @@ import logging
 import random
 import warnings
 from abc import ABC
-from typing import Callable, Tuple, Optional, List, Type, TypeVar, Generic
+from typing import Callable, Tuple, Optional, List, Type, TypeVar, Generic, Dict, Union
 
-from dyci2.navigator import Navigator
 from dyci2.dyci2_label import Dyci2Label
 from dyci2.factor_oracle_model import FactorOracle
 from dyci2.factor_oracle_navigator import FactorOracleNavigator
+from dyci2.model import Model
+from dyci2.navigator import Navigator
+from dyci2.parameter import Parametric
+from dyci2.transforms import Transform, TransposeTransform
 from merge.corpus import Corpus
 from merge.main.candidate import Candidate
 from merge.main.candidates import Candidates, ListCandidates
@@ -36,9 +39,6 @@ from merge.main.exceptions import QueryError, StateError
 from merge.main.influence import Influence, LabelInfluence, NoInfluence
 from merge.main.label import Label
 from merge.main.prospector import Prospector
-from dyci2.model import Model
-from dyci2.parameter import Parametric
-from dyci2.transforms import Transform
 
 M = TypeVar('M', bound=Model)
 N = TypeVar('N', bound=Navigator)
@@ -191,6 +191,7 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
         if init:
             self.navigator.clear()
 
+        # Navigator has not generated anything
         if self.navigator.current_position_in_sequence < 0:
             if len(influences) > 0:
                 init_states: List[int] = [i for i in range(1, self.model.index_last_state()) if
@@ -299,21 +300,11 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
     def clear(self) -> None:
         self.next_output = None
 
-    # def scenario_single_step(self, labels: List[Dyci2Label], index_in_generation: int, previous_steps: List[Candidate],
-    #                          authorized_transformations: Optional[List[int]] = None, no_empty_event: bool = True,
-    #                          **kwargs) -> Candidates:
-    #     """ raises: IndexError if `labels` is empty """
-    #     if len(previous_steps) == 0:
-    #         return self._scenario_initial_candidate(labels=labels,
-    #                                                 authorized_transformations=authorized_transformations)
-    #     else:
-    #         return self.navigation_single_step(labels[0], shift_index=index_in_generation,
-    #                                            no_empty_event=no_empty_event)
-
     def _scenario_initial_candidate(self, labels: List[Dyci2Label],
                                     authorized_transformations: List[int]) -> Candidates:
-        authorized_indices: List[int] = [c.index for c in self.corpus.events]
-        authorized_indices = self.navigator.filter_using_history_and_taboos(authorized_indices)
+        # use model's internal corpus model to handle the initial None object
+        valid_indices: List[int] = list(range(self.model.internal_corpus_model_length()))
+        authorized_indices: List[int] = self.navigator.filter_using_history_and_taboos(valid_indices)
 
         use_intervals: bool = self._use_intervals(authorized_transformations)
         if use_intervals:
@@ -324,20 +315,53 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
             func_intervals_to_labels = None
             equiv_mod_interval = None
 
-        full_memory: Candidates = ListCandidates([Candidate(e, 1.0, None, self.corpus)
-                                                  for e in self.corpus.events], self.corpus)
+        # FactorOracleModel's representation of the memory is slightly different from the Corpus
+        modelled_events: List[Optional[CorpusEvent]]
+        modelled_labels: List[Optional[Dyci2Label]]
+        modelled_events, modelled_labels = self.model.get_internal_corpus_model()
 
-        candidates: Candidates = self.navigator.find_prefix_matching_with_labels(
+        index_delta_prefixes: Dict[int, List[List[int]]] = self.navigator.find_prefix_matching_with_labels(
             use_intervals=use_intervals,
-            candidates=full_memory,
-            label_type=self.label_type,
-            labels=labels,
+            memory_labels=modelled_labels,
+            labels_to_match=labels,
             authorized_indices=authorized_indices,
             authorized_transformations=authorized_transformations,
             sequence_to_interval_fun=func_intervals_to_labels,
             equiv_interval=equiv_mod_interval)
 
-        return candidates
+        # Select the best candidate. TODO: This should be modularized to Generator rather than just using best candidate
+        s: Optional[int]  # index
+        t: int  # transform
+        length_selected_prefix: Optional[int]
+        s, t, length_selected_prefix = self._choose_prefix_from_list(index_delta_prefixes)
+
+        if s is not None:
+            candidate: Candidate = Candidate(modelled_events[s], length_selected_prefix,
+                                             TransposeTransform(t), associated_corpus=self.corpus)
+            return ListCandidates(candidates=[candidate], associated_corpus=self.corpus)
+
+        else:
+            return ListCandidates(candidates=[], associated_corpus=self.corpus)
+
+    def _choose_prefix_from_list(
+            self,
+            index_delta_prefixes: Dict[int, List[List[int]]]) -> Tuple[Optional[int], int, Optional[int]]:
+        s: Optional[int] = None
+        t: int = 0
+        length_selected_prefix: Optional[int] = None
+        if len(index_delta_prefixes.keys()) > 0:
+            # TODO : MAX PAS FORCEMENT BONNE IDEE
+
+            length_selected_prefix = max(index_delta_prefixes.keys())
+            random_choice: int = random.randint(0, len(index_delta_prefixes[length_selected_prefix]) - 1)
+            s: Union[List[int], int] = index_delta_prefixes[length_selected_prefix][random_choice]
+            if type(s) == list:
+                t = s[1]
+                s = s[0]
+        else:
+            self.logger.debug("No prefix found")
+
+        return s, t, length_selected_prefix
 
     def _use_intervals(self, authorized_transformations: List[int]):
         return self.label_type is not None and self.label_type.use_intervals \

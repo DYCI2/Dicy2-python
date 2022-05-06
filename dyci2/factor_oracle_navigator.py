@@ -184,22 +184,18 @@ class FactorOracleNavigator(Generic[T], Navigator):
 
     def find_prefix_matching_with_labels(self,
                                          use_intervals: bool,
-                                         candidates: Candidates,
-                                         label_type: Type[Dyci2Label],
-                                         labels: List[Dyci2Label],
+                                         memory_labels: List[Optional[Dyci2Label]],
+                                         labels_to_match: List[Dyci2Label],
                                          authorized_indices: List[int],
                                          authorized_transformations: List[int],
                                          sequence_to_interval_fun: Optional[Callable],
-                                         equiv_interval: Optional[Callable]) -> Candidates:
+                                         equiv_interval: Optional[Callable]) -> Dict[int, List[List[int]]]:
 
-        memory_labels: List[Optional[Dyci2Label]] = [c.event.get_label(label_type) if c is not None else None for c in
-                                                     candidates.get_candidates()]
-
-        index_delta_prefixes: Dict[int, List[DontKnow]]
+        index_delta_prefixes: Dict[int, List[List[int]]]
         if use_intervals:
             index_delta_prefixes, _ = intervals.filtered_prefix_indexing_intervals(
                 sequence=memory_labels,
-                pattern=labels,
+                pattern=labels_to_match,
                 length_interval=self.continuity_with_future,
                 authorized_indexes=authorized_indices,
                 authorized_intervals=authorized_transformations,
@@ -210,7 +206,7 @@ class FactorOracleNavigator(Generic[T], Navigator):
 
         else:
             index_delta_prefixes, _ = PrefixIndexing.filtered_prefix_indexing(
-                sequence=labels,
+                sequence=labels_to_match,
                 pattern=memory_labels,
                 length_interval=self.continuity_with_future,
                 authorized_indexes=authorized_indices,
@@ -218,22 +214,7 @@ class FactorOracleNavigator(Generic[T], Navigator):
                 print_info=False
             )
 
-        s: Optional[int]
-        t: int
-        length_selected_prefix: Optional[int]
-        s, t, length_selected_prefix = self._choose_prefix_from_list(index_delta_prefixes)
-
-        if s is not None:
-            # In practise: this will only be a single candidate due to previous function call
-            selected_candidates: List[Candidate] = [c for c in candidates.get_candidates()
-                                                    if c is not None and c.event.index == s]
-            for candidate in selected_candidates:
-                candidate.transform = TransposeTransform(t)
-                candidate.score = length_selected_prefix
-        else:
-            selected_candidates = []
-
-        return ListCandidates(candidates=selected_candidates, associated_corpus=candidates.associated_corpora()[0])
+        return index_delta_prefixes
 
     def _go_to_anterior_state_using_execution_trace(self, index_in_navigation):
 
@@ -299,6 +280,7 @@ class FactorOracleNavigator(Generic[T], Navigator):
                                   and self.history_and_taboos[i] == 0))]
         # print("Possible next indexes = {}, filtered list = {}".format(list_of_indexes, filtered_list))
         return filtered_list
+
 
     ################################################################################################################
     #   PRIVATE
@@ -529,25 +511,6 @@ class FactorOracleNavigator(Generic[T], Navigator):
             return [authorized_indices[random_choice]]
 
         return []
-
-    def _choose_prefix_from_list(self, index_delta_prefixes: Dict[int, List[DontKnow]]) \
-            -> Tuple[Optional[int], int, Optional[int]]:
-        s: Optional[int] = None
-        t: int = 0
-        length_selected_prefix: Optional[int] = None
-        if len(index_delta_prefixes.keys()) > 0:
-            # TODO : MAX PAS FORCEMENT BONNE IDEE
-
-            length_selected_prefix = max(index_delta_prefixes.keys())
-            random_choice: int = random.randint(0, len(index_delta_prefixes[length_selected_prefix]) - 1)
-            s: DontKnow = index_delta_prefixes[length_selected_prefix][random_choice]
-            if type(s) == list:
-                t = s[1]
-                s = s[0]
-        else:
-            self.logger.debug("No prefix found")
-
-        return s, t, length_selected_prefix
 
     def index_last_state(self):
         """ Index of the last state in the model."""

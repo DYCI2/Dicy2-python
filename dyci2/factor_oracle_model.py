@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Callable, List, Type, TypeVar, Generic
+from typing import Optional, Callable, List, Type, TypeVar, Generic, Tuple
 
 from dyci2.dyci2_label import Dyci2Label
 from merge.main.candidate import Candidate
@@ -86,30 +86,7 @@ class FactorOracle(Generic[T], Model):
         self.reverse_suffix_links = {}
         self.equiv: Callable = equiv
 
-        self.build(sequence, labels)
-
-    def build(self, sequence: List[Optional[T]], labels: List[Optional[Dyci2Label]]):
-
-        """
-        Builds the model.
-
-        # :param memory: sequence learnt in the model.
-        # :type memory: list or str
-        # :param labels: sequence of labels chosen to describe the sequence
-        # :type labels: list or str
-        #:param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-        # :type equiv: function
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        """
-        # TODO: Not a good place to overwrite the equiv function - hidden side effect
-        #   Also - this condition is always true as memory.label_type must be valid.
-        if self.label_type is not None:
-            self.equiv: Callable = self.label_type.__eq__
-
         self.init_model()
-        self.learn_sequence(sequence, labels, self.equiv)
 
     def init_model(self):
         """
@@ -197,15 +174,11 @@ class FactorOracle(Generic[T], Model):
 
         return indices
 
-    # @property
-    # def memory(self) -> Corpus:
-    #     return self.dummy_memory()
+    def get_internal_corpus_model(self) -> Tuple[List[Optional[T]], List[Optional[Dyci2Label]]]:
+        return self.sequence, self.labels
 
-    # def dummy_memory(self) -> Corpus:
-    #     # TODO: Temp! This should ideally just return self.memory, but cannot do so currently as it needs to take
-    #     #  applied transforms into account
-    #     return Corpus([CorpusEvent(s, l) for (i, (s, l)) in enumerate(zip(self.sequence, self.labels))],
-    #                   content_type=self.content_type, label_type=self.label_type)
+    def internal_corpus_model_length(self) -> int:
+        return len(self.sequence)
 
     def print_model(self):
         """

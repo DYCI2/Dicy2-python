@@ -10,26 +10,27 @@ from dyci2.dyci2_label import ChordLabel, from_list_to_labels
 from dyci2.factor_oracle_model import FactorOracle
 from dyci2.factor_oracle_navigator import FactorOracleNavigator
 from dyci2.generation_scheduler import Dyci2GenerationScheduler
+from dyci2.transforms import Transform
 from merge.corpus import GenericCorpus
 from merge.main.candidate import Candidate
-from merge.main.corpus_event import GenericCorpusEvent
+from merge.main.corpus_event import GenericCorpusEvent, CorpusEvent
 from merge.main.influence import LabelInfluence
 from merge.main.query import Query, InfluenceQuery, TriggerQuery
 from dyci2.query import TimeMode, Dyci2Time
 
 
 def chord_format(lst: List[Tuple[GenericCorpusEvent, int]]):
-    return [[e.data(), t] for (e, t) in lst]
+    return [[e.data, t] for (e, t) in lst]
 
 
 def candidate_format(lst: List[Candidate]):
-    return [typing.cast(GenericCorpusEvent, e.event).data() for e in lst]
+    return [typing.cast(GenericCorpusEvent, e.event).data for e in lst]
 
 
 class TestDyci2GeneratorScheduler(TestCase):
     def test_basic(self):
         logging.basicConfig(level=logging.DEBUG, format='%(message)s')
-        random.seed(0)
+        random.seed(2)
         # warnings.filterwarnings("ignore")
         # original_stdout = sys.stdout
         # sys.stdout = None
@@ -74,11 +75,17 @@ class TestDyci2GeneratorScheduler(TestCase):
         # query = new_temporal_query_sequence_of_events(handle=list_for_scenario, label_type=ChordLabel)
         print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
         gen_scheduler.process_query(query=query)
-        print("Output of the run: {}".format(gen_scheduler.generation_process.last_sequence()))
+        output: List[Candidate] = gen_scheduler.generation_process.last_sequence()
+        events: List[CorpusEvent] = [c.event for c in output]
+        transforms: List[Transform] = [c.transform for c in output]
+        print("Output of the run:")
+        for (e, t) in zip(events, transforms):
+            print(f"    {e} {t}")
 
         print("With transforfmation: {}".format(
             chord_format(gen_scheduler.formatted_output_couple_content_transfo())))
 
+        sys.exit(0)
         sys.stdout = None
 
         print(

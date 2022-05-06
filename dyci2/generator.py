@@ -333,7 +333,7 @@ class Dyci2Generator(Generator):
     def feedback(self, event: Optional[Candidate], **kwargs) -> None:
         self._jury.feedback(event, **kwargs)
         self.fallback_jury.feedback(event, **kwargs)
-        self.prospector.clear()
+        self.prospector.feedback(event, **kwargs)
 
     def encode_memory_with_current_transform(self):
         transform: Transform = self.active_transform

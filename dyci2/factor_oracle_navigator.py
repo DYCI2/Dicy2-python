@@ -389,14 +389,14 @@ class FactorOracleNavigator(Generic[T], Navigator):
         """
         authorized_indices = self._continuations_with_jump(authorized_indices, direct_transitions)
         if len(authorized_indices) > 0:
-            # TODO[B]: Migrate this random choice to top level
+            # TODO: Migrate this random choice to top level
             random_choice: int = random.randint(0, len(authorized_indices) - 1)
             return [authorized_indices[random_choice]]
         return []
 
     def feedback(self, output_event: Optional[Candidate]) -> None:
         if output_event is not None:
-            self.set_position_in_sequence(output_event.event.index)
+            self.set_position_in_sequence(output_event.event.index + 1)  # To account for Model's initial None
 
     def _update_history_and_taboos(self, index_in_sequence):
 

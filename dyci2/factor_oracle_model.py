@@ -180,6 +180,9 @@ class FactorOracle(Generic[T], Model):
     def internal_corpus_model_length(self) -> int:
         return len(self.sequence)
 
+    def internal_event_at(self, index: int) -> Optional[T]:
+        return self.sequence[index]
+
     def print_model(self):
         """
         Basic representation of a Factor Oracle automaton.

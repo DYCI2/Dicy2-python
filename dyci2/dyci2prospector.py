@@ -243,7 +243,7 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
             warnings.warn(f"Existing state in {self.__class__.__name__} overwritten without output")
 
         warnings.warn("This may return the wrong index, not sure how the initial `None` breaks things")
-        events: List[CorpusEvent] = [self.corpus.events[i] for i in authorized_indices]
+        events: List[CorpusEvent] = [self.model.internal_event_at(i) for i in authorized_indices]
         self.next_output = ListCandidates([Candidate(e, 1.0, None, self.corpus) for e in events], self.corpus)
 
     def peek_candidates(self) -> Candidates:
@@ -259,26 +259,6 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
         output = self.next_output
         self.next_output = None
         return output
-
-    # def navigation_single_step(self, required_label: Optional[Dyci2Label], forward_context_length_min: int = 0,
-    #                            print_info: bool = False, shift_index: int = 0,
-    #                            no_empty_event: bool = True) -> Candidates:
-    #     candidates: Candidates = self.model.select_events(index_state=self.navigator.current_position_in_sequence,
-    #                                                       label=required_label,
-    #                                                       forward_context_length_min=forward_context_length_min,
-    #                                                       authorize_direct_transition=True)
-    #
-    #     # TODO[Jerome]: I think easiest solution would be to generate a generic binary `index_map` to handle all
-    #     #               index-based filtering and just apply this wherever it is needed
-    #     candidates.data = self.navigator.filter_using_history_and_taboos(candidates.data)
-    #
-    #     candidates = self.navigator.weight_candidates(candidates=candidates,
-    #                                                   required_label=required_label,
-    #                                                   model_direct_transitions=self.model.direct_transitions,
-    #                                                   shift_index=shift_index,
-    #                                                   print_info=print_info, no_empty_event=no_empty_event)
-    #
-    #     return candidates
 
     def initialize_scenario(self, influences: List[Influence], authorized_transformations: List[int]) -> None:
         if self.corpus is None:

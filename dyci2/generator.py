@@ -263,11 +263,6 @@ class Dyci2Generator(Generator):
         self.prospector.initialize_scenario(influences=list_of_labels,
                                             authorized_transformations=self._authorized_transformations)
         candidates: Candidates = self.prospector.pop_candidates()
-        # candidates: Candidates = self.prospector.scenario_single_step(
-        #     labels=list_of_labels,
-        #     index_in_generation=shift_index,
-        #     authorized_transformations=self._authorized_transformations,
-        #     previous_steps=generated_sequence)
 
         output: Optional[Candidate] = self.decide(candidates, disable_fallback=True)
         if output is None:

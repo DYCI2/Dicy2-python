@@ -92,14 +92,13 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
 
         self.navigator.clear()
 
-    # @abstractmethod
-    # def navigation_single_step(self, required_label: Optional[Dyci2Label], **kwargs) -> Candidates:
-    #     """ TODO: Docstring """
-    #
-    # @abstractmethod
-    # def scenario_single_step(self, labels: List[Dyci2Label], index_in_generation: int, previous_steps: List[Candidate],
-    #                          authorized_transformations: List[int], **kwargs) -> Candidates:
-    #     """ TODO: Docstring """
+    def read_memory(self, corpus: Corpus, **kwargs) -> None:
+        if self.corpus is not None:
+            raise StateError(f"Loading a new corpus into an existing {self.__class__.__name__} is not supported yet")
+
+        self.corpus = corpus
+        for event in corpus.events:
+            self.learn_event(event)
 
     def learn_event(self, event: CorpusEvent, **kwargs):
         """
@@ -111,30 +110,11 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
 
         label: Optional[Label] = event.get_label(self.label_type)
         if isinstance(event, self.corpus.get_content_type()) and label is not None:
+            self.corpus.append(event)
             self.model.learn_event(event, label)
             self.navigator.learn_event(event)
-            self.corpus.append(event)
         else:
             raise TypeError(f"Invalid content/label type for event {str(event)}")
-
-    def read_memory(self, corpus: Corpus, **kwargs) -> None:
-        if self.corpus is not None:
-            raise StateError(f"Loading a new corpus into an existing {self.__class__.__name__} is not supported yet")
-
-        self.corpus = corpus
-        for event in corpus.events:
-            self.learn_event(event)
-
-    # def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
-    #     """ raises: TypeError if sequence is incompatible with current memory """
-    #     # TODO: Ensure that the sequence always is validated at top level so that the list of MemoryEvents always
-    #     #  has (1) a single LabelType and (2) a single ContentType. OR simply parse with all([isinstance(e) for e in a])
-    #     if len(sequence) > 0 and isinstance(sequence[0], self.content_type) and isinstance(sequence[0].label(),
-    #                                                                                        self.label_type):
-    #         self.model.learn_sequence(sequence, equiv)
-    #         self.navigator.learn_sequence(sequence, equiv)
-    #     else:
-    #         raise TypeError(f"Invalid content/label type for sequence")
 
     def rewind_generation(self, index_in_navigation: int) -> None:
         self.navigator.rewind_generation(index_in_navigation)
@@ -169,12 +149,8 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
                  history_parameters=(),
                  equiv: Callable = (lambda x, y: x == y),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
-        super().__init__(model=model(sequence=corpus.events,
-                                     labels=[event.get_label(label_type) for event in corpus.events],
-                                     equiv=equiv),
-                         navigator=navigator(sequence=corpus.events,
-                                             labels=[event.get_label(label_type) for event in corpus.events],
-                                             equiv=equiv,
+        super().__init__(model=model(equiv=equiv),
+                         navigator=navigator(equiv=equiv,
                                              max_continuity=max_continuity,
                                              control_parameters=control_parameters,
                                              execution_trace_parameters=history_parameters,
@@ -242,7 +218,6 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
         if self.next_output is not None:
             warnings.warn(f"Existing state in {self.__class__.__name__} overwritten without output")
 
-        warnings.warn("This may return the wrong index, not sure how the initial `None` breaks things")
         events: List[CorpusEvent] = [self.model.internal_event_at(i) for i in authorized_indices]
         self.next_output = ListCandidates([Candidate(e, 1.0, None, self.corpus) for e in events], self.corpus)
 

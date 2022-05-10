@@ -53,8 +53,6 @@ class FactorOracle(Generic[T], Model):
     """
 
     def __init__(self,
-                 sequence: List[Optional[T]],
-                 labels: List[Optional[Dyci2Label]],
                  label_type: Type[Dyci2Label] = Dyci2Label,
                  equiv: Callable = (lambda x, y: x == y)):
         """ Constructor for the class FactorOracle.

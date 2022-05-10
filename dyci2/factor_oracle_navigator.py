@@ -1,18 +1,17 @@
 import copy
 import logging
 import random
-from typing import List, Optional, Callable, Dict, Tuple, Generic, TypeVar, Type
+import warnings
+from typing import List, Optional, Callable, Dict, Tuple, Generic, TypeVar
 
 from dyci2 import intervals
 from dyci2.dyci2_label import Dyci2Label
-from merge.main.candidate import Candidate
-from merge.main.candidates import Candidates, ListCandidates
-from merge.main.corpus_event import CorpusEvent
 from dyci2.navigator import Navigator
 from dyci2.parameter import Parameter, OrdinalRange
 from dyci2.prefix_indexing import PrefixIndexing
-from dyci2.transforms import TransposeTransform
-from dyci2.utils import noneIsInfinite, DontKnow
+from dyci2.utils import noneIsInfinite
+from merge.main.candidate import Candidate
+from merge.main.corpus_event import CorpusEvent
 
 T = TypeVar('T')
 
@@ -66,22 +65,21 @@ class FactorOracleNavigator(Generic[T], Navigator):
     """
 
     def __init__(self,
-                 sequence: List[Optional[T]],
-                 labels: List[Optional[Dyci2Label]],
                  equiv: Optional[Callable] = (lambda x, y: x == y),
                  max_continuity: int = 20,
                  control_parameters=(),
                  execution_trace_parameters=(),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
         self.logger = logging.getLogger(__name__)
-        self.sequence: List[Optional[T]] = sequence
-        self.labels: List[Optional[Dyci2Label]] = labels
+        self.sequence: List[Optional[T]] = []
+        self.labels: List[Optional[Dyci2Label]] = []
         self.equiv: Callable = equiv
         self.max_continuity: Parameter[int] = Parameter(max_continuity, OrdinalRange(0, None))
         self.avoid_repetitions_mode: Parameter[int] = Parameter(0)
         self.continuity_with_future: Parameter[Tuple[float, float]] = Parameter(continuity_with_future)
         self.execution_trace = {}
 
+        warnings.warn("This will just create an empty list right now")
         self.history_and_taboos: List[Optional[int]] = [0] * (len(self.sequence))
         self.current_continuity: int = -1
         self.current_position_in_sequence: int = -1
@@ -109,6 +107,31 @@ class FactorOracleNavigator(Generic[T], Navigator):
         object.__setattr__(self, name_attr, val_attr)
         # TODO : SUPPRIMER TRACE AVANT TEMPS PERFORMANCE
 
+    def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
+        """
+        Learns (appends) a new sequence in the model.
+
+        :param sequence: sequence learnt in the Factor Oracle automaton
+        :type sequence: list or str
+        # :param labels: sequence of labels chosen to describe the sequence
+        # :type labels: list or str
+        :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
+        :type equiv: function
+
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+
+        """
+        if equiv is None:
+            equiv = self.equiv
+
+        for event in sequence:
+            self.learn_event(event, equiv)
+
+    def learn_event(self, event: CorpusEvent, equiv: Callable = None):
+        current_last_idx = len(self.history_and_taboos) - 1
+        self._authorize_indexes([current_last_idx])
+        self.history_and_taboos.append(None)
+
     def rewind_generation(self, index_state: int):
         self._go_to_anterior_state_using_execution_trace(index_in_navigation=index_state)
 
@@ -126,11 +149,17 @@ class FactorOracleNavigator(Generic[T], Navigator):
                               f"(cont. = {self.current_continuity}/{self.max_continuity.get()})" \
                               f": {self.current_position_in_sequence}"
 
-        # FIXME: This code should just apply all functions to the same `candidates` variable, where each
+        # FIXME: This code should just apply all functions to the same variable and **assign a weight**, where each
         #  _follow_continuations should never remove any candidates, just adjust their scores. The intended behaviour is
         #  to call all three functions (_using_transition, _with_jump, _without_continuation) on the same set, where the
         #  last step might append further Candidates to the initial list of Candidates. Currently, it will only try to
         #  call them after each other, but if there are matches in the first the second one will not be called, etc.
+        #
+        # TODO (2022-05):
+        #  This was reverted back to using indices (`List[int]`) from previously using `Candidates` due to the fact
+        #  that we most likely won't be able to agree on an interface for `weight_candidates` (or more generally,
+        #  for the concept of a `Navigator`). If we want to assign weights as described in the todos below
+        #  at some point, return type must be adjusted accordingly.
 
         # Case 1: Transition to state immediately following the previous one if reachable and matching
         authorized_indices = self._follow_continuation_using_transition(authorized_indices, model_direct_transitions)
@@ -159,7 +188,7 @@ class FactorOracleNavigator(Generic[T], Navigator):
                         # Case 3.1: Transition to any filtered _unreachable_ candidate matching the label
                         additional_indices = self._find_matching_label_without_continuation(required_label,
                                                                                             additional_indices,
-                                                                                            equiv)
+                                                                                            self.equiv)
                         if len(additional_indices) > 0:
                             # TODO: Should be `extend` rather than `=` later
                             authorized_indices = additional_indices
@@ -246,32 +275,6 @@ class FactorOracleNavigator(Generic[T], Navigator):
         self.current_position_in_sequence = -1
         self.current_navigation_index = - 1
 
-    def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
-        """
-        Learns (appends) a new sequence in the model.
-
-        :param sequence: sequence learnt in the Factor Oracle automaton
-        :type sequence: list or str
-        # :param labels: sequence of labels chosen to describe the sequence
-        # :type labels: list or str
-        :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-        :type equiv: function
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        """
-        if equiv is None:
-            equiv = self.equiv
-
-        for event in sequence:
-            self.learn_event(event, equiv)
-
-    def learn_event(self, event: CorpusEvent, equiv: Callable = None):
-        # TODO : TEST TO AVOID "UNDEF"
-        current_last_idx = len(self.history_and_taboos) - 1
-        self._authorize_indexes([current_last_idx])
-        self.history_and_taboos.append(None)
-
     def filter_using_history_and_taboos(self, indices: List[int]) -> List[int]:
         filtered_list = [i for i in indices
                          if (not (self.history_and_taboos[i] is None)
@@ -280,7 +283,6 @@ class FactorOracleNavigator(Generic[T], Navigator):
                                   and self.history_and_taboos[i] == 0))]
         # print("Possible next indexes = {}, filtered list = {}".format(list_of_indexes, filtered_list))
         return filtered_list
-
 
     ################################################################################################################
     #   PRIVATE

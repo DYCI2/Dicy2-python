@@ -153,10 +153,6 @@ class FactorOracleNavigator(Navigator[T]):
         if output_event is not None:
             self.set_position_in_sequence(output_event.event.index + 1)  # To account for Model's initial None
 
-    def index_last_state(self):
-        """ Index of the last state in the model."""
-        return len(self.labels) - 1
-
     def set_position_in_sequence(self, val_attr: Optional[int]):
         self.current_position_in_sequence = val_attr
         if val_attr is not None and val_attr > -1:
@@ -177,82 +173,6 @@ class FactorOracleNavigator(Navigator[T]):
             self._record_execution_trace(self.current_navigation_index)
             self.logger.debug("NEW LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
         # print("NEW EXECUTION TRACE: {}".format(self.execution_trace))
-
-    # TODO: Since the library is based on a loose definition of interface without true polymorphism, there are issues
-    #       with overriding functions while adding new position arguments (which is not allowed in python).
-    #       Since `model`direct_transitions` is mandatory to pass here, we should probably rethink this interface.
-    def weight_candidates(self,
-                          authorized_indices: List[int],
-                          required_label: Optional[Dyci2Label],
-                          model_direct_transitions: Dict[int, Tuple[Dyci2Label, int]],
-                          shift_index: Optional[int] = None,
-                          print_info: bool = False,
-                          no_empty_event: bool = True) -> List[int]:
-        str_print_info: str = f"{shift_index} " \
-                              f"(cont. = {self.current_continuity}/{self.max_continuity.get()})" \
-                              f": {self.current_position_in_sequence}"
-
-        # FIXME: This code should just apply all functions to the same variable and **assign a weight**, where each
-        #  _follow_continuations should never remove any candidates, just adjust their scores. The intended behaviour is
-        #  to call all three functions (_using_transition, _with_jump, _without_continuation) on the same set, where the
-        #  last step might append further Candidates to the initial list of Candidates. Currently, it will only try to
-        #  call them after each other, but if there are matches in the first the second one will not be called, etc.
-        #
-        # TODO (2022-05):
-        #  This was reverted back to using indices (`List[int]`) from previously using `Candidates` due to the fact
-        #  that we most likely won't be able to agree on an interface for `weight_candidates` (or more generally,
-        #  for the concept of a `Navigator`). If we want to assign weights as described in the todos below
-        #  at some point, return type must be adjusted accordingly.
-
-        # Case 1: Transition to state immediately following the previous one if reachable and matching
-        authorized_indices = self._follow_continuation_using_transition(authorized_indices, model_direct_transitions)
-        if len(authorized_indices) > 0:
-            # TODO: Remove this once follow_continuation_using_transition returns all candidates.
-            str_print_info += f" -{self.labels[authorized_indices[0]]}-> {authorized_indices[0]}"
-        else:
-            # Case 2: Transition to any other filtered, reachable candidate matching the required_label
-            # TODO[1]: NOTE! This one will remove the actual candidate selected in the previous step if called.
-            # TODO[2]: Migrate the random choice performed in this step to top level
-            authorized_indices = self._follow_continuation_with_jump(authorized_indices, model_direct_transitions)
-
-            if len(authorized_indices) > 0:
-                prev_index: int = authorized_indices[0] - 1
-                str_print_info += f" ...> {prev_index} - {model_direct_transitions.get(prev_index)[0]} " \
-                                  f"-> {model_direct_transitions.get(prev_index)[1]}"
-
-            else:
-                # Case 3: Filtered, _unreachable_candidates_
-                # TODO: I have no idea why `last` is excluded here
-                additional_indices: List[int] = list(range(self.index_last_state()))
-                additional_indices = self.filter_using_history_and_taboos(additional_indices)
-                if required_label is not None:
-                    if no_empty_event:
-                        # TODO: How to ensure that it will not duplicate candidates from previous steps here?
-                        # Case 3.1: Transition to any filtered _unreachable_ candidate matching the label
-                        additional_indices = self._find_matching_label_without_continuation(required_label,
-                                                                                            additional_indices,
-                                                                                            self.equiv)
-                        if len(additional_indices) > 0:
-                            # TODO: Should be `extend` rather than `=` later
-                            authorized_indices = additional_indices
-                else:
-                    # TODO: This should be removed as it is covered by fallback selector and doesn't really make sense
-                    #  here (it will always append the entire memory, which isn't really ideal)
-                    # Case 3.2: Transition to any filtered _unreachable_ candidate (if free navigation, i.e. no label)
-                    additional_indices = self._follow_continuation_with_jump(additional_indices,
-                                                                             model_direct_transitions)
-                    if len(additional_indices) > 0:
-                        # TODO: Should be `extend` rather than `=` later
-                        authorized_indices = additional_indices
-
-                if len(authorized_indices) > 0:
-                    str_print_info += f" xxnothingxx - random: {authorized_indices[0]}"
-                else:
-                    str_print_info += " xxnothingxx"
-
-        self.logger.debug(str_print_info)
-
-        return authorized_indices
 
     ################################################################################################################
     #   PUBLIC: NAVIGATION STRATEGIES
@@ -292,9 +212,9 @@ class FactorOracleNavigator(Navigator[T]):
 
         return index_delta_prefixes
 
-    def _follow_continuation_using_transition(self,
-                                              authorized_indices: List[int],
-                                              direct_transitions: Dict[int, Tuple[Dyci2Label, int]]) -> List[int]:
+    def follow_continuation_using_transition(self,
+                                             authorized_indices: List[int],
+                                             direct_transitions: Dict[int, Tuple[Dyci2Label, int]]) -> List[int]:
         """
         Continuation using direct transition from self.current_position_in_sequence.
 
@@ -317,8 +237,9 @@ class FactorOracleNavigator(Navigator[T]):
             return [i for i in authorized_indices if i == direct_transition[1]]
         return []
 
-    def _continuations_with_jump(self, authorized_indices: List[int],
-                                 direct_transitions: Dict[int, Tuple[Dyci2Label, int]]) -> List[int]:
+    def continuations_with_jump(self,
+                                authorized_indices: List[int],
+                                direct_transitions: Dict[int, Tuple[Dyci2Label, int]]) -> List[int]:
 
         """
         List of continuations with jumps to indexes with similar contexts direct transition from
@@ -338,15 +259,13 @@ class FactorOracleNavigator(Navigator[T]):
         direct_transition: Optional[Tuple[Dyci2Label, int]] = direct_transitions.get(self.current_position_in_sequence)
 
         if direct_transition:
-            # TODO[C]: Note! This step is not compatible the idea of a list of candidates as it will actually remove
-            #          the candidate selected in the previous step (_follow_continuation_using_transition)
             authorized_indices = [i for i in authorized_indices if i != direct_transition[1]]
 
         if len(authorized_indices) > 0:
             if self.avoid_repetitions_mode.get() > 0:
                 self.logger.debug(
                     f"\nTrying to avoid repetitions: possible continuations {authorized_indices}...")
-                # TODO[D]: This nested list comprehension could be optimized
+                # TODO: This nested list comprehension could be optimized
                 minimum_history_taboo_value: int = min([self.history_and_taboos[i] for i in authorized_indices],
                                                        key=noneIsInfinite)
                 authorized_indices = [i for i in authorized_indices
@@ -355,9 +274,9 @@ class FactorOracleNavigator(Navigator[T]):
 
         return authorized_indices
 
-    # TODO : autres modes que random choice
-    def _follow_continuation_with_jump(self, authorized_indices: List[int],
-                                       direct_transitions: Dict[int, Tuple[Dyci2Label, int]]) -> List[int]:
+    def follow_continuation_with_jump(self,
+                                      authorized_indices: List[int],
+                                      direct_transitions: Dict[int, Tuple[Dyci2Label, int]]) -> List[int]:
 
         """
         Random selection of a continuation with jump to indexes with similar contexts direct transition from
@@ -374,19 +293,18 @@ class FactorOracleNavigator(Navigator[T]):
         :rtype: int
 
         """
-        authorized_indices = self._continuations_with_jump(authorized_indices, direct_transitions)
+        authorized_indices = self.continuations_with_jump(authorized_indices, direct_transitions)
         if len(authorized_indices) > 0:
             # TODO: Migrate this random choice to top level
             random_choice: int = random.randint(0, len(authorized_indices) - 1)
             return [authorized_indices[random_choice]]
         return []
 
-    def _find_matching_label_without_continuation(self,
-                                                  required_label: Dyci2Label,
-                                                  authorized_indices: List[int],
-                                                  equiv: Optional[Callable] = None) -> List[int]:
+    def find_matching_label_without_continuation(self,
+                                                 required_label: Dyci2Label,
+                                                 authorized_indices: List[int],
+                                                 equiv: Optional[Callable] = None) -> List[int]:
 
-        # TODO[A]: This should probably return a list of candidates
         """
         Random state in the sequence matching required_label if self.no_empty_event is True (else None).
 

@@ -2,9 +2,9 @@ import logging
 from typing import Optional, Callable, List, Type, TypeVar, Generic, Tuple
 
 from dyci2.dyci2_label import Dyci2Label
-from merge.main.candidate import Candidate
 from dyci2.model import Model
 from dyci2.transforms import Transform
+from merge.main.candidate import Candidate
 
 T = TypeVar('T')
 
@@ -130,7 +130,7 @@ class FactorOracle(Generic[T], Model):
         self.sequence.append(event)
         self.labels.append(label)
 
-        index = self.internal_index_last_state()
+        index = self.get_internal_index_last_state()
 
         label = self.labels[index]
         state = self.sequence[index]
@@ -149,36 +149,6 @@ class FactorOracle(Generic[T], Model):
         else:
             self._add_suffix_link(index, self._from_state_read_label(k, label, equiv))
 
-    def get_authorized_indices(self,
-                               index_state: int,
-                               label: Optional[Dyci2Label],
-                               forward_context_length_min: int = 1,
-                               authorize_direct_transition: bool = True) -> List[int]:
-        if label is not None:
-            indices: List[int] = self._continuations_with_label(index_state=index_state, required_label=label,
-                                                                forward_context_length_min=forward_context_length_min,
-                                                                authorize_direct_transition=authorize_direct_transition)
-        else:
-            indices: List[int] = self._continuations(index_state=index_state,
-                                                     forward_context_length_min=forward_context_length_min,
-                                                     authorize_direct_transition=authorize_direct_transition)
-
-        return indices
-
-    # TODO: REMOVE
-    # def get_internal_corpus_model(self) -> Tuple[List[Optional[T]], List[Optional[Dyci2Label]]]:
-    #     return self.sequence, self.labels
-
-    def internal_sequence_length(self) -> int:
-        return len(self.sequence)
-
-    def get_event_by_internal_index(self, index: int) -> Optional[T]:
-        return self.sequence[index]
-
-    def internal_index_last_state(self) -> int:
-        """ Index of the last state in the model."""
-        return len(self.labels) - 1
-
     def feedback(self, output_event: Optional[Candidate]) -> None:
         pass  # No action on runtime navigation feedback
 
@@ -188,16 +158,29 @@ class FactorOracle(Generic[T], Model):
     def decode_with_transform(self, transform: Transform) -> None:
         self.labels = [None] + transform.decode_sequence(self.labels[1::])
 
+    def get_internal_corpus_model(self) -> Tuple[List[Optional[T]], List[Optional[Dyci2Label]]]:
+        return self.sequence, self.labels
+
+    def get_internal_sequence_length(self) -> int:
+        return len(self.sequence)
+
+    def get_event_by_internal_index(self, index: int) -> Optional[T]:
+        return self.sequence[index]
+
+    def get_internal_index_last_state(self) -> int:
+        """ Index of the last state in the model."""
+        return len(self.labels) - 1
+
     def print_model(self):
         """
         Basic representation of a Factor Oracle automaton.
         """
-        for i in range(self.internal_index_last_state() + 1):
+        for i in range(self.get_internal_index_last_state() + 1):
 
             print_reverse_suffix_links = ""
             print_factor_links = ""
 
-            if i < self.internal_index_last_state():
+            if i < self.get_internal_index_last_state():
                 if i in self.factor_links.keys():
                     for factor_link in self.factor_links[i]:
                         print_factor_links += "-{}->{} ".format(factor_link[0], factor_link[1])
@@ -208,8 +191,350 @@ class FactorOracle(Generic[T], Model):
             print("({}):{}".format(i, self.labels[i]) + "  " + "..>{}".format(
                 self.suffix_links[i]) + "  " + print_factor_links + "  " + print_reverse_suffix_links)
 
-            if i < self.internal_index_last_state():
+            if i < self.get_internal_index_last_state():
                 print(" |\n {}\n |\n V".format(self.direct_transitions[i][0]))
+
+    ################################################################################################################
+    # PUBLIC: QUERY MODEL FOR INFORMATION (DOES NOT MUTATE STATE)
+    ################################################################################################################
+
+    def follow_suffix_links_from(self,
+                                 index_state: int,
+                                 include_init_state: bool = True) -> List[int]:
+        """
+        Suffix path from a given index.
+
+        # :param index_state: start index
+        # :type index_state: int
+        # :return: Indexes in the automaton of the states that can be reached from the state at index index_state
+        # following suffix links.
+        # :rtype: list (int)
+
+        """
+
+        index_pointed_by_suffix_link = self.suffix_links.get(index_state)
+        if index_pointed_by_suffix_link is None:
+            return []
+        else:
+            if index_pointed_by_suffix_link == 0:
+                if include_init_state:
+                    return [0]
+                else:
+                    return []
+            else:
+                return [index_pointed_by_suffix_link] + self.follow_suffix_links_from(index_pointed_by_suffix_link,
+                                                                                      include_init_state)
+
+    def follow_reverse_suffix_links_from(self, index_state: int) -> List[int]:
+        """
+        Reverse suffix paths from a given index.
+
+        :param index_state: start index
+        :type index_state: int
+        :return: Indexes in the automaton of the states that can be reached from the state at index index_state
+        following reverse suffix links.
+        :rtype: list (int)
+
+        """
+        # print(" ****** PROCESS {} : BEGIN".format(index_state))
+        indexes_pointed_by_reverse_suffix_links = self.reverse_suffix_links.get(index_state)
+        if indexes_pointed_by_reverse_suffix_links:
+            # print("PROCESS {} :init indexes_pointed... = {}".format(index_state, indexes_pointed_by_reverse_suffix_links))
+            indexes_states = []
+            for index_pointed_by_reverse_suffix_link in indexes_pointed_by_reverse_suffix_links:
+                # print("PROCESS {} : STEP {}".format(index_state, index_pointed_by_reverse_suffix_link))
+                if not (index_pointed_by_reverse_suffix_link in indexes_states):
+                    indexes_states.append(index_pointed_by_reverse_suffix_link)
+                # print("PROCESS {} : RESULT BECOMES = {}".format(index_state, indexes_states))
+                # if index_pointed_by_reverse_suffix_link < self.index_last_state()
+                #       and not(self.reverse_suffix_links.get(index_pointed_by_reverse_suffix_link) in indexes_states):
+                # if index_pointed_by_reverse_suffix_link < self.index_last_state():
+                if self.reverse_suffix_links.get(index_pointed_by_reverse_suffix_link):
+                    for rs in self.reverse_suffix_links.get(index_pointed_by_reverse_suffix_link):
+                        if not (rs in indexes_states):
+                            indexes_states.append(rs)
+                            if rs < self.get_internal_index_last_state():
+                                # print("PROCESS {} : AND LAUNCHING SAME FUNCTION FROM = {}"
+                                # .format(index_state, index_pointed_by_reverse_suffix_link))
+                                # print("-- PROCESS {} : LAUNCH {}".format(index_state,index_pointed_by_reverse_suffix_link))
+                                indexes_states += self.follow_reverse_suffix_links_from(rs)
+            # else:
+            # 	print("PROCESS {} : END --".format(index_state))
+            # 	return []
+            # print("PROCESS {} : END --".format(index_state))
+            return list(set(indexes_states))
+        else:
+            # print("PROCESS {} : END --".format(index_state))
+            return []
+
+    def follow_suffix_links_then_reverse_from(self, index_state: int) -> List[int]:
+        """
+        States that can be reached using suffix links from the state at index index_state, and then the reverse suffix
+        links leaving these states.
+
+        :param index_state: start index
+        :type index_state: int
+        :return: Indexes in the automaton of the states that can be reached using suffix links from the state at index
+                 index_state, and then the reverse suffix links leaving these states.
+        :rtype: list (int)
+
+        """
+        # print("\nMODEL.PY : PROCESS {} : follow_..._then_... at index {}".format(index_state,index_state))
+        suffix_path = self.follow_suffix_links_from(index_state, include_init_state=False)
+        result = suffix_path
+        # print("{} : **** STEP 1 : suffix_path = {}".format(index_state,suffix_path))
+        for s in suffix_path:
+            # print("{} : **** STEP 2 : s = {} / reverese de s = {} / result = {} / LAUNCH = {} "
+            #       .format(index_state,s, self.reverse_suffix_links.get(s), result,
+            #              (self.reverse_suffix_links.get(s) in result)))
+            if self.reverse_suffix_links.get(s):
+                for rs in self.reverse_suffix_links.get(s):
+                    if not (rs in result):
+                        # print("{} : STEP 2 : LAUNCH s = {}".format(index_state,s))
+                        reverse = self.follow_reverse_suffix_links_from(s)
+                        # print("{} : STEP 2 : REVERSE (s = {}) = {}".format(index_state,s,reverse))
+                        result += reverse
+            else:
+                # print("{} : **** STEP 2 : s = {} :: NO LAUNCH".format(index_state,s))
+                pass
+        return list(set(result))
+
+    def similar_backward_context(self, index_state: int) -> List[int]:
+        """
+        Some states sharing a common (backward) context with the state at index index_state in the automaton.
+
+        :param index_state: start index
+        :type index_state: int
+        :return: Indexes in the automaton of the states sharing a common (backward) context with the state at index
+        index_state in the automaton.
+        :rtype: list (int)
+        :see also: https://hal.archives-ouvertes.fr/hal-01161388
+        :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
+
+        :Example:
+
+        >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
+        >>> #labels = [s[0] for s in sequence]
+        >>> #FON = FactorOracleNavigator(sequence, labels)
+        >>>
+        >>> index = 6
+        >>> #similar_backward_context = FON._similar_backward_context(index)
+        >>> #print("Some states with backward context similar to that of state at index {}: {}".format(index, similar_backward_context))
+
+
+        """
+        # print("\n\n\n$$$$$$$$$$$$\nSIMILAR BACKWARD {}".format(index_state))
+        result = list(set(
+            self.follow_reverse_suffix_links_from(index_state) + self.follow_suffix_links_then_reverse_from(
+                index_state)))
+        if index_state in result:
+            result.remove(index_state)
+        return result
+
+    def similar_contexts(self,
+                         index_state: int,
+                         forward_context_length_min: int = 1,
+                         equiv: Optional[Callable] = None) -> List[int]:
+        """ Some states sharing a common backward context and a common forward context with the state at index
+        index_state in the automaton.
+        The lengths of the common backward contexts are given by the Factor Oracle automaton, the forward context is
+        imposed by a parameter.
+
+        :param index_state: start index
+        :type index_state: int
+        :param forward_context_length_min: minimum length of the forward common context
+        :type forward_context_length_min: int
+        :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        :type equiv: function
+        :return: Indexes of the states in the automaton sharing a common backward context and a common forward context
+                 with the state at index index_state in the automaton.
+        :rtype: list (int)
+        :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
+
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+
+        :Example:
+
+        >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
+        >>> #labels = [s[0] for s in sequence]
+        >>> #FON = FactorOracleNavigator(sequence, labels)
+        >>>
+        >>> index = 6
+        >>> forward_context_length_min = 1
+        >>> #similar_contexts = FON._similar_contexts(index, forward_context_length_min)
+        >>> #print("Some states with similar contexts (with minimum forward context length = {}) to that of state at index"
+        >>> #      "{}: {}".format(forward_context_length_min, index, similar_contexts))
+
+        """
+
+        if equiv is None:
+            equiv = self.equiv
+
+        forward_context_length_min = max(0, forward_context_length_min)
+
+        # similar_contexts = [self.direct_transitions[index]
+        #                     for index in self.similar_backward_context(index_state)
+        #                     if self.direct_transitions.get(index)
+        #                     and self.length_common_forward_context(index_state, index, equiv) >= forward_context_length_min]
+        similar_contexts = [index for index in self.similar_backward_context(index_state) if
+                            self.length_common_forward_context(index_state, index, equiv)
+                            >= forward_context_length_min]
+
+        return similar_contexts
+
+    # TODO : introduce quality with length of the backward context
+    def continuations(self,
+                      index_state: int,
+                      forward_context_length_min: int = 1,
+                      equiv: Optional[Callable] = None,
+                      authorize_direct_transition: bool = True) -> List[int]:
+
+        """ Possible continuations from the state at index index_state in the automaton, i.e. direct transition and
+        states reached using suffix links and reverse suffix links.
+        These states follow states sharing a common backward context and a common forward context with the state at
+        index index_state in the automaton.
+        The lengths of the common backward contexts are given by the Factor Oracle automaton, the forward context is
+        imposed by a parameter.
+
+        :param index_state: start index
+        :type index_state: int
+        :param forward_context_length_min: minimum length of the forward common context
+        :type forward_context_length_min: int
+        :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        :type equiv: function
+        :param authorize_direct_transition: include direct transitions ?
+        :type authorize_direct_transition: bool
+        :return: Indexes in the automaton of the possible continuations from the state at index index_state in the
+        automaton.
+        :rtype: list (int)
+        :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
+
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+
+        :Example:
+
+        >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
+        >>> #labels = [s[0] for s in sequence]
+        >>> #FON = FactorOracleNavigator(sequence, labels)
+        >>>
+        >>> index = 6
+        >>> #forward_context_length_min = 1
+        >>> #continuations = FON._continuations(index, forward_context_length_min)
+        >>> #print("Possible continuations from state at index {} (with minimum forward context length = {}): {}"
+        >>> #      .format(index, forward_context_length_min, continuations))
+
+
+        """
+        if equiv is None:
+            equiv = self.equiv
+
+        continuations = [s + 1 for s in self.similar_contexts(index_state, forward_context_length_min, equiv) if
+                         s + 1 <= self.get_internal_index_last_state()]
+
+        if authorize_direct_transition:
+            direct_transition = self.direct_transitions.get(index_state)
+            if direct_transition:
+                continuations.append(self.direct_transitions.get(index_state)[1])
+
+        return continuations
+
+    def continuations_with_label(self,
+                                 index_state: int,
+                                 required_label: Dyci2Label,
+                                 forward_context_length_min: int = 1,
+                                 equiv: Optional[Callable] = None,
+                                 authorize_direct_transition: bool = True) -> List[int]:
+
+        """ Possible continuations labeled by required_label from the state at index index_state in the automaton.
+
+        # :param index_state: start index
+        # :type index_state: int
+        # :param required_label: label to read
+        # :param forward_context_length_min: minimum length of the forward common context
+        # :type forward_context_length_min: int
+        # :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        # :type equiv: function
+        # :param authorize_direct_transition: include direct transitions?
+        # :type authorize_direct_transition: bool
+        # :return: Indexes in the automaton of the possible continuations labeled by required_label from the state at
+        # index index_state in the automaton.
+        # :rtype: list (int)
+        # :see also: method from_state_read_label (class FactorOracle) used in the construction algorithm. Difference :
+        #            only uses the direct transition and the suffix link leaving the state.
+        #
+        # :!: **equiv** has to be consistent with the type of the elements in labels.
+
+
+        """
+        if equiv is None:
+            equiv = self.equiv
+
+        return [s for s in
+                self.continuations(index_state, forward_context_length_min, equiv, authorize_direct_transition) if
+                equiv(required_label, self.labels[s])]
+
+    # TODO : Use prefix indexing algo
+    def length_common_forward_context(self,
+                                      index_state1: int,
+                                      index_state2: int,
+                                      equiv: Optional[Callable] = None) -> int:
+
+        """ Length of the forward context shared by two states in the sequence.
+
+        :type index_state1: int
+        :type index_state2: int
+        :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        :type equiv: function
+        :return: Length of the longest equivalent sequences of labels after these states.
+        :rtype: int
+
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+
+        """
+
+        if equiv is None:
+            equiv = self.equiv
+
+        length = 0
+        i_s1 = index_state1 + 1
+        i_s2 = index_state2 + 1
+        while i_s1 <= self.get_internal_index_last_state() and \
+                i_s2 <= self.get_internal_index_last_state() and \
+                equiv(self.labels[i_s1], self.labels[i_s2]):
+            length += 1
+            i_s1 += 1
+            i_s2 += 1
+        return length
+
+    # TODO : Method of a "sequence" class ? Use LRS ?
+    def length_common_backward_context(self,
+                                       index_state1: int,
+                                       index_state2: int,
+                                       equiv: Optional[Callable] = None) -> int:
+
+        """ Length of the backward context shared by two states in the sequence.
+
+        :type index_state1: int
+        :type index_state2: int
+        :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        :type equiv: function
+        :return: Length of the longest equivalent sequences of labels before these states.
+        :rtype: int
+
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+
+        """
+        if equiv is None:
+            equiv = self.equiv
+
+        length = 0
+        i_s1 = index_state1 - 1
+        i_s2 = index_state2 - 1
+        while i_s1 >= 0 and i_s2 >= 0 and equiv(self.labels[i_s1], self.labels[i_s2]):
+            length += 1
+            i_s1 -= 1
+            i_s2 -= 1
+        return length
 
     def is_recognized(self, word, equiv=None):
         """
@@ -260,8 +585,8 @@ class FactorOracle(Generic[T], Model):
         """
         self.sequence.append(None)
         self.labels.append(None)
-        self.suffix_links[self.internal_index_last_state()] = None
-        self.reverse_suffix_links[self.internal_index_last_state()] = []
+        self.suffix_links[self.get_internal_index_last_state()] = None
+        self.reverse_suffix_links[self.get_internal_index_last_state()] = []
 
     def _add_direct_transition(self, index_state1, label, index_state2):
         """ Adds a transition labelled by 'label' from the state at index 'index_state1' to the state at index
@@ -318,328 +643,3 @@ class FactorOracle(Generic[T], Model):
                     for t in transitions_with_right_label:
                         index_state2 = t[1]
         return index_state2
-
-    ################################################################################################################
-    # PRIVATE: NAVIGATION METHODS   # TODO[Jerome] The term NAVIGATION might not be proper here
-    ################################################################################################################
-
-    def _follow_suffix_links_from(self, index_state, include_init_state=True):
-        """
-        Suffix path from a given index.
-
-        :param index_state: start index
-        :type index_state: int
-        :return: Indexes in the automaton of the states that can be reached from the state at index index_state
-        following suffix links.
-        :rtype: list (int)
-
-        """
-
-        index_pointed_by_suffix_link = self.suffix_links.get(index_state)
-        if index_pointed_by_suffix_link is None:
-            return []
-        else:
-            if index_pointed_by_suffix_link == 0:
-                if include_init_state:
-                    return [0]
-                else:
-                    return []
-            else:
-                return [index_pointed_by_suffix_link] + self._follow_suffix_links_from(index_pointed_by_suffix_link,
-                                                                                       include_init_state)
-
-    def _follow_reverse_suffix_links_from(self, index_state):
-        """
-        Reverse suffix paths from a given index.
-
-        :param index_state: start index
-        :type index_state: int
-        :return: Indexes in the automaton of the states that can be reached from the state at index index_state
-        following reverse suffix links.
-        :rtype: list (int)
-
-        """
-        # print(" ****** PROCESS {} : BEGIN".format(index_state))
-        indexes_pointed_by_reverse_suffix_links = self.reverse_suffix_links.get(index_state)
-        if indexes_pointed_by_reverse_suffix_links:
-            # print("PROCESS {} :init indexes_pointed... = {}".format(index_state, indexes_pointed_by_reverse_suffix_links))
-            indexes_states = []
-            for index_pointed_by_reverse_suffix_link in indexes_pointed_by_reverse_suffix_links:
-                # print("PROCESS {} : STEP {}".format(index_state, index_pointed_by_reverse_suffix_link))
-                if not (index_pointed_by_reverse_suffix_link in indexes_states):
-                    indexes_states.append(index_pointed_by_reverse_suffix_link)
-                # print("PROCESS {} : RESULT BECOMES = {}".format(index_state, indexes_states))
-                # if index_pointed_by_reverse_suffix_link < self.index_last_state()
-                #       and not(self.reverse_suffix_links.get(index_pointed_by_reverse_suffix_link) in indexes_states):
-                # if index_pointed_by_reverse_suffix_link < self.index_last_state():
-                if self.reverse_suffix_links.get(index_pointed_by_reverse_suffix_link):
-                    for rs in self.reverse_suffix_links.get(index_pointed_by_reverse_suffix_link):
-                        if not (rs in indexes_states):
-                            indexes_states.append(rs)
-                            if rs < self.internal_index_last_state():
-                                # print("PROCESS {} : AND LAUNCHING SAME FUNCTION FROM = {}"
-                                # .format(index_state, index_pointed_by_reverse_suffix_link))
-                                # print("-- PROCESS {} : LAUNCH {}".format(index_state,index_pointed_by_reverse_suffix_link))
-                                indexes_states += self._follow_reverse_suffix_links_from(rs)
-            # else:
-            # 	print("PROCESS {} : END --".format(index_state))
-            # 	return []
-            # print("PROCESS {} : END --".format(index_state))
-            return list(set(indexes_states))
-        else:
-            # print("PROCESS {} : END --".format(index_state))
-            return []
-
-    def _follow_suffix_links_then_reverse_from(self, index_state):
-        """
-        States that can be reached using suffix links from the state at index index_state, and then the reverse suffix
-        links leaving these states.
-
-        :param index_state: start index
-        :type index_state: int
-        :return: Indexes in the automaton of the states that can be reached using suffix links from the state at index
-                 index_state, and then the reverse suffix links leaving these states.
-        :rtype: list (int)
-
-        """
-        # print("\nMODEL.PY : PROCESS {} : follow_..._then_... at index {}".format(index_state,index_state))
-        suffix_path = self._follow_suffix_links_from(index_state, include_init_state=False)
-        result = suffix_path
-        # print("{} : **** STEP 1 : suffix_path = {}".format(index_state,suffix_path))
-        for s in suffix_path:
-            # print("{} : **** STEP 2 : s = {} / reverese de s = {} / result = {} / LAUNCH = {} "
-            #       .format(index_state,s, self.reverse_suffix_links.get(s), result,
-            #              (self.reverse_suffix_links.get(s) in result)))
-            if self.reverse_suffix_links.get(s):
-                for rs in self.reverse_suffix_links.get(s):
-                    if not (rs in result):
-                        # print("{} : STEP 2 : LAUNCH s = {}".format(index_state,s))
-                        reverse = self._follow_reverse_suffix_links_from(s)
-                        # print("{} : STEP 2 : REVERSE (s = {}) = {}".format(index_state,s,reverse))
-                        result += reverse
-            else:
-                # print("{} : **** STEP 2 : s = {} :: NO LAUNCH".format(index_state,s))
-                pass
-        return list(set(result))
-
-    def _similar_backward_context(self, index_state):
-        """
-        Some states sharing a common (backward) context with the state at index index_state in the automaton.
-
-        :param index_state: start index
-        :type index_state: int
-        :return: Indexes in the automaton of the states sharing a common (backward) context with the state at index
-        index_state in the automaton.
-        :rtype: list (int)
-        :see also: https://hal.archives-ouvertes.fr/hal-01161388
-        :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
-
-        :Example:
-
-        >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-        >>> #labels = [s[0] for s in sequence]
-        >>> #FON = FactorOracleNavigator(sequence, labels)
-        >>>
-        >>> index = 6
-        >>> #similar_backward_context = FON._similar_backward_context(index)
-        >>> #print("Some states with backward context similar to that of state at index {}: {}".format(index, similar_backward_context))
-
-
-        """
-        # print("\n\n\n$$$$$$$$$$$$\nSIMILAR BACKWARD {}".format(index_state))
-        result = list(set(
-            self._follow_reverse_suffix_links_from(index_state) + self._follow_suffix_links_then_reverse_from(
-                index_state)))
-        if index_state in result:
-            result.remove(index_state)
-        return result
-
-    def _similar_contexts(self, index_state, forward_context_length_min=1, equiv: Optional[Callable] = None):
-        """ Some states sharing a common backward context and a common forward context with the state at index
-        index_state in the automaton.
-        The lengths of the common backward contexts are given by the Factor Oracle automaton, the forward context is
-        imposed by a parameter.
-
-        :param index_state: start index
-        :type index_state: int
-        :param forward_context_length_min: minimum length of the forward common context
-        :type forward_context_length_min: int
-        :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        :type equiv: function
-        :return: Indexes of the states in the automaton sharing a common backward context and a common forward context
-                 with the state at index index_state in the automaton.
-        :rtype: list (int)
-        :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        :Example:
-
-        >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-        >>> #labels = [s[0] for s in sequence]
-        >>> #FON = FactorOracleNavigator(sequence, labels)
-        >>>
-        >>> index = 6
-        >>> forward_context_length_min = 1
-        >>> #similar_contexts = FON._similar_contexts(index, forward_context_length_min)
-        >>> #print("Some states with similar contexts (with minimum forward context length = {}) to that of state at index"
-        >>> #      "{}: {}".format(forward_context_length_min, index, similar_contexts))
-
-        """
-
-        if equiv is None:
-            equiv = self.equiv
-
-        forward_context_length_min = max(0, forward_context_length_min)
-
-        # similar_contexts = [self.direct_transitions[index]
-        #                     for index in self.similar_backward_context(index_state)
-        #                     if self.direct_transitions.get(index)
-        #                     and self.length_common_forward_context(index_state, index, equiv) >= forward_context_length_min]
-        similar_contexts = [index for index in self._similar_backward_context(index_state) if
-                            self._length_common_forward_context(index_state, index,
-                                                                equiv) >= forward_context_length_min]
-
-        return similar_contexts
-
-    # TODO : introduce quality with length of the backward context
-    def _continuations(self, index_state: int, forward_context_length_min: int = 1, equiv: Optional[Callable] = None,
-                       authorize_direct_transition: bool = True) -> List[int]:
-
-        """ Possible continuations from the state at index index_state in the automaton, i.e. direct transition and
-        states reached using suffix links and reverse suffix links.
-        These states follow states sharing a common backward context and a common forward context with the state at
-        index index_state in the automaton.
-        The lengths of the common backward contexts are given by the Factor Oracle automaton, the forward context is
-        imposed by a parameter.
-
-        :param index_state: start index
-        :type index_state: int
-        :param forward_context_length_min: minimum length of the forward common context
-        :type forward_context_length_min: int
-        :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        :type equiv: function
-        :param authorize_direct_transition: include direct transitions ?
-        :type authorize_direct_transition: bool
-        :return: Indexes in the automaton of the possible continuations from the state at index index_state in the
-        automaton.
-        :rtype: list (int)
-        :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        :Example:
-
-        >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-        >>> #labels = [s[0] for s in sequence]
-        >>> #FON = FactorOracleNavigator(sequence, labels)
-        >>>
-        >>> index = 6
-        >>> #forward_context_length_min = 1
-        >>> #continuations = FON._continuations(index, forward_context_length_min)
-        >>> #print("Possible continuations from state at index {} (with minimum forward context length = {}): {}"
-        >>> #      .format(index, forward_context_length_min, continuations))
-
-
-        """
-        if equiv is None:
-            equiv = self.equiv
-
-        continuations = [s + 1 for s in self._similar_contexts(index_state, forward_context_length_min, equiv) if
-                         s + 1 <= self.internal_index_last_state()]
-
-        if authorize_direct_transition:
-            direct_transition = self.direct_transitions.get(index_state)
-            if direct_transition:
-                continuations.append(self.direct_transitions.get(index_state)[1])
-
-        return continuations
-
-    def _continuations_with_label(self, index_state: int, required_label: Dyci2Label,
-                                  forward_context_length_min: int = 1, equiv: Optional[Callable] = None,
-                                  authorize_direct_transition: bool = True) -> List[int]:
-
-        """ Possible continuations labeled by required_label from the state at index index_state in the automaton.
-
-        :param index_state: start index
-        :type index_state: int
-        :param required_label: label to read
-        :param forward_context_length_min: minimum length of the forward common context
-        :type forward_context_length_min: int
-        :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        :type equiv: function
-        :param authorize_direct_transition: include direct transitions?
-        :type authorize_direct_transition: bool
-        :return: Indexes in the automaton of the possible continuations labeled by required_label from the state at
-        index index_state in the automaton.
-        :rtype: list (int)
-        :see also: method from_state_read_label (class FactorOracle) used in the construction algorithm. Difference :
-                   only uses the direct transition and the suffix link leaving the state.
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-
-        """
-        if equiv is None:
-            equiv = self.equiv
-
-        return [s for s in
-                self._continuations(index_state, forward_context_length_min, equiv, authorize_direct_transition) if
-                equiv(required_label, self.labels[s])]
-
-    # TODO : Use prefix indexing algo
-    def _length_common_forward_context(self, index_state1, index_state2, equiv: Optional[Callable] = None):
-
-        """ Length of the forward context shared by two states in the sequence.
-
-        :type index_state1: int
-        :type index_state2: int
-        :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        :type equiv: function
-        :return: Length of the longest equivalent sequences of labels after these states.
-        :rtype: int
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        """
-
-        if equiv is None:
-            equiv = self.equiv
-
-        length = 0
-        i_s1 = index_state1 + 1
-        i_s2 = index_state2 + 1
-        while i_s1 <= self.internal_index_last_state() and i_s2 <= self.internal_index_last_state() and equiv(self.labels[i_s1],
-                                                                                                              self.labels[i_s2]):
-            length += 1
-            i_s1 += 1
-            i_s2 += 1
-        return length
-
-    # TODO : Method of a "sequence" class ? Use LRS ?
-    def _length_common_backward_context(self, index_state1, index_state2, equiv=None):
-
-        """ Length of the backward context shared by two states in the sequence.
-
-        :type index_state1: int
-        :type index_state2: int
-        :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        :type equiv: function
-        :return: Length of the longest equivalent sequences of labels before these states.
-        :rtype: int
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        """
-        if equiv is None:
-            equiv = self.equiv
-
-        length = 0
-        i_s1 = index_state1 - 1
-        i_s2 = index_state2 - 1
-        while i_s1 >= 0 and i_s2 >= 0 and equiv(self.labels[i_s1], self.labels[i_s2]):
-            length += 1
-            i_s1 -= 1
-            i_s2 -= 1
-        return length
-

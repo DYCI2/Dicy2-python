@@ -98,11 +98,11 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         """ TODO: Docstring (very important!) """
 
     @abstractmethod
-    def free_navigation(self, ...) -> List[Tuple[int, int]]:
+    def free_navigation(self, **kwargs) -> List[int]:
         """ TODO: Docstring """
 
     @abstractmethod
-    def simply_guided_navigation(self, ...) -> List[Tuple[int, int]]:
+    def simply_guided_navigation(self, label: Dyci2Label, **kwargs) -> List[int]:
         """ TODO: Docstring"""
 
     @abstractmethod
@@ -149,11 +149,12 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         if self.corpus is None:
             raise StateError("No corpus has been loaded")
 
-        indices_and_scores: List[Tuple[int, int]]
+        indices: List[int]  # at the moment, list is always of length 0 or 1, it will never contain multiple candidates
         if isinstance(influence, LabelInfluence) and isinstance(influence.value, Dyci2Label):
-            indices_and_scores = self.simply_guided_navigation()
+            indices_and_scores = self.simply_guided_navigation(influence.value)
         elif isinstance(influence, NoInfluence):
-            indices_and_scores = self.free_navigation()
+            indices_and_scores = self.free_navigation(forward_context_length_min=forward_context_length_min,
+                                                      shift_index=shift_index)
         else:
             raise QueryError(f"class {self.__class__.__name__} cannot handle "
                              f"influences of type {influence.__class__.__name__}")
@@ -255,71 +256,126 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
         # Navigator has not generated anything
         if self.navigator.current_position_in_sequence < 0:
             if len(influences) > 0:
-                init_states: List[int] = [i for i in range(1, self.model.internal_index_last_state()) if
+                init_states: List[int] = [i for i in range(1, self.model.get_internal_index_last_state()) if
                                           self.model.direct_transitions.get(i)
                                           and self.model.equiv(self.model.direct_transitions.get(i)[0], influences[0])]
                 # TODO: Handle case where init_states is empty?
                 new_position: int = random.randint(0, len(init_states) - 1)
                 self.navigator.set_position_in_sequence(new_position)
             else:
-                new_position: int = random.randint(1, self.model.internal_index_last_state())
+                new_position: int = random.randint(1, self.model.get_internal_index_last_state())
                 self.navigator.set_position_in_sequence(new_position)
 
-    def free_navigation(self, ...) -> List[Optional[Tuple[int, int]]]:
-        pass  # TODO
+    def free_navigation(self,
+                        forward_context_length_min: int = 0,
+                        shift_index: int = 0) -> List[int]:
+        authorized_indices: List[int] = self.model.continuations(
+            index_state=self.navigator.current_position_in_sequence,
+            forward_context_length_min=forward_context_length_min
+        )
 
-    def simply_guided_navigation(self, ...) -> List[Optional[Tuple[int, int]]]:
-        pass  # TODO
+        authorized_indices = self.navigator.filter_using_history_and_taboos(authorized_indices)
+
+        authorized_indices = self._continuation_based_navigation(authorized_indices=authorized_indices,
+                                                                 required_label=None,
+                                                                 shift_index=shift_index)
+        return authorized_indices
+
+    def simply_guided_navigation(self,
+                                 required_label: Dyci2Label,
+                                 forward_context_length_min: int = 0,
+                                 shift_index: int = 0,
+                                 no_empty_event: bool = True
+                                 ) -> List[int]:
+        authorized_indices: List[int] = self.model.continuations_with_label(
+            index_state=self.navigator.current_position_in_sequence,
+            required_label=required_label,
+            forward_context_length_min=forward_context_length_min,
+        )
+
+        authorized_indices = self.navigator.filter_using_history_and_taboos(authorized_indices)
+
+        authorized_indices = self._continuation_based_navigation(authorized_indices=authorized_indices,
+                                                                 required_label=required_label,
+                                                                 shift_index=shift_index,
+                                                                 no_empty_event=no_empty_event)
+
+        return authorized_indices
+
+    # FIXME: This function should be entirely rewritten to **assign a weight** to matches, where each
+    #  follow_continuations never should remove any candidates, just adjust their scores. The intended behaviour is
+    #  to call all three functions (_using_transition, _with_jump, _without_continuation) on the same set, where the
+    #  last step might append further Candidates to the initial list of Candidates. Currently, it will only try to
+    #  call them after each other, but if there are matches in the first the second one will not be called, etc.
+    #
+    # TODO[Jerome]:
+    #  Also, while this function right now is useful avoid 50+ lines of code duplication, if we remove the messy
+    #  printing, the relevant behaviour can be condensed into <20 lines and should then be implemented directly in
+    #  free_navigation and simply_guided_navigation separately.
+    def _continuation_based_navigation(self,
+                                       authorized_indices: List[int],
+                                       required_label: Optional[Dyci2Label],
+                                       shift_index: Optional[int] = None,
+                                       no_empty_event: bool = True) -> List[int]:
+        str_print_info: str = f"{shift_index} " \
+                              f"(cont. = {self.navigator.current_continuity}/{self.navigator.max_continuity.get()})" \
+                              f": {self.navigator.current_position_in_sequence}"
+
+        # Case 1: Transition to state immediately following the previous one if reachable and matching
+        authorized_indices = self.navigator.follow_continuation_using_transition(authorized_indices,
+                                                                                 self.model.direct_transitions)
+
+        if len(authorized_indices) > 0:
+            str_print_info += f" -{self.navigator.labels[authorized_indices[0]]}-> {authorized_indices[0]}"
+
+            self.logger.debug(str_print_info)
+            return authorized_indices
+
+        # Case 2: Transition to any other filtered, reachable candidate matching the required_label
+        authorized_indices = self.navigator.follow_continuation_with_jump(authorized_indices,
+                                                                          self.model.direct_transitions)
+        if len(authorized_indices) > 0:
+            prev_index: int = authorized_indices[0] - 1
+            str_print_info += f" ...> {prev_index} - {self.model.direct_transitions.get(prev_index)[0]} " \
+                              f"-> {self.model.direct_transitions.get(prev_index)[1]}"
+            self.logger.debug(str_print_info)
+            return authorized_indices
+
+        # Case 3: Filtered, _unreachable_ candidates
+        # TODO: I have no idea why `last` is excluded here
+        additional_indices: List[int] = list(range(self.model.get_internal_index_last_state()))
+        additional_indices = self.navigator.filter_using_history_and_taboos(additional_indices)
+
+        if required_label is not None:
+            if no_empty_event:
+                # Case 3.1 (simply guided): Transition to any filtered _unreachable_ candidate matching the label
+                additional_indices = self.navigator.find_matching_label_without_continuation(required_label,
+                                                                                             additional_indices)
+                if len(additional_indices) > 0:
+                    authorized_indices = additional_indices
+        else:
+            # Case 3.2: Transition to any filtered _unreachable_ candidate (if free navigation, i.e. no label)
+            additional_indices = self.navigator.follow_continuation_with_jump(additional_indices,
+                                                                              self.model.direct_transitions)
+            if len(additional_indices) > 0:
+                authorized_indices = additional_indices
+
+        if len(authorized_indices) > 0:
+            str_print_info += f" xxnothingxx - random: {authorized_indices[0]}"
+        else:
+            str_print_info += " xxnothingxx"
+
+        self.logger.debug(str_print_info)
+
+        return authorized_indices
 
     def _clear(self) -> None:
         pass  # No additional actions required
 
-    # TODO: Migrate/remove
-    # def process(self,
-    #             influence: Influence,
-    #             forward_context_length_min: int = 0,
-    #             print_info: bool = False,
-    #             shift_index: int = 0,
-    #             no_empty_event: bool = True,
-    #             **kwargs) -> None:
-    #     if self.corpus is None:
-    #         raise StateError("No corpus has been loaded")
-    #
-    #     if isinstance(influence, LabelInfluence) and isinstance(influence.value, Dyci2Label):
-    #         required_label: Dyci2Label = influence.value
-    #     elif isinstance(influence, NoInfluence):
-    #         required_label: None = None
-    #     else:
-    #         raise QueryError(f"class {self.__class__.__name__} cannot handle "
-    #                          f"influences of type {influence.__class__.__name__}")
-    #
-    #     authorized_indices: List[int] = self.model.get_authorized_indices(
-    #         index_state=self.navigator.current_position_in_sequence,
-    #         label=required_label,
-    #         forward_context_length_min=forward_context_length_min,
-    #         authorize_direct_transition=True
-    #     )
-    #
-    #     # TODO[Jerome]: I think an easier solution would be to generate a generic binary `index_map` to handle all
-    #     #               index-based filtering and just apply this wherever it is needed
-    #     authorized_indices = self.navigator.filter_using_history_and_taboos(authorized_indices)
-    #
-    #     authorized_indices = self.navigator.weight_candidates(authorized_indices=authorized_indices,
-    #                                                           required_label=required_label,
-    #                                                           model_direct_transitions=self.model.direct_transitions,
-    #                                                           shift_index=shift_index,
-    #                                                           print_info=print_info, no_empty_event=no_empty_event)
-    #
-    #     if self.next_output is not None: # TODO: THIS SHOULD BE HANDLED BY DYCI2PROSPECTOR NOT FOPROSPECTOR. NO INTERNAL ACCESS TO SELF.NEXT_OUTPUT
-    #         warnings.warn(f"Existing state in {self.__class__.__name__} overwritten without output")
-    #
-    #     events: List[CorpusEvent] = [self.model.internal_event_at(i) for i in authorized_indices]
-    #     self.next_output = ListCandidates([Candidate(e, 1.0, None, self.corpus) for e in events], self.corpus)
-
     def _scenario_initial_candidate(self, labels: List[Dyci2Label],
                                     authorized_transformations: List[int]) -> Candidates:
         # use model's internal corpus model to handle the initial None object
-        valid_indices: List[int] = list(range(self.model.internal_sequence_length()))
+        valid_indices: List[int] = list(range(self.model.get_internal_sequence_length()))
         authorized_indices: List[int] = self.navigator.filter_using_history_and_taboos(valid_indices)
 
         use_intervals: bool = self._use_intervals(authorized_transformations)

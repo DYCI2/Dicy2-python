@@ -19,47 +19,41 @@ The classes defined in this module are used in association with models (cf. :mod
 **model navigator** classes (cf. :mod:`ModelNavigator`).
 
 """
-import logging
 from abc import ABC, abstractmethod
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Generic, TypeVar
 
 from dyci2.dyci2_label import Dyci2Label
-from merge.corpus import Corpus
-from merge.main.candidate import Candidate
-from merge.main.candidates import Candidates
-from merge.main.corpus_event import CorpusEvent
 from dyci2.parameter import Parametric
+from merge.main.candidate import Candidate
+
+T = TypeVar('T')
 
 
-class Navigator(Parametric, ABC):
-    """ """
+class Navigator(Parametric, Generic[T], ABC):
+    """ TODO: Docstring """
 
-    # def __init__(self, memory: Corpus, equiv: Callable = (lambda x, y: x == y), **kwargs):
-    #     self.logger = logging.getLogger(__name__)
-    #     self.memory: Corpus = memory
-    #     self.equiv: Callable = equiv
+    @abstractmethod
+    def learn_sequence(self,
+                       sequence: List[Optional[T]],
+                       labels: List[Optional[Dyci2Label]],
+                       equiv: Optional[Callable] = None) -> None:
+        """ TODO: Docstring (can be copied from Model / FactorOracle) """
 
-    # TODO: Update signatures
-    # @abstractmethod
-    # def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
-    #     """ TODO: Docstring """
-    #
-    # @abstractmethod
-    # def learn_event(self, event: CorpusEvent, equiv: Optional[Callable] = None):
-    #     """ TODO: Docstring """
-    #
-    # @abstractmethod
-    # def rewind_generation(self, index_state: int):
-    #     """ TODO: Docstring """
-    #
-    # @abstractmethod
-    # def weight_candidates(self, candidates: Candidates, required_label: Optional[Dyci2Label], **kwargs) -> Candidates:
-    #     """ TODO: Docstring """
-    #
-    # @abstractmethod
-    # def clear(self):
-    #     """ TODO: Docstring """
-    #
-    # @abstractmethod
-    # def feedback(self, output_event: Optional[Candidate]) -> None:
-    #     """ TODO: Docstring """
+    @abstractmethod
+    def learn_event(self,
+                    event: Optional[T],
+                    label: Optional[Dyci2Label],
+                    equiv: Optional[Callable] = None) -> None:
+        """ TODO: Docstring (can be copied from Model / FactorOracle) """
+
+    @abstractmethod
+    def feedback(self, output_event: Optional[Candidate]) -> None:
+        """ TODO: Docstring """
+
+    @abstractmethod
+    def rewind_generation(self, time_index: int) -> None:
+        """ TODO: Docstring """
+
+    @abstractmethod
+    def clear(self) -> None:
+        """ TODO: Docstring """

@@ -24,8 +24,6 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, List, Type, Dict, Union, TypeVar, Generic
 
-from merge.corpus import Corpus
-
 from dyci2.dyci2_label import Dyci2Label
 from dyci2.factor_oracle_model import FactorOracle
 from dyci2.factor_oracle_navigator import FactorOracleNavigator
@@ -35,10 +33,10 @@ from dyci2.parameter import Parametric
 from dyci2.transforms import Transform, TransposeTransform
 from merge.main.candidate import Candidate
 from merge.main.candidates import Candidates, ListCandidates
+from merge.main.corpus import Corpus
 from merge.main.corpus_event import CorpusEvent
 from merge.main.exceptions import QueryError, StateError
 from merge.main.influence import Influence, LabelInfluence, NoInfluence
-from merge.main.label import Label
 from merge.main.prospector import Prospector
 
 M = TypeVar('M', bound=Model)
@@ -116,7 +114,6 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
     def _clear(self) -> None:
         """ TODO: docstring """
 
-
     def read_memory(self, corpus: Corpus, **kwargs) -> None:
         if self.corpus is not None:
             raise StateError(f"Loading a new corpus into an existing {self.__class__.__name__} is not supported")
@@ -134,11 +131,11 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         if self.corpus is None:
             raise StateError("No corpus has been loaded")
 
-        label: Optional[Label] = event.get_label(self.label_type)
+        label: Optional[Dyci2Label] = event.get_label(self.label_type)
         if isinstance(event, self.corpus.get_content_type()) and label is not None:
             self.corpus.append(event)
             self.model.learn_event(event, label)
-            self.navigator.learn_event(event)
+            self.navigator.learn_event(event, label)
         else:
             raise TypeError(f"Invalid content/label type for event {str(event)}")
 
@@ -258,24 +255,24 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
         # Navigator has not generated anything
         if self.navigator.current_position_in_sequence < 0:
             if len(influences) > 0:
-                init_states: List[int] = [i for i in range(1, self.model.index_last_state()) if
+                init_states: List[int] = [i for i in range(1, self.model.internal_index_last_state()) if
                                           self.model.direct_transitions.get(i)
                                           and self.model.equiv(self.model.direct_transitions.get(i)[0], influences[0])]
                 # TODO: Handle case where init_states is empty?
                 new_position: int = random.randint(0, len(init_states) - 1)
                 self.navigator.set_position_in_sequence(new_position)
             else:
-                new_position: int = random.randint(1, self.model.index_last_state())
+                new_position: int = random.randint(1, self.model.internal_index_last_state())
                 self.navigator.set_position_in_sequence(new_position)
 
     def free_navigation(self, ...) -> List[Optional[Tuple[int, int]]]:
-        pass # TODO
+        pass  # TODO
 
     def simply_guided_navigation(self, ...) -> List[Optional[Tuple[int, int]]]:
-        pass # TODO
+        pass  # TODO
 
     def _clear(self) -> None:
-        pass    # No additional actions required
+        pass  # No additional actions required
 
     # TODO: Migrate/remove
     # def process(self,
@@ -322,7 +319,7 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
     def _scenario_initial_candidate(self, labels: List[Dyci2Label],
                                     authorized_transformations: List[int]) -> Candidates:
         # use model's internal corpus model to handle the initial None object
-        valid_indices: List[int] = list(range(self.model.internal_corpus_model_length()))
+        valid_indices: List[int] = list(range(self.model.internal_sequence_length()))
         authorized_indices: List[int] = self.navigator.filter_using_history_and_taboos(valid_indices)
 
         use_intervals: bool = self._use_intervals(authorized_transformations)
@@ -348,7 +345,9 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
             sequence_to_interval_fun=func_intervals_to_labels,
             equiv_interval=equiv_mod_interval)
 
-        # Select the best candidate. TODO: This should be modularized to Generator rather than just using best candidate
+        # TODO: This should be modularized to Generator rather than just using best candidate, i.e.
+        #  bypass self._choose_prefix_from_list entirely (and delete the function)
+        # Select the best candidate.
         s: Optional[int]  # index
         t: int  # transform
         length_selected_prefix: Optional[int]
@@ -381,4 +380,3 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
             self.logger.debug("No prefix found")
 
         return s, t, length_selected_prefix
-

@@ -2,7 +2,7 @@ import copy
 import logging
 import random
 import warnings
-from typing import List, Optional, Callable, Dict, Tuple, Generic, TypeVar
+from typing import List, Optional, Callable, Dict, Tuple, TypeVar
 
 from dyci2 import intervals
 from dyci2.dyci2_label import Dyci2Label
@@ -11,13 +11,13 @@ from dyci2.parameter import Parameter, OrdinalRange
 from dyci2.prefix_indexing import PrefixIndexing
 from dyci2.utils import noneIsInfinite
 from merge.main.candidate import Candidate
-from merge.main.corpus_event import CorpusEvent
 
 T = TypeVar('T')
 
 
-class FactorOracleNavigator(Generic[T], Navigator):
+class FactorOracleNavigator(Navigator[T]):
     """
+    TODO: Update docstring
     The class :class:`~Navigator.Navigator` implements **parameters and methods that are used to navigate through a
     model of sequence**.
     These parameters and methods are **model-independent**.
@@ -106,16 +106,20 @@ class FactorOracleNavigator(Generic[T], Navigator):
         object.__setattr__(self, name_attr, val_attr)
         # TODO : SUPPRIMER TRACE AVANT TEMPS PERFORMANCE
 
-    def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
+    def learn_sequence(self,
+                       sequence: List[Optional[T]],
+                       labels: List[Optional[Dyci2Label]],
+                       equiv: Optional[Callable] = None) -> None:
         """
+        TODO: Update docstring
         Learns (appends) a new sequence in the model.
 
-        :param sequence: sequence learnt in the Factor Oracle automaton
-        :type sequence: list or str
+        # :param sequence: sequence learnt in the Factor Oracle automaton
+        # :type sequence: list or str
         # :param labels: sequence of labels chosen to describe the sequence
         # :type labels: list or str
-        :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-        :type equiv: function
+        # :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
+        # :type equiv: function
 
         :!: **equiv** has to be consistent with the type of the elements in labels.
 
@@ -123,16 +127,56 @@ class FactorOracleNavigator(Generic[T], Navigator):
         if equiv is None:
             equiv = self.equiv
 
-        for event in sequence:
-            self.learn_event(event, equiv)
+        for event, label in zip(sequence, labels):
+            self.learn_event(event, label, equiv)
 
-    def learn_event(self, event: CorpusEvent, equiv: Callable = None):
+    def learn_event(self,
+                    event: Optional[T],
+                    label: Optional[Dyci2Label],
+                    equiv: Optional[Callable] = None) -> None:
         current_last_idx = len(self.history_and_taboos) - 1
         self._authorize_indexes([current_last_idx])
         self.history_and_taboos.append(None)
 
-    def rewind_generation(self, index_state: int):
-        self._go_to_anterior_state_using_execution_trace(index_in_navigation=index_state)
+    def rewind_generation(self, time_index: int) -> None:
+        self._go_to_anterior_state_using_execution_trace(index_in_navigation=time_index)
+
+    def clear(self):
+        """ (Re)initializes the navigation parameters (current navigation index, history of retrieved indexes,
+        current continuity,...). """
+        self.history_and_taboos = [None] + [0] * (len(self.sequence) - 1)
+        self.current_continuity = 0
+        self.current_position_in_sequence = -1
+        self.current_navigation_index = - 1
+
+    def feedback(self, output_event: Optional[Candidate]) -> None:
+        if output_event is not None:
+            self.set_position_in_sequence(output_event.event.index + 1)  # To account for Model's initial None
+
+    def index_last_state(self):
+        """ Index of the last state in the model."""
+        return len(self.labels) - 1
+
+    def set_position_in_sequence(self, val_attr: Optional[int]):
+        self.current_position_in_sequence = val_attr
+        if val_attr is not None and val_attr > -1:
+            self.current_navigation_index += 1
+            self.logger.debug("\nNEW POSITION IN SEQUENCE: {}".format(val_attr))
+            self.logger.debug("NEW NAVIGATION INDEX: {}".format(self.current_navigation_index))
+            self.logger.debug("OLD LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
+
+            if self.current_navigation_index > 0 and val_attr == \
+                    self.execution_trace[self.current_navigation_index - 1]["current_position_in_sequence"] + 1:
+                self.current_continuity += 1
+                self.logger.debug("Continuity + 1 = {}".format(self.current_continuity))
+            else:
+                self.current_continuity = 0
+                self.logger.debug("Continuity set to 0")
+
+            self._update_history_and_taboos(val_attr)
+            self._record_execution_trace(self.current_navigation_index)
+            self.logger.debug("NEW LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
+        # print("NEW EXECUTION TRACE: {}".format(self.execution_trace))
 
     # TODO: Since the library is based on a loose definition of interface without true polymorphism, there are issues
     #       with overriding functions while adding new position arguments (which is not allowed in python).
@@ -210,6 +254,10 @@ class FactorOracleNavigator(Generic[T], Navigator):
 
         return authorized_indices
 
+    ################################################################################################################
+    #   PUBLIC: NAVIGATION STRATEGIES
+    ################################################################################################################
+
     def find_prefix_matching_with_labels(self,
                                          use_intervals: bool,
                                          memory_labels: List[Optional[Dyci2Label]],
@@ -243,68 +291,6 @@ class FactorOracleNavigator(Generic[T], Navigator):
             )
 
         return index_delta_prefixes
-
-    def _go_to_anterior_state_using_execution_trace(self, index_in_navigation):
-
-        """
-        This method is called when the run of a new query rewrites previously generated anticipations.
-        It uses :attr:`self.execution_trace` to go back at the state where the navigator was at the "tiling time".
-
-        :param index_in_navigation: "tiling index" in the generated sequence
-        :type index_in_navigation: int
-
-        :see also: The list of the parameters of the model whose values are stored in the execution trace is defined in
-        :attr:`self.execution_trace_parameters`.
-
-        """
-
-        self.logger.debug(
-            "GO TO ANTERIOR STATE USING EXECUTION TRACE\nGoing back to state when {} was generated:\n{}".format(
-                index_in_navigation, self.execution_trace[index_in_navigation]))
-        history_after_generating_prev = self.execution_trace[index_in_navigation]
-        for name_slot, value_slot in history_after_generating_prev.items():
-            self.__dict__[name_slot] = value_slot
-
-    def clear(self):
-        """ (Re)initializes the navigation parameters (current navigation index, history of retrieved indexes,
-        current continuity,...). """
-        # self.history_and_taboos = [None] + [0] * (len(self.sequence) - 1)   # TODO[A] Breaking change, old code here
-        self.history_and_taboos = [None] + [0] * len(self.sequence)
-        self.current_continuity = 0
-        self.current_position_in_sequence = -1
-        self.current_navigation_index = - 1
-
-    def filter_using_history_and_taboos(self, indices: List[int]) -> List[int]:
-        filtered_list = [i for i in indices
-                         if (not (self.history_and_taboos[i] is None)
-                             and (self.avoid_repetitions_mode.get() < 2
-                                  or self.avoid_repetitions_mode.get() >= 2
-                                  and self.history_and_taboos[i] == 0))]
-        # print("Possible next indexes = {}, filtered list = {}".format(list_of_indexes, filtered_list))
-        return filtered_list
-
-    ################################################################################################################
-    #   PRIVATE
-    ################################################################################################################
-
-    def _record_execution_trace(self, index_in_navigation):
-        """
-        Stores in :attr:`self.execution_trace` the values of different parameters of the model when generating thefu
-        event in the sequence at the index given in argument.
-
-        :param index_in_navigation:
-        :type index_in_navigation: int
-
-        :see also: The list of the parameters of the model whose values are stored in the execution trace is defined
-        in :attr:`self.execution_trace_parameters`.
-
-        """
-        trace_index = {}
-        for name_slot in self.execution_trace_parameters:
-            # trace_index[name_slot] = copy.deepcopy(self.__dict__[name_slot])
-            trace_index[name_slot] = copy.deepcopy(self.__dict__[name_slot])
-
-        self.execution_trace[index_in_navigation] = trace_index
 
     def _follow_continuation_using_transition(self,
                                               authorized_indices: List[int],
@@ -395,9 +381,88 @@ class FactorOracleNavigator(Generic[T], Navigator):
             return [authorized_indices[random_choice]]
         return []
 
-    def feedback(self, output_event: Optional[Candidate]) -> None:
-        if output_event is not None:
-            self.set_position_in_sequence(output_event.event.index + 1)  # To account for Model's initial None
+    def _find_matching_label_without_continuation(self,
+                                                  required_label: Dyci2Label,
+                                                  authorized_indices: List[int],
+                                                  equiv: Optional[Callable] = None) -> List[int]:
+
+        # TODO[A]: This should probably return a list of candidates
+        """
+        Random state in the sequence matching required_label if self.no_empty_event is True (else None).
+
+        # :param required_label: label to read
+        # :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
+        # :type authorized_indexes: list(int)
+        # :param equiv: Compararison function given as a lambda function, default: self.equiv.
+        # :type equiv: function
+        # :return: index of the state
+        # :rtype: int
+
+        :!: **equiv** has to be consistent with the type of the elements in labels.
+
+        """
+        if equiv is None:
+            equiv = self.equiv
+
+        authorized_indices = [i for i in authorized_indices if equiv(self.labels[i], required_label)]
+        if len(authorized_indices) > 0:
+            random_choice: int = random.randint(0, len(authorized_indices) - 1)
+            return [authorized_indices[random_choice]]
+
+        return []
+
+    def filter_using_history_and_taboos(self, indices: List[int]) -> List[int]:
+        filtered_list = [i for i in indices
+                         if (not (self.history_and_taboos[i] is None)
+                             and (self.avoid_repetitions_mode.get() < 2
+                                  or self.avoid_repetitions_mode.get() >= 2
+                                  and self.history_and_taboos[i] == 0))]
+        # print("Possible next indexes = {}, filtered list = {}".format(list_of_indexes, filtered_list))
+        return filtered_list
+
+    ################################################################################################################
+    #   PRIVATE
+    ################################################################################################################
+
+    def _go_to_anterior_state_using_execution_trace(self, index_in_navigation):
+
+        """
+        This method is called when the run of a new query rewrites previously generated anticipations.
+        It uses :attr:`self.execution_trace` to go back at the state where the navigator was at the "tiling time".
+
+        :param index_in_navigation: "tiling index" in the generated sequence
+        :type index_in_navigation: int
+
+        :see also: The list of the parameters of the model whose values are stored in the execution trace is defined in
+        :attr:`self.execution_trace_parameters`.
+
+        """
+
+        self.logger.debug(
+            "GO TO ANTERIOR STATE USING EXECUTION TRACE\nGoing back to state when {} was generated:\n{}".format(
+                index_in_navigation, self.execution_trace[index_in_navigation]))
+        history_after_generating_prev = self.execution_trace[index_in_navigation]
+        for name_slot, value_slot in history_after_generating_prev.items():
+            self.__dict__[name_slot] = value_slot
+
+    def _record_execution_trace(self, index_in_navigation):
+        """
+        Stores in :attr:`self.execution_trace` the values of different parameters of the model when generating thefu
+        event in the sequence at the index given in argument.
+
+        :param index_in_navigation:
+        :type index_in_navigation: int
+
+        :see also: The list of the parameters of the model whose values are stored in the execution trace is defined
+        in :attr:`self.execution_trace_parameters`.
+
+        """
+        trace_index = {}
+        for name_slot in self.execution_trace_parameters:
+            # trace_index[name_slot] = copy.deepcopy(self.__dict__[name_slot])
+            trace_index[name_slot] = copy.deepcopy(self.__dict__[name_slot])
+
+        self.execution_trace[index_in_navigation] = trace_index
 
     def _update_history_and_taboos(self, index_in_sequence):
 
@@ -482,58 +547,3 @@ class FactorOracleNavigator(Generic[T], Navigator):
             if self._is_taboo(i):
                 s.append(i)
         self._authorize_indexes(s)
-
-    def _find_matching_label_without_continuation(self,
-                                                  required_label: Dyci2Label,
-                                                  authorized_indices: List[int],
-                                                  equiv: Optional[Callable] = None) -> List[int]:
-
-        # TODO[A]: This should probably return a list of candidates
-        """
-        Random state in the sequence matching required_label if self.no_empty_event is True (else None).
-
-        # :param required_label: label to read
-        # :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
-        # :type authorized_indexes: list(int)
-        # :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        # :type equiv: function
-        # :return: index of the state
-        # :rtype: int
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        """
-        if equiv is None:
-            equiv = self.equiv
-
-        authorized_indices = [i for i in authorized_indices if equiv(self.labels[i], required_label)]
-        if len(authorized_indices) > 0:
-            random_choice: int = random.randint(0, len(authorized_indices) - 1)
-            return [authorized_indices[random_choice]]
-
-        return []
-
-    def index_last_state(self):
-        """ Index of the last state in the model."""
-        return len(self.labels) - 1
-
-    def set_position_in_sequence(self, val_attr: Optional[int]):
-        self.current_position_in_sequence = val_attr
-        if val_attr is not None and val_attr > -1:
-            self.current_navigation_index += 1
-            self.logger.debug("\nNEW POSITION IN SEQUENCE: {}".format(val_attr))
-            self.logger.debug("NEW NAVIGATION INDEX: {}".format(self.current_navigation_index))
-            self.logger.debug("OLD LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
-
-            if self.current_navigation_index > 0 and val_attr == \
-                    self.execution_trace[self.current_navigation_index - 1]["current_position_in_sequence"] + 1:
-                self.current_continuity += 1
-                self.logger.debug("Continuity + 1 = {}".format(self.current_continuity))
-            else:
-                self.current_continuity = 0
-                self.logger.debug("Continuity set to 0")
-
-            self._update_history_and_taboos(val_attr)
-            self._record_execution_trace(self.current_navigation_index)
-            self.logger.debug("NEW LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
-        # print("NEW EXECUTION TRACE: {}".format(self.execution_trace))

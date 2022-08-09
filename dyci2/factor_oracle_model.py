@@ -84,25 +84,12 @@ class FactorOracle(Generic[T], Model):
         self.reverse_suffix_links = {}
         self.equiv: Callable = equiv
 
-        self.init_model()
-
-    def init_model(self):
-        """
-        Creation of the initial state of the Factor Oracle automaton. ("Empty", no label, suffix links going "nowhere")
-        """
-        self.sequence.append(None)
-        self.labels.append(None)
-        self.suffix_links[self.index_last_state()] = None
-        self.reverse_suffix_links[self.index_last_state()] = []
-
-    def index_last_state(self):
-        """ Index of the last state in the model."""
-        return len(self.labels) - 1
+        self._init_model()
 
     def learn_sequence(self,
                        sequence: List[Optional[T]],
                        labels: List[Optional[Dyci2Label]],
-                       equiv: Optional[Callable] = None):
+                       equiv: Optional[Callable] = None) -> None:
         """
         Learns (appends) a new sequence in the model.
 
@@ -122,7 +109,10 @@ class FactorOracle(Generic[T], Model):
         for (event, label) in zip(sequence, labels):
             self.learn_event(event, label, equiv)
 
-    def learn_event(self, event: Optional[T], label: Optional[Dyci2Label], equiv: Optional[Callable] = None):
+    def learn_event(self,
+                    event: Optional[T],
+                    label: Optional[Dyci2Label],
+                    equiv: Optional[Callable] = None) -> None:
         """
         Learns (appends) a new state in the Factor Oracle automaton.
 
@@ -140,7 +130,7 @@ class FactorOracle(Generic[T], Model):
         self.sequence.append(event)
         self.labels.append(label)
 
-        index = self.index_last_state()
+        index = self.internal_index_last_state()
 
         label = self.labels[index]
         state = self.sequence[index]
@@ -159,7 +149,10 @@ class FactorOracle(Generic[T], Model):
         else:
             self._add_suffix_link(index, self._from_state_read_label(k, label, equiv))
 
-    def get_authorized_indices(self, index_state: int, label: Optional[Dyci2Label], forward_context_length_min: int = 1,
+    def get_authorized_indices(self,
+                               index_state: int,
+                               label: Optional[Dyci2Label],
+                               forward_context_length_min: int = 1,
                                authorize_direct_transition: bool = True) -> List[int]:
         if label is not None:
             indices: List[int] = self._continuations_with_label(index_state=index_state, required_label=label,
@@ -172,25 +165,39 @@ class FactorOracle(Generic[T], Model):
 
         return indices
 
-    def get_internal_corpus_model(self) -> Tuple[List[Optional[T]], List[Optional[Dyci2Label]]]:
-        return self.sequence, self.labels
+    # TODO: REMOVE
+    # def get_internal_corpus_model(self) -> Tuple[List[Optional[T]], List[Optional[Dyci2Label]]]:
+    #     return self.sequence, self.labels
 
-    def internal_corpus_model_length(self) -> int:
+    def internal_sequence_length(self) -> int:
         return len(self.sequence)
 
     def get_event_by_internal_index(self, index: int) -> Optional[T]:
         return self.sequence[index]
 
+    def internal_index_last_state(self) -> int:
+        """ Index of the last state in the model."""
+        return len(self.labels) - 1
+
+    def feedback(self, output_event: Optional[Candidate]) -> None:
+        pass  # No action on runtime navigation feedback
+
+    def encode_with_transform(self, transform: Transform) -> None:
+        self.labels = [None] + transform.encode_sequence(self.labels[1::])
+
+    def decode_with_transform(self, transform: Transform) -> None:
+        self.labels = [None] + transform.decode_sequence(self.labels[1::])
+
     def print_model(self):
         """
         Basic representation of a Factor Oracle automaton.
         """
-        for i in range(self.index_last_state() + 1):
+        for i in range(self.internal_index_last_state() + 1):
 
             print_reverse_suffix_links = ""
             print_factor_links = ""
 
-            if i < self.index_last_state():
+            if i < self.internal_index_last_state():
                 if i in self.factor_links.keys():
                     for factor_link in self.factor_links[i]:
                         print_factor_links += "-{}->{} ".format(factor_link[0], factor_link[1])
@@ -201,7 +208,7 @@ class FactorOracle(Generic[T], Model):
             print("({}):{}".format(i, self.labels[i]) + "  " + "..>{}".format(
                 self.suffix_links[i]) + "  " + print_factor_links + "  " + print_reverse_suffix_links)
 
-            if i < self.index_last_state():
+            if i < self.internal_index_last_state():
                 print(" |\n {}\n |\n V".format(self.direct_transitions[i][0]))
 
     def is_recognized(self, word, equiv=None):
@@ -246,6 +253,15 @@ class FactorOracle(Generic[T], Model):
     ################################################################################################################
     #   PRIVATE: MODEL CONSTRUCTION
     ################################################################################################################
+
+    def _init_model(self):
+        """
+        Creation of the initial state of the Factor Oracle automaton. ("Empty", no label, suffix links going "nowhere")
+        """
+        self.sequence.append(None)
+        self.labels.append(None)
+        self.suffix_links[self.internal_index_last_state()] = None
+        self.reverse_suffix_links[self.internal_index_last_state()] = []
 
     def _add_direct_transition(self, index_state1, label, index_state2):
         """ Adds a transition labelled by 'label' from the state at index 'index_state1' to the state at index
@@ -304,7 +320,7 @@ class FactorOracle(Generic[T], Model):
         return index_state2
 
     ################################################################################################################
-    # PRIVATE: NAVIGATION METHODS
+    # PRIVATE: NAVIGATION METHODS   # TODO[Jerome] The term NAVIGATION might not be proper here
     ################################################################################################################
 
     def _follow_suffix_links_from(self, index_state, include_init_state=True):
@@ -360,7 +376,7 @@ class FactorOracle(Generic[T], Model):
                     for rs in self.reverse_suffix_links.get(index_pointed_by_reverse_suffix_link):
                         if not (rs in indexes_states):
                             indexes_states.append(rs)
-                            if rs < self.index_last_state():
+                            if rs < self.internal_index_last_state():
                                 # print("PROCESS {} : AND LAUNCHING SAME FUNCTION FROM = {}"
                                 # .format(index_state, index_pointed_by_reverse_suffix_link))
                                 # print("-- PROCESS {} : LAUNCH {}".format(index_state,index_pointed_by_reverse_suffix_link))
@@ -486,10 +502,6 @@ class FactorOracle(Generic[T], Model):
 
         return similar_contexts
 
-    ################################################################################################################
-    #   LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY LEGACY   #
-    ################################################################################################################
-
     # TODO : introduce quality with length of the backward context
     def _continuations(self, index_state: int, forward_context_length_min: int = 1, equiv: Optional[Callable] = None,
                        authorize_direct_transition: bool = True) -> List[int]:
@@ -534,7 +546,7 @@ class FactorOracle(Generic[T], Model):
             equiv = self.equiv
 
         continuations = [s + 1 for s in self._similar_contexts(index_state, forward_context_length_min, equiv) if
-                         s + 1 <= self.index_last_state()]
+                         s + 1 <= self.internal_index_last_state()]
 
         if authorize_direct_transition:
             direct_transition = self.direct_transitions.get(index_state)
@@ -575,13 +587,6 @@ class FactorOracle(Generic[T], Model):
                 self._continuations(index_state, forward_context_length_min, equiv, authorize_direct_transition) if
                 equiv(required_label, self.labels[s])]
 
-    def length(self) -> int:
-
-        return len(self.sequence)
-
-    def feedback(self, output_event: Optional[Candidate]) -> None:
-        pass  # TODO: Implement
-
     # TODO : Use prefix indexing algo
     def _length_common_forward_context(self, index_state1, index_state2, equiv: Optional[Callable] = None):
 
@@ -604,8 +609,8 @@ class FactorOracle(Generic[T], Model):
         length = 0
         i_s1 = index_state1 + 1
         i_s2 = index_state2 + 1
-        while i_s1 <= self.index_last_state() and i_s2 <= self.index_last_state() and equiv(self.labels[i_s1],
-                                                                                            self.labels[i_s2]):
+        while i_s1 <= self.internal_index_last_state() and i_s2 <= self.internal_index_last_state() and equiv(self.labels[i_s1],
+                                                                                                              self.labels[i_s2]):
             length += 1
             i_s1 += 1
             i_s2 += 1
@@ -638,8 +643,3 @@ class FactorOracle(Generic[T], Model):
             i_s2 -= 1
         return length
 
-    def encode_with_transform(self, transform: Transform) -> None:
-        self.labels = [None] + transform.encode_sequence(self.labels[1::])
-
-    def decode_with_transform(self, transform: Transform) -> None:
-        self.labels = [None] + transform.decode_sequence(self.labels[1::])

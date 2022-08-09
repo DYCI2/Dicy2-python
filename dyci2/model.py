@@ -21,81 +21,74 @@ Main classes: :class:`~Model.Model`, :class:`~Model.FactorOracle`.
 Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
 
 """
-import logging
 from abc import ABC, abstractmethod
-from typing import Callable, List, Optional, Type
+from typing import Callable, List, Optional, TypeVar, Generic
 
 from dyci2.dyci2_label import Dyci2Label
-from merge.corpus import Corpus
-from merge.main.candidate import Candidate
-from merge.main.candidates import Candidates
-from merge.main.corpus_event import CorpusEvent
 from dyci2.parameter import Parametric
 from dyci2.transforms import Transform
+from merge.main.candidate import Candidate
+
+T = TypeVar('T')
 
 
-class Model(Parametric, ABC):
+class Model(Parametric, Generic[T], ABC):
     """The class :class:`~Model.Model` is an **abstract class**.
-    Any new model of sequence must inherit from this class.
+        Any new model of sequence must inherit from this class.
 
-    # :param sequence: sequence learnt in the model.
-    # :type sequence: list or str
-    # :param labels: sequence of labels chosen to describe the sequence.
-    # :type labels: list or str
-    # :param equiv: compararison function given as a lambda function, default if no parameter is given: self.equiv.
-    # :type equiv: function
+        # :param sequence: sequence learnt in the model.
+        # :type sequence: list or str
+        # :param labels: sequence of labels chosen to describe the sequence.
+        # :type labels: list or str
+        # :param equiv: compararison function given as a lambda function, default if no parameter is given: self.equiv.
+        # :type equiv: function
 
-    # :!: **equiv** has to be consistent with the type of the elements in labels.
-    # """
+        # :!: **equiv** has to be consistent with the type of the elements in labels.
+        # """
 
-    # def __init__(self, memory: Corpus, equiv: Callable = (lambda x, y: x == y)):
-    #     self.logger = logging.getLogger(__name__)
-    #     self._memory: Corpus = memory
-    #     self.equiv: Callable[[Dyci2Label, Dyci2Label], Dyci2Label] = equiv
+    @abstractmethod
+    def learn_sequence(self,
+                       sequence: List[Optional[T]],
+                       labels: List[Optional[Dyci2Label]],
+                       equiv: Optional[Callable] = None) -> None:
+        """ TODO: Update Docstring
+        Learns (appends) a new sequence in the model.
 
-    # TODO: Update model with correct type signatures
-    # @abstractmethod
-    # def learn_sequence(self, sequence: List[CorpusEvent], equiv: Optional[Callable] = None):
-    #     """
-    #     Learns (appends) a new sequence in the model.
-    #
-    #     :param sequence: sequence learnt in the Factor Oracle automaton
-    #     :type sequence: list or str
-    #     # :param labels: sequence of labels chosen to describe the sequence
-    #     # :type labels: list or str
-    #     :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-    #     :type equiv: function
-    #
-    #     :!: **equiv** has to be consistent with the type of the elements in labels.
-    #
-    #     """
-    #
-    # @abstractmethod
-    # def learn_event(self, event: CorpusEvent, equiv: Optional[Callable] = None):
-    #     """
-    #     Learns (appends) a new state in the model.
-    #
-    #     :param event:
-    #     # :param label:
-    #     :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-    #     :type equiv: function
-    #
-    #     :!: **equiv** has to be consistent with the type of label.
-    #
-    #     """
-    #
-    # @abstractmethod
-    # def select_events(self, index_state: int, label: Optional[Dyci2Label]) -> Candidates:
-    #     """ TODO: Docstring """
-    #
-    # @abstractmethod
-    # def feedback(self, output_event: Optional[Candidate]) -> None:
-    #     """ TODO: Docstring """
-    #
-    # @abstractmethod
-    # def encode_with_transform(self, transform: Transform) -> None:
-    #     """ TODO: Docstring """
-    #
-    # @abstractmethod
-    # def decode_with_transform(self, transform: Transform) -> None:
-    #     """ TODO: Docstring """
+        #:param sequence: sequence learnt in the Factor Oracle automaton
+        #:type sequence: list or str
+        # :param labels: sequence of labels chosen to describe the sequence
+        # :type labels: list or str
+        #:param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
+        #:type equiv: function
+
+        #:!: **equiv** has to be consistent with the type of the elements in labels.
+        """
+
+    @abstractmethod
+    def learn_event(self,
+                    event: Optional[T],
+                    label: Optional[Dyci2Label],
+                    equiv: Optional[Callable] = None) -> None:
+        """ TODO: Docstring (can be copied/moved from FactorOracle, probably)
+        Learns (appends) a new state in the model.
+
+        # :param event:
+        # :param label:
+        # :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
+        # :type equiv: function
+        #
+        # :!: **equiv** has to be consistent with the type of label.
+
+        """
+
+    @abstractmethod
+    def feedback(self, output_event: Optional[Candidate]) -> None:
+        """ TODO: Docstring """
+
+    @abstractmethod
+    def encode_with_transform(self, transform: Transform) -> None:
+        """ TODO: Docstring """
+
+    @abstractmethod
+    def decode_with_transform(self, transform: Transform) -> None:
+        """ TODO: Docstring """

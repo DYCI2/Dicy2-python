@@ -21,8 +21,10 @@ Tutorial in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`
 import logging
 import random
 import warnings
-from abc import ABC
-from typing import Callable, Tuple, Optional, List, Type, TypeVar, Generic, Dict, Union
+from abc import ABC, abstractmethod
+from typing import Callable, Tuple, Optional, List, Type, Dict, Union, TypeVar, Generic
+
+from merge.corpus import Corpus
 
 from dyci2.dyci2_label import Dyci2Label
 from dyci2.factor_oracle_model import FactorOracle
@@ -31,7 +33,6 @@ from dyci2.model import Model
 from dyci2.navigator import Navigator
 from dyci2.parameter import Parametric
 from dyci2.transforms import Transform, TransposeTransform
-from merge.corpus import Corpus
 from merge.main.candidate import Candidate
 from merge.main.candidates import Candidates, ListCandidates
 from merge.main.corpus_event import CorpusEvent
@@ -86,15 +87,39 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         self.navigator: N = navigator
         self.label_type: Type[Dyci2Label] = label_type
 
+        self.next_output: Optional[Candidates] = None
+
         self.corpus: Optional[Corpus] = None
         if corpus is not None:
             self.read_memory(corpus)
 
         self.navigator.clear()
 
+    @abstractmethod
+    def prepare_navigation(self, influences: List[Influence], init: bool = False) -> None:
+        """ TODO: Docstring (very important!) """
+
+    @abstractmethod
+    def free_navigation(self, ...) -> List[Tuple[int, int]]:
+        """ TODO: Docstring """
+
+    @abstractmethod
+    def simply_guided_navigation(self, ...) -> List[Tuple[int, int]]:
+        """ TODO: Docstring"""
+
+    @abstractmethod
+    def _scenario_initial_candidate(self, labels: List[Dyci2Label],
+                                    authorized_transformations: List[int]) -> Candidates:
+        """ TODO: Docstring (very important!) """
+
+    @abstractmethod
+    def _clear(self) -> None:
+        """ TODO: docstring """
+
+
     def read_memory(self, corpus: Corpus, **kwargs) -> None:
         if self.corpus is not None:
-            raise StateError(f"Loading a new corpus into an existing {self.__class__.__name__} is not supported yet")
+            raise StateError(f"Loading a new corpus into an existing {self.__class__.__name__} is not supported")
 
         self.corpus = corpus
         for event in corpus.events:
@@ -105,6 +130,7 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
             raises: TypeError if event is incompatible with current memory
                     StateError if no `Corpus` has been loaded
         """
+        # TODO Need a strategy for initializing an empty corpus, since this is what normally (always?) happens in DYCI2
         if self.corpus is None:
             raise StateError("No corpus has been loaded")
 
@@ -116,12 +142,73 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         else:
             raise TypeError(f"Invalid content/label type for event {str(event)}")
 
+    def process(self,
+                influence: Influence,
+                forward_context_length_min: int = 0,
+                print_info: bool = False,
+                shift_index: int = 0,
+                no_empty_event: bool = True,
+                **kwargs) -> None:
+        if self.corpus is None:
+            raise StateError("No corpus has been loaded")
+
+        indices_and_scores: List[Tuple[int, int]]
+        if isinstance(influence, LabelInfluence) and isinstance(influence.value, Dyci2Label):
+            indices_and_scores = self.simply_guided_navigation()
+        elif isinstance(influence, NoInfluence):
+            indices_and_scores = self.free_navigation()
+        else:
+            raise QueryError(f"class {self.__class__.__name__} cannot handle "
+                             f"influences of type {influence.__class__.__name__}")
+
+        if self.next_output is not None:
+            warnings.warn(f"Existing state in {self.__class__.__name__} overwritten without output")
+
+        event_and_scores: List[Tuple[CorpusEvent, int]]
+        events_and_scores = [(self.model.internal_event_at(i), s) for i, s in indices_and_scores]
+        self.next_output = ListCandidates([Candidate(e, s, None, self.corpus) for e, s in events_and_scores],
+                                          self.corpus)
+
+    def initialize_scenario(self, influences: List[Influence], authorized_transformations: List[int]) -> None:
+        if self.corpus is None:
+            raise StateError("No corpus has been loaded")
+
+        labels: List[Dyci2Label] = []
+        for influence in influences:
+            if not (isinstance(influence, LabelInfluence) and isinstance(influence.value, Dyci2Label)):
+                raise QueryError(f"class {self.__class__.__name__} cannot handle "
+                                 f"influences of type {influence.__class__.__name__}")
+
+            labels.append(influence.value)
+
+        if self.next_output is not None:
+            warnings.warn(f"Existing state in {self.__class__.__name__} overwritten without output")
+
+        self.next_output = self._scenario_initial_candidate(labels, authorized_transformations)
+
+    def peek_candidates(self) -> Candidates:
+        if self.next_output is None:
+            raise StateError("No candidates exist in class")
+
+        return self.next_output
+
+    def pop_candidates(self, **kwargs) -> Candidates:
+        if self.next_output is None:
+            raise StateError("No candidates exist in class")
+
+        output = self.next_output
+        self.next_output = None
+        return output
+
     def rewind_generation(self, index_in_navigation: int) -> None:
         self.navigator.rewind_generation(index_in_navigation)
 
     def feedback(self, output_event: Optional[Candidate], **kwargs) -> None:
         self.model.feedback(output_event)
         self.navigator.feedback(output_event)
+
+    def clear(self) -> None:
+        self.next_output = None
 
     def encode_with_transform(self, transform: Transform):
         self.model.encode_with_transform(transform)
@@ -136,30 +223,31 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         self.model.equiv = equiv
         self.navigator.equiv = equiv
 
+    def _use_intervals(self, authorized_transformations: List[int]) -> bool:
+        return self.label_type is not None and self.label_type.use_intervals \
+               and len(authorized_transformations) > 0 and authorized_transformations != [0]
 
-# TODO: this could rather take some abstract FactorOracleLikeModel, FactorOracleLikeNavigator and take these as args.
+
 class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator]):
     def __init__(self,
-                 model: Type[FactorOracle[CorpusEvent]],
-                 navigator: Type[FactorOracleNavigator],
-                 corpus: Corpus,
+                 corpus: Optional[Corpus],
                  label_type: Type[Dyci2Label],
                  max_continuity=20,
                  control_parameters=(),
                  history_parameters=(),
                  equiv: Callable = (lambda x, y: x == y),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
-        super().__init__(model=model(equiv=equiv),
-                         navigator=navigator(equiv=equiv,
-                                             max_continuity=max_continuity,
-                                             control_parameters=control_parameters,
-                                             execution_trace_parameters=history_parameters,
-                                             continuity_with_future=continuity_with_future),
+        super().__init__(model=FactorOracle(equiv=equiv),
+                         navigator=FactorOracleNavigator(
+                             equiv=equiv,
+                             max_continuity=max_continuity,
+                             control_parameters=control_parameters,
+                             execution_trace_parameters=history_parameters,
+                             continuity_with_future=continuity_with_future),
                          corpus=corpus,
                          label_type=label_type)
-        self.next_output: Optional[Candidates] = None
 
-    # TODO[Jerome]: This one needs some more attention - inconsistencies between randoms ([1..length] vs [0..len-1])
+    # TODO[Jerome]: This one needs some more attention - inconsistencies between randoms ([1..len] vs [0..len-1])
     def prepare_navigation(self, influences: List[Influence], init: bool = False) -> None:
         if not all([isinstance(influence.value, Dyci2Label) for influence in influences]):
             raise QueryError(f"Invalid label type encountered in {self.__class__.__name__}")
@@ -180,80 +268,56 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
                 new_position: int = random.randint(1, self.model.index_last_state())
                 self.navigator.set_position_in_sequence(new_position)
 
-    def process(self,
-                influence: Influence,
-                forward_context_length_min: int = 0,
-                print_info: bool = False,
-                shift_index: int = 0,
-                no_empty_event: bool = True,
-                **kwargs) -> None:
-        if self.corpus is None:
-            raise StateError("No corpus has been loaded")
+    def free_navigation(self, ...) -> List[Optional[Tuple[int, int]]]:
+        pass # TODO
 
-        if isinstance(influence, LabelInfluence) and isinstance(influence.value, Dyci2Label):
-            required_label: Dyci2Label = influence.value
-        elif isinstance(influence, NoInfluence):
-            required_label: None = None
-        else:
-            raise QueryError(f"class {self.__class__.__name__} cannot handle "
-                             f"influences of type {influence.__class__.__name__}")
+    def simply_guided_navigation(self, ...) -> List[Optional[Tuple[int, int]]]:
+        pass # TODO
 
-        authorized_indices: List[int] = self.model.get_authorized_indices(
-            index_state=self.navigator.current_position_in_sequence,
-            label=required_label,
-            forward_context_length_min=forward_context_length_min,
-            authorize_direct_transition=True
-        )
+    def _clear(self) -> None:
+        pass    # No additional actions required
 
-        # TODO[Jerome]: I think an easier solution would be to generate a generic binary `index_map` to handle all
-        #               index-based filtering and just apply this wherever it is needed
-        authorized_indices = self.navigator.filter_using_history_and_taboos(authorized_indices)
-
-        authorized_indices = self.navigator.weight_candidates(authorized_indices=authorized_indices,
-                                                              required_label=required_label,
-                                                              model_direct_transitions=self.model.direct_transitions,
-                                                              shift_index=shift_index,
-                                                              print_info=print_info, no_empty_event=no_empty_event)
-
-        if self.next_output is not None:
-            warnings.warn(f"Existing state in {self.__class__.__name__} overwritten without output")
-
-        events: List[CorpusEvent] = [self.model.internal_event_at(i) for i in authorized_indices]
-        self.next_output = ListCandidates([Candidate(e, 1.0, None, self.corpus) for e in events], self.corpus)
-
-    def peek_candidates(self) -> Candidates:
-        if self.next_output is None:
-            raise StateError("No candidates exist in class")
-
-        return self.next_output
-
-    def pop_candidates(self, **kwargs) -> Candidates:
-        if self.next_output is None:
-            raise StateError("No candidates exist in class")
-
-        output = self.next_output
-        self.next_output = None
-        return output
-
-    def initialize_scenario(self, influences: List[Influence], authorized_transformations: List[int]) -> None:
-        if self.corpus is None:
-            raise StateError("No corpus has been loaded")
-
-        labels: List[Dyci2Label] = []
-        for influence in influences:
-            if not (isinstance(influence, LabelInfluence) and isinstance(influence.value, Dyci2Label)):
-                raise QueryError(f"class {self.__class__.__name__} cannot handle "
-                                 f"influences of type {influence.__class__.__name__}")
-
-            labels.append(influence.value)
-
-        if self.next_output is not None:
-            warnings.warn(f"Existing state in {self.__class__.__name__} overwritten without output")
-
-        self.next_output = self._scenario_initial_candidate(labels, authorized_transformations)
-
-    def clear(self) -> None:
-        self.next_output = None
+    # TODO: Migrate/remove
+    # def process(self,
+    #             influence: Influence,
+    #             forward_context_length_min: int = 0,
+    #             print_info: bool = False,
+    #             shift_index: int = 0,
+    #             no_empty_event: bool = True,
+    #             **kwargs) -> None:
+    #     if self.corpus is None:
+    #         raise StateError("No corpus has been loaded")
+    #
+    #     if isinstance(influence, LabelInfluence) and isinstance(influence.value, Dyci2Label):
+    #         required_label: Dyci2Label = influence.value
+    #     elif isinstance(influence, NoInfluence):
+    #         required_label: None = None
+    #     else:
+    #         raise QueryError(f"class {self.__class__.__name__} cannot handle "
+    #                          f"influences of type {influence.__class__.__name__}")
+    #
+    #     authorized_indices: List[int] = self.model.get_authorized_indices(
+    #         index_state=self.navigator.current_position_in_sequence,
+    #         label=required_label,
+    #         forward_context_length_min=forward_context_length_min,
+    #         authorize_direct_transition=True
+    #     )
+    #
+    #     # TODO[Jerome]: I think an easier solution would be to generate a generic binary `index_map` to handle all
+    #     #               index-based filtering and just apply this wherever it is needed
+    #     authorized_indices = self.navigator.filter_using_history_and_taboos(authorized_indices)
+    #
+    #     authorized_indices = self.navigator.weight_candidates(authorized_indices=authorized_indices,
+    #                                                           required_label=required_label,
+    #                                                           model_direct_transitions=self.model.direct_transitions,
+    #                                                           shift_index=shift_index,
+    #                                                           print_info=print_info, no_empty_event=no_empty_event)
+    #
+    #     if self.next_output is not None: # TODO: THIS SHOULD BE HANDLED BY DYCI2PROSPECTOR NOT FOPROSPECTOR. NO INTERNAL ACCESS TO SELF.NEXT_OUTPUT
+    #         warnings.warn(f"Existing state in {self.__class__.__name__} overwritten without output")
+    #
+    #     events: List[CorpusEvent] = [self.model.internal_event_at(i) for i in authorized_indices]
+    #     self.next_output = ListCandidates([Candidate(e, 1.0, None, self.corpus) for e in events], self.corpus)
 
     def _scenario_initial_candidate(self, labels: List[Dyci2Label],
                                     authorized_transformations: List[int]) -> Candidates:
@@ -296,17 +360,17 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
             return ListCandidates(candidates=[candidate], associated_corpus=self.corpus)
 
         else:
-            return ListCandidates(candidates=[], associated_corpus=self.corpus)
+            return ListCandidates.new_empty(self.corpus)
 
+    # TODO: This function should be removed entirely and behaviour should be moved to Jury/OutputSelection
     def _choose_prefix_from_list(
             self,
             index_delta_prefixes: Dict[int, List[List[int]]]) -> Tuple[Optional[int], int, Optional[int]]:
         s: Optional[int] = None
         t: int = 0
         length_selected_prefix: Optional[int] = None
-        if len(index_delta_prefixes.keys()) > 0:
-            # TODO : MAX PAS FORCEMENT BONNE IDEE
 
+        if len(index_delta_prefixes.keys()) > 0:
             length_selected_prefix = max(index_delta_prefixes.keys())
             random_choice: int = random.randint(0, len(index_delta_prefixes[length_selected_prefix]) - 1)
             s: Union[List[int], int] = index_delta_prefixes[length_selected_prefix][random_choice]
@@ -318,6 +382,3 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
 
         return s, t, length_selected_prefix
 
-    def _use_intervals(self, authorized_transformations: List[int]):
-        return self.label_type is not None and self.label_type.use_intervals \
-               and len(authorized_transformations) > 0 and authorized_transformations != [0]

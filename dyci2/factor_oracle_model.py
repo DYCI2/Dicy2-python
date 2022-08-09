@@ -178,7 +178,7 @@ class FactorOracle(Generic[T], Model):
     def internal_corpus_model_length(self) -> int:
         return len(self.sequence)
 
-    def internal_event_at(self, index: int) -> Optional[T]:
+    def get_event_by_internal_index(self, index: int) -> Optional[T]:
         return self.sequence[index]
 
     def print_model(self):

@@ -86,7 +86,6 @@ class FactorOracleNavigator(Generic[T], Navigator):
         self.current_navigation_index: int = -1
         self.clear()
 
-        # TODO: Remove? What's the purpose of control_parameters?
         self.control_parameters = ["avoid_repetitions_mode", "max_continuity"]
         if type(control_parameters) != type(None):
             self.logger.debug("argument control_parameters = {}".format(control_parameters))

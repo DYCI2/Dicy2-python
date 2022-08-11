@@ -9,7 +9,7 @@ from merge.main.candidate import Candidate
 T = TypeVar('T')
 
 
-class FactorOracle(Generic[T], Model):
+class FactorOracle(Model[T]):
     """
     **Factor Oracle automaton class.**
     Implementation of the Factor Oracle Automaton (Allauzen, Crochemore, Raffinot, 1999).

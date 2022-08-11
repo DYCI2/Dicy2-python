@@ -58,8 +58,8 @@ if __name__ == '__main__':
     generation_scheduler: GenerationScheduler = GenerationScheduler(memory=memory, model_class=FactorOracle,
                                                                     navigator_class=FactorOracleNavigator,
                                                                     authorized_tranformations=authorized_intervals)
-    generation_scheduler.prospector.navigator.avoid_repetitions_mode.set(1)
-    generation_scheduler.prospector.navigator.max_continuity.set(3)
+    generation_scheduler.prospector._navigator.avoid_repetitions_mode.set(1)
+    generation_scheduler.prospector._navigator.max_continuity.set(3)
     warnings.warn("This is not a settable parameter anymore: no_empty_event")
     # generation_scheduler.prospector.navigator.no_empty_event = False
 
@@ -155,7 +155,7 @@ if __name__ == '__main__':
         # generation_handler.current_performance_time["event"] += 1
         # generation_handler.current_performance_time["ms"] += 1000
         # generation_handler.current_performance_time["last_update_event_in_ms"] = generation_handler.current_performance_time["ms"]
-        generation_scheduler.inc_performance_time(increment=1)
+        generation_scheduler.increment_performance_time(increment=1)
         print("\n**NEW PERFORMANCE TIME : BEAT {}**\n**PLAYING CORRESPONDING GENERATED EVENT: {}**".format(
             generation_scheduler.performance_time,
             generation_scheduler.generation_process.generation_trace[generation_scheduler.performance_time]))

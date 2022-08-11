@@ -18,23 +18,22 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 
 """
 import logging
-from typing import Optional, Callable, Tuple, Type, List
+from typing import Optional, Callable, Type, List
 
+from dyci2.candidate_selector import TempCandidateSelector
 from dyci2.dyci2_label import Dyci2Label
-# TODO 2021 : Initially default argument for Generator was (lambda x, y: x == y) --> pb with pickle
-# TODO 2021 : (because not serialized ?) --> TODO "Abstract Equiv class" to pass objects and not lambda ?
-from dyci2.factor_oracle_model import FactorOracle
-from dyci2.factor_oracle_navigator import FactorOracleNavigator
+from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
+from dyci2.dyci2prospector import Dyci2Prospector
 from dyci2.generation_process import GenerationProcess
 from dyci2.generator import Dyci2Generator
-from merge.corpus import Corpus
+from dyci2.parameter import Parametric
+from dyci2.utils import format_list_as_list_of_strings
 from merge.main.candidate import Candidate
+from merge.main.corpus import Corpus
 from merge.main.corpus_event import CorpusEvent
 from merge.main.generation_scheduler import GenerationScheduler
+from merge.main.jury import Jury
 from merge.main.query import Query
-from dyci2.parameter import Parametric
-from dyci2.query import Dyci2Time, TimeMode
-from dyci2.utils import format_list_as_list_of_strings
 
 
 # TODO : SUPPRIMER DANS LA DOC LES FONCTIONS "EQUIV-MOD..." "SEQUENCE TO INTERVAL..."
@@ -105,23 +104,21 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
 
     """
 
-    def __init__(self, memory: Optional[Corpus] = None,
-                 model_class: Type[FactorOracle] = FactorOracle,
-                 navigator_class: Type[FactorOracleNavigator] = FactorOracleNavigator,
-                 label_type: Type[Dyci2Label] = Dyci2Label,
-                 equiv: Optional[Callable] = (lambda x, y: x == y),
-                 authorized_tranformations=(0,),
-                 continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
-        self.generator: Dyci2Generator = Dyci2Generator(memory=memory,
-                                                        model_class=model_class,
-                                                        navigator_class=navigator_class,
-                                                        label_type=label_type,
-                                                        equiv=equiv,
-                                                        authorized_tranformations=authorized_tranformations,
-                                                        continuity_with_future=continuity_with_future)
+    def __init__(self,
+                 prospector: Dyci2Prospector,
+                 jury_type: Type[Jury] = TempCandidateSelector,
+                 authorized_tranformations=(0,)):
+        self.generator: Dyci2Generator = Dyci2Generator(prospector=prospector,
+                                                        jury_type=jury_type,
+                                                        authorized_transforms=authorized_tranformations)
         self.logger = logging.getLogger(__name__)
         self._performance_time: int = 0
+        self._running: bool = False
         self.generation_process: GenerationProcess = GenerationProcess()
+
+    ################################################################################################################
+    # PUBLIC: IMPLEMENTED ABSTRACT METHODS
+    ################################################################################################################
 
     def process_query(self, query: Query, **kwargs) -> None:
         """ raises: RuntimeError if receiving a relative query as the first query. """
@@ -129,13 +126,11 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         self.logger.debug(f"current_performance_time: {self._performance_time}")
         self.logger.debug(f"current_generation_time: {self.generation_process.generation_time}")
 
-        if not isinstance(query.time, Dyci2Time):
-            raise RuntimeError(f"Can only handle queries with time format {Dyci2Time.__name__}")
+        if not isinstance(query.time, Dyci2Timepoint):
+            raise RuntimeError(f"Can only handle queries with time format '{Dyci2Timepoint.__name__}'")
 
-        if (self.generator.initialized and
-                self._performance_time < 0 and
-                query.time.time_mode == TimeMode.RELATIVE):
-            # TODO[Jerome]: Is this really a good strategy? Or should it just assume this as ABSOLUTE(NOW)?
+        # TODO[Jerome]: Is this really a good strategy / relevant?
+        if self.generator.initialized and not self._running and query.time.time_mode == TimeMode.RELATIVE:
             raise RuntimeError("Cannot handle a relative query as the first query")
 
         self.logger.debug(f"PROCESS QUERY\n {query}")
@@ -143,8 +138,9 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
             query.time.to_absolute(self._performance_time)
             self.logger.debug(f"QUERY ABSOLUTE\n {query}")
 
+        # TODO: Is this a good idea?
         if not self.generator.initialized:
-            self._performance_time = 0
+            self.start()
 
         generation_index: int = query.time.start_date
         self.logger.debug(f"generation_index: {generation_index}")
@@ -153,8 +149,8 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
                               f"generation_time = {self.generation_process.generation_time}")
             self.generator.prospector.rewind_generation(generation_index - 1)
 
-        # TODO[Jerome] UNSOLVED! Strategy for execution trace is still not solved
-        self.generator.prospector.navigator.current_navigation_index = generation_index - 1
+        # TODO[Jerome] UNSOLVED! Isn't this the same as rewind_generation? Looks very similar to line above.
+        self.generator.prospector._navigator.current_navigation_index = generation_index - 1
 
         output: List[Optional[Candidate]] = self.generator.process_query(query)
 
@@ -162,7 +158,24 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         self.generation_process.add_output(generation_index, output)
 
         # TODO: Handle in parser: This value corresponds to GenerationProcess._start_of_last_sequence
+        #       use GenerationScheduler.generation_index() to get this value
         # return generation_index
+
+    def update_performance_time(self, time: Dyci2Timepoint) -> None:
+        if not self._running:
+            return
+
+        if time.time_mode == TimeMode.RELATIVE:
+            time.to_absolute(self._performance_time)
+
+        self._performance_time = time.start_date
+
+        print(f"NEW PERF TIME = {self._performance_time}")
+        # TODO : EPSILON POUR LANCER NOUVELLE GENERATION
+        if self.generation_process.generation_time < self._performance_time:
+            old = self.generation_process.generation_time
+            self.generation_process.update_generation_time(self._performance_time)
+            print(f"CHANGED PERF TIME = {old} --> {self.generation_process.generation_time}")
 
     def read_memory(self, corpus: Corpus, **kwargs) -> None:
         self.clear()
@@ -174,48 +187,22 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
     def clear(self) -> None:
         self.generator.clear()
 
-    def start(self):
-        """ Sets :attr:`self.current_performance_time` to 0."""
-        self._performance_time = 0
+    ################################################################################################################
+    # PUBLIC: CLASS-SPECIFIC METHODS
+    ################################################################################################################
 
-    def set_equiv_function(self, equiv: Callable[[Dyci2Label, Dyci2Label], bool]):
+    def start(self) -> None:
+        self._performance_time = 0
+        self._running = True
+
+    def set_equiv_function(self, equiv: Callable[[Dyci2Label, Dyci2Label], bool]) -> None:
         self.generator.prospector.set_equiv_function(equiv=equiv)
 
-    # TODO : EPSILON POUR LANCER NOUVELLE GENERATION
-    def update_performance_time(self, new_time: Optional[int] = None):
-        if new_time is not None:
-            self._performance_time = new_time
-        else:
-            self._performance_time = -1
+    def increment_performance_time(self, increment: int = 1) -> None:
+        self.update_performance_time(Dyci2Timepoint(start_date=increment, time_mode=TimeMode.RELATIVE))
 
-        print(f"NEW PERF TIME = {self._performance_time}")
-        # TODO : EPSILON POUR LANCER NOUVELLE GENERATION
-        if self.generation_process.generation_time < self._performance_time:
-            old = self.generation_process.generation_time
-            self.generation_process.update_generation_time(self._performance_time)
-            print(f"CHANGED PERF TIME = {old} --> {self.generation_process.generation_time}")
-
-    def inc_performance_time(self, increment: Optional[int] = None):
-        old_time = self._performance_time
-
-        new_time: Optional[int] = None
-
-        if increment is not None:
-            if old_time > -1:
-                new_time = old_time + increment
-            else:
-                new_time = increment
-
-        self.update_performance_time(new_time=new_time)
-
-    def formatted_output_couple_content_transfo(self):
-        return [(c.event, c.transform.renderer_info()) for c in self.generation_process.last_sequence()]
-
-    def formatted_output_string(self):
-        return format_list_as_list_of_strings(self.current_generation_output)
-
-    def formatted_generation_trace_string(self):
-        return format_list_as_list_of_strings(self.generation_trace)
+    def generation_index(self) -> int:
+        return self.generation_process.start_index_of_last_sequence()
 
     @property
     def performance_time(self) -> int:
@@ -225,3 +212,17 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
     def performance_time(self, value: int):
         self._performance_time = value
         print("New value of current performance time: {}".format(self._performance_time))
+
+    ################################################################################################################
+    # TODO: CLEAN UP REQUIRED
+    #  Formatting/parsing is generally an IO operation that should live in the Agent/IO class than in the logic class
+    ################################################################################################################
+
+    def formatted_output_couple_content_transfo(self):
+        return [(c.event, c.transform.renderer_info()) for c in self.generation_process.last_sequence()]
+
+    def formatted_output_string(self):
+        return format_list_as_list_of_strings(self.current_generation_output)
+
+    def formatted_generation_trace_string(self):
+        return format_list_as_list_of_strings(self.generation_trace)

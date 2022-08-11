@@ -39,6 +39,9 @@ from dyci2.query import Query, FreeQuery, TimeMode, LabelQuery
 
 TODO_INSERTTYPE = Union[None, List, Tuple, Dict, int, float, str]
 
+def basic_equiv(x, y):
+    return x == y
+
 
 class Target:
     WARNING_ADDRESS = "/warning"
@@ -260,9 +263,9 @@ class OSCAgent(Server):
         content: MemoryEvent = BasicEvent(data=content_value, label=label)
 
         self.generation_handler.learn_event(event=content)
-        index_last_state: int = self.generation_handler.prospector.model.index_last_state()
-        label_last_state: Dyci2Label = self.generation_handler.prospector.model.labels[index_last_state]
-        content_last_state: Any = self.generation_handler.prospector.model.sequence[index_last_state]
+        index_last_state: int = self.generation_handler.prospector._model.index_last_state()
+        label_last_state: Dyci2Label = self.generation_handler.prospector._model.labels[index_last_state]
+        content_last_state: Any = self.generation_handler.prospector._model.sequence[index_last_state]
         self.logger.debug(f"index last state = {index_last_state}")
         self.logger.debug(f"associated label = {label_last_state} ({type(label_last_state)})")
         self.logger.debug(f"associated content = {content_last_state} ({type(content_last_state)}")

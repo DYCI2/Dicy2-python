@@ -35,17 +35,20 @@ class GenerationProcess:
         self._start_of_last_sequence = generation_index
         self.logger.debug(f"generation time: {prev_generation_time} --> {self._generation_time}")
 
-    @property
-    def generation_time(self):
-        return self._generation_time
+    def last_sequence(self) -> List[Optional[Candidate]]:
+        """ raises: IndexError if no sequence has been generated """
+        return self.generation_trace[self._start_of_last_sequence:]
+
+    def start_index_of_last_sequence(self) -> int:
+        return self._start_of_last_sequence
 
     def update_generation_time(self, new_time: int):
         self._generation_time = new_time
 
     @property
+    def generation_time(self):
+        return self._generation_time
+
+    @property
     def generation_trace(self):
         return self._generation_trace
-
-    def last_sequence(self) -> List[Optional[Candidate]]:
-        """ raises: IndexError if no sequence has been generated """
-        return self.generation_trace[self._start_of_last_sequence:]

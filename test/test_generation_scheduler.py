@@ -11,8 +11,8 @@ from dyci2.factor_oracle_model import FactorOracle
 from dyci2.factor_oracle_navigator import FactorOracleNavigator
 from dyci2.generation_scheduler import Dyci2GenerationScheduler
 from dyci2.transforms import Transform
-from merge.corpus import GenericCorpus
 from merge.main.candidate import Candidate
+from merge.main.corpus import GenericCorpus
 from merge.main.corpus_event import GenericCorpusEvent, CorpusEvent
 from merge.main.influence import LabelInfluence
 from merge.main.query import Query, InfluenceQuery, TriggerQuery
@@ -59,8 +59,8 @@ class TestDyci2GeneratorScheduler(TestCase):
                                                                            navigator_class=FactorOracleNavigator,
                                                                            label_type=ChordLabel,
                                                                            authorized_tranformations=authorized_transf)
-        gen_scheduler.generator.prospector.navigator.avoid_repetitions_mode.set(1)
-        gen_scheduler.generator.prospector.navigator.max_continuity.set(3)
+        gen_scheduler.generator.prospector._navigator.avoid_repetitions_mode.set(1)
+        gen_scheduler.generator.prospector._navigator.max_continuity.set(3)
         warnings.warn("This is not a settable parameter anymore: no_empty_event")
         # gen_scheduler.prospector.navigator.no_empty_event = False
 
@@ -102,7 +102,7 @@ class TestDyci2GeneratorScheduler(TestCase):
         # generation_handler.current_performance_time["event"] += 1
         # generation_handler.current_performance_time["ms"] += 1000
         # generation_handler.current_performance_time["last_update_event_in_ms"] = generation_handler.current_performance_time["ms"]
-        gen_scheduler.inc_performance_time(increment=1)
+        gen_scheduler.increment_performance_time(increment=1)
 
         # sys.exit(1)
 
@@ -130,7 +130,7 @@ class TestDyci2GeneratorScheduler(TestCase):
             # generation_handler.current_performance_time["event"] += 1
             # generation_handler.current_performance_time["ms"] += 1000
             # generation_handler.current_performance_time["last_update_event_in_ms"] = generation_handler.current_performance_time["ms"]
-            gen_scheduler.inc_performance_time(increment=1)
+            gen_scheduler.increment_performance_time(increment=1)
             print("\n**NEW PERFORMANCE TIME : BEAT {}**\n**PLAYING CORRESPONDING GENERATED EVENT: {}**".format(
                 gen_scheduler.performance_time,
                 gen_scheduler.generation_process.generation_trace[gen_scheduler.performance_time]))

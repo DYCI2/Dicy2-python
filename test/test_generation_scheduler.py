@@ -6,15 +6,15 @@ import warnings
 from typing import List, Tuple
 
 from dyci2.dyci2_label import ChordLabel, from_list_to_labels
-from dyci2.dyci2_time import Dyci2Timepoint
-from dyci2.dyci2prospector import FactorOracleProspector
+from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
+from dyci2.dyci2_prospector import FactorOracleProspector
 from dyci2.generation_scheduler import Dyci2GenerationScheduler
 from dyci2.transforms import Transform
 from merge.main.candidate import Candidate
 from merge.main.corpus import GenericCorpus
 from merge.main.corpus_event import GenericCorpusEvent, CorpusEvent
 from merge.main.influence import LabelInfluence
-from merge.main.query import InfluenceQuery
+from merge.main.query import InfluenceQuery, TriggerQuery, Query
 
 
 def chord_format(lst: List[Tuple[GenericCorpusEvent, int]]):
@@ -29,7 +29,7 @@ def candidate_format(lst: List[Candidate]):
 #     def test_basic(self):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG, format='%(message)s')
-    random.seed(0)
+    random.seed(2)
     # warnings.filterwarnings("ignore")
     # original_stdout = sys.stdout
     # sys.stdout = None
@@ -88,8 +88,8 @@ if __name__ == '__main__':
     print("With transforfmation: {}".format(
         chord_format(gen_scheduler.formatted_output_couple_content_transfo())))
 
-    sys.exit(0)
-    sys.stdout = None
+    # sys.exit(0)
+    # sys.stdout = None
 
     print(
         "/!\ Updated buffered improvisation: {} /!\ ".format(
@@ -113,7 +113,7 @@ if __name__ == '__main__':
         gen_scheduler.performance_time,
         gen_scheduler.generation_process.generation_trace[gen_scheduler.performance_time]))
 
-    query: Query = TriggerQuery(3, Dyci2Time(start_date=4, time_mode=TimeMode.ABSOLUTE))
+    query: Query = TriggerQuery(3, Dyci2Timepoint(start_date=4, time_mode=TimeMode.ABSOLUTE))
     # query = new_temporal_query_free_sequence_of_events(length=3, start_date=4, start_type="absolute")
     print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
     gen_scheduler.process_query(query=query)
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     labels_for_scenario: List[ChordLabel] = from_list_to_labels(list_for_scenario, ChordLabel)
     influences_for_scenario: List[LabelInfluence] = [LabelInfluence(label) for label in labels_for_scenario]
     query: InfluenceQuery = InfluenceQuery(influences_for_scenario,
-                                           time=Dyci2Time(start_date=2, time_mode=TimeMode.RELATIVE))
+                                           time=Dyci2Timepoint(start_date=2, time_mode=TimeMode.RELATIVE))
     print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
     gen_scheduler.process_query(query=query)
 

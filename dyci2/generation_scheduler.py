@@ -23,7 +23,7 @@ from typing import Optional, Callable, Type, List
 from dyci2.candidate_selector import TempCandidateSelector
 from dyci2.dyci2_label import Dyci2Label
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
-from dyci2.dyci2prospector import Dyci2Prospector
+from dyci2.dyci2_prospector import Dyci2Prospector
 from dyci2.generation_process import GenerationProcess
 from dyci2.generator import Dyci2Generator
 from dyci2.parameter import Parametric

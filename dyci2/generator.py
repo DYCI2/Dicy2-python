@@ -2,7 +2,7 @@ import logging
 from typing import Optional, Type, List
 
 from dyci2.candidate_selector import TempCandidateSelector, DefaultFallbackSelector
-from dyci2.dyci2prospector import Dyci2Prospector
+from dyci2.dyci2_prospector import Dyci2Prospector
 from dyci2.transforms import Transform, NoTransform
 from merge.main.candidate import Candidate
 from merge.main.candidates import Candidates, ListCandidates

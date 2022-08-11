@@ -404,28 +404,30 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
                               f"(cont. = {self._navigator.current_continuity}/{self._navigator.max_continuity.get()})" \
                               f": {self._navigator.current_position_in_sequence}"
 
+        selected_indices: List[int]
         # Case 1: Transition to state immediately following the previous one if reachable and matching
-        authorized_indices = self._navigator.follow_continuation_using_transition(authorized_indices,
+        selected_indices =  self._navigator.follow_continuation_using_transition(authorized_indices,
                                                                                   self._model.direct_transitions)
 
-        if len(authorized_indices) > 0:
-            str_print_info += f" -{self._navigator.labels[authorized_indices[0]]}-> {authorized_indices[0]}"
+        if len(selected_indices) > 0:
+            str_print_info += f" -{self._navigator.labels[selected_indices[0]]}-> {selected_indices[0]}"
 
             self.logger.debug(str_print_info)
-            return authorized_indices
+            return selected_indices
 
         # Case 2: Transition to any other filtered, reachable candidate matching the required_label
-        authorized_indices = self._navigator.follow_continuation_with_jump(authorized_indices,
+        selected_indices = self._navigator.follow_continuation_with_jump(authorized_indices,
                                                                            self._model.direct_transitions)
-        if len(authorized_indices) > 0:
-            prev_index: int = authorized_indices[0] - 1
+        if len(selected_indices) > 0:
+            prev_index: int = selected_indices[0] - 1
             str_print_info += f" ...> {prev_index} - {self._model.direct_transitions.get(prev_index)[0]} " \
                               f"-> {self._model.direct_transitions.get(prev_index)[1]}"
             self.logger.debug(str_print_info)
-            return authorized_indices
+            return selected_indices
 
         # Case 3: Filtered, _unreachable_ candidates
         # TODO: I have no idea why `last` is excluded here
+        # TODO 2: using range(0, N-1) instead of (1, N) or (1, N-1) WILL crash the system if 0 is selected as output.
         additional_indices: List[int] = list(range(self._model.get_internal_index_last_state()))
         additional_indices = self._navigator.filter_using_history_and_taboos(additional_indices)
 
@@ -441,16 +443,16 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
             additional_indices = self._navigator.follow_continuation_with_jump(additional_indices,
                                                                                self._model.direct_transitions)
             if len(additional_indices) > 0:
-                authorized_indices = additional_indices
+                selected_indices = additional_indices
 
-        if len(authorized_indices) > 0:
-            str_print_info += f" xxnothingxx - random: {authorized_indices[0]}"
+        if len(selected_indices) > 0:
+            str_print_info += f" xxnothingxx - random: {selected_indices[0]}"
         else:
             str_print_info += " xxnothingxx"
 
         self.logger.debug(str_print_info)
 
-        return authorized_indices
+        return selected_indices
 
     # TODO: This function should be removed entirely and behaviour should be moved to Jury/OutputSelection
     def _choose_prefix_from_list(

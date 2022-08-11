@@ -79,7 +79,6 @@ class FactorOracleNavigator(Navigator[T]):
         self.continuity_with_future: Parameter[Tuple[float, float]] = Parameter(continuity_with_future)
         self.execution_trace = {}
 
-        warnings.warn("This will just create an empty list right now")
         self.history_and_taboos: List[Optional[int]] = [0] * (len(self.sequence))
         self.current_continuity: int = -1
         self.current_position_in_sequence: int = -1

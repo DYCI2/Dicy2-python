@@ -71,8 +71,8 @@ class FactorOracleNavigator(Navigator[T]):
                  execution_trace_parameters=(),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
         self.logger = logging.getLogger(__name__)
-        self.sequence: List[Optional[T]] = []
-        self.labels: List[Optional[Dyci2Label]] = []
+        self.sequence: List[Optional[T]] = [None]  # initial state
+        self.labels: List[Optional[Dyci2Label]] = [None]  # initial state
         self.equiv: Callable = equiv
         self.max_continuity: Parameter[int] = Parameter(max_continuity, OrdinalRange(0, None))
         self.avoid_repetitions_mode: Parameter[int] = Parameter(0)
@@ -106,6 +106,10 @@ class FactorOracleNavigator(Navigator[T]):
         object.__setattr__(self, name_attr, val_attr)
         # TODO : SUPPRIMER TRACE AVANT TEMPS PERFORMANCE
 
+    ################################################################################################################
+    # PUBLIC: INHERITED METHODS
+    ################################################################################################################
+
     def learn_sequence(self,
                        sequence: List[Optional[T]],
                        labels: List[Optional[Dyci2Label]],
@@ -134,6 +138,8 @@ class FactorOracleNavigator(Navigator[T]):
                     event: Optional[T],
                     label: Optional[Dyci2Label],
                     equiv: Optional[Callable] = None) -> None:
+        self.sequence.append(event)
+        self.labels.append(label)
         current_last_idx = len(self.history_and_taboos) - 1
         self._authorize_indexes([current_last_idx])
         self.history_and_taboos.append(None)
@@ -153,7 +159,11 @@ class FactorOracleNavigator(Navigator[T]):
         if output_event is not None:
             self.set_position_in_sequence(output_event.event.index + 1)  # To account for Model's initial None
 
-    def set_position_in_sequence(self, val_attr: Optional[int]):
+    ################################################################################################################
+    # PUBLIC: CLASS-SPECIFIC RUNTIME CONTROL
+    ################################################################################################################
+
+    def set_position_in_sequence(self, val_attr: Optional[int]) -> None:
         self.current_position_in_sequence = val_attr
         if val_attr is not None and val_attr > -1:
             self.current_navigation_index += 1
@@ -412,7 +422,7 @@ class FactorOracleNavigator(Navigator[T]):
                 previous_previous_continuity_in_sequence = self.execution_trace[self.current_navigation_index - 2][
                     "current_continuity"]
 
-        if self.current_continuity == self.max_continuity.get() - 1 and self.current_position_in_sequence + 1 < self.index_last_state():
+        if self.current_continuity == self.max_continuity.get() - 1 and self.current_position_in_sequence + 1 < self._index_last_state():
             self._forbid_indexes([self.current_position_in_sequence + 1])
         # print("Continuity reaches (self.max_continuity - 1). \n"
         #       "New self.history_and_taboos = {}".format(self.history_and_taboos))
@@ -420,7 +430,7 @@ class FactorOracleNavigator(Navigator[T]):
         elif not previous_previous_continuity_in_sequence is None \
                 and self.current_continuity == 0 \
                 and not previous_position_in_sequence is None \
-                and previous_position_in_sequence < self.index_last_state() \
+                and previous_position_in_sequence < self._index_last_state() \
                 and not previous_continuity is None:  # and previous_continuity > 0:
             self.history_and_taboos[previous_position_in_sequence + 1] = previous_previous_continuity_in_sequence
         # print("Delete taboo set because of max_continuity at last step. \n"
@@ -465,3 +475,7 @@ class FactorOracleNavigator(Navigator[T]):
             if self._is_taboo(i):
                 s.append(i)
         self._authorize_indexes(s)
+
+    def _index_last_state(self) -> int:
+        """ Index of the last state in the model."""
+        return len(self.labels) - 1

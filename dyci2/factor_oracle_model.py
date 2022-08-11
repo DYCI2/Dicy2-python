@@ -86,6 +86,10 @@ class FactorOracle(Model[T]):
 
         self._init_model()
 
+    ################################################################################################################
+    # PUBLIC: INHERITED METHODS
+    ################################################################################################################
+
     def learn_sequence(self,
                        sequence: List[Optional[T]],
                        labels: List[Optional[Dyci2Label]],
@@ -158,6 +162,10 @@ class FactorOracle(Model[T]):
     def decode_with_transform(self, transform: Transform) -> None:
         self.labels = [None] + transform.decode_sequence(self.labels[1::])
 
+    ################################################################################################################
+    # PUBLIC: CLASS-SPECIFIC RUNTIME CONTROL
+    ################################################################################################################
+
     def get_internal_corpus_model(self) -> Tuple[List[Optional[T]], List[Optional[Dyci2Label]]]:
         return self.sequence, self.labels
 
@@ -195,7 +203,7 @@ class FactorOracle(Model[T]):
                 print(" |\n {}\n |\n V".format(self.direct_transitions[i][0]))
 
     ################################################################################################################
-    # PUBLIC: QUERY MODEL FOR INFORMATION (DOES NOT MUTATE STATE)
+    # PUBLIC: QUERIES (IMMUTABLE / DOESN'T MUTATE INTERNAL STATE)
     ################################################################################################################
 
     def follow_suffix_links_from(self,
@@ -576,7 +584,7 @@ class FactorOracle(Model[T]):
         return state is not None
 
     ################################################################################################################
-    #   PRIVATE: MODEL CONSTRUCTION
+    # PRIVATE: MODEL CONSTRUCTION
     ################################################################################################################
 
     def _init_model(self):

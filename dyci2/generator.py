@@ -25,16 +25,16 @@ class Dyci2Generator(Generator):
 
         self.prospector: Dyci2Prospector = prospector
 
-        self.initialized: bool = False
+        self._initialized: bool = False
 
         self._authorized_transforms: List[int] = list(authorized_transforms)
         self.active_transform: Transform = NoTransform()
 
         self._jury: Jury = jury_type()
-        self.fallback_jury: Jury = DefaultFallbackSelector()
+        self._fallback_jury: Jury = DefaultFallbackSelector()
 
     ################################################################################################################
-    # PUBLIC: IMPLEMENTED ABSTRACT METHODS
+    # PUBLIC: INHERITED METHODS
     ################################################################################################################
 
     def process_query(self, query: Query, print_info: bool = False, **kwargs) -> List[Optional[Candidate]]:
@@ -44,14 +44,14 @@ class Dyci2Generator(Generator):
         output: List[Optional[Candidate]]
         if isinstance(query, TriggerQuery):
             self.logger.debug("GENERATION MATCHING QUERY FREE ...")
-            output = self._free_generation(num_events=query.content, init=not self.initialized,
+            output = self._free_generation(num_events=query.content, init=not self._initialized,
                                            print_info=print_info)
             self.logger.debug("... GENERATION MATCHING QUERY FREE OK")
 
         elif isinstance(query, InfluenceQuery) and len(query) == 1:
             self.logger.debug("GENERATION MATCHING QUERY LABEL ...")
             output = self._simply_guided_generation(required_labels=query.content,
-                                                    init=not self.initialized,
+                                                    init=not self._initialized,
                                                     print_info=print_info)
             self.logger.debug("... GENERATION MATCHING QUERY LABEL OK")
 
@@ -64,7 +64,7 @@ class Dyci2Generator(Generator):
             raise RuntimeError(f"Invalid query type: {query.__class__.__name__}")
 
         if len(output) > 0:
-            self.initialized = True
+            self._initialized = True
         return output
 
     def read_memory(self, corpus: Corpus, **kwargs) -> None:
@@ -77,12 +77,12 @@ class Dyci2Generator(Generator):
 
     def clear(self) -> None:
         self._jury.clear()
-        self.fallback_jury.clear()
+        self._fallback_jury.clear()
         self.prospector.clear()
 
     def feedback(self, event: Optional[Candidate], **kwargs) -> None:
         self._jury.feedback(event, **kwargs)
-        self.fallback_jury.feedback(event, **kwargs)
+        self._fallback_jury.feedback(event, **kwargs)
         self.prospector.feedback(event, **kwargs)
 
     ################################################################################################################
@@ -96,6 +96,10 @@ class Dyci2Generator(Generator):
     def decode_memory_with_current_transform(self):
         transform: Transform = self.active_transform
         self.prospector.decode_with_transform(transform)
+
+    @property
+    def initialized(self) -> bool:
+        return self._initialized
 
     @property
     def authorized_transforms(self) -> List[int]:
@@ -326,6 +330,6 @@ class Dyci2Generator(Generator):
     def _decide(self, candidates: Candidates, disable_fallback: bool = False) -> Optional[Candidate]:
         output: Optional[Candidate] = self._jury.decide(candidates)
         if output is None and not disable_fallback:
-            output = self.fallback_jury.decide(candidates)
+            output = self._fallback_jury.decide(candidates)
 
         return output

@@ -50,10 +50,12 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         different ways to find paths in the labels of the automaton to collect the associated contents and generate new
         sequences using concatenative synthesis.
         Original navigation heuristics, see **Assayag, Bloch, "Navigating the Oracle: a heuristic approach", in
-        Proceedings of the International Computer Music Conference 2007** (https://hal.archives-ouvertes.fr/hal-01161388).
+        Proceedings of the International Computer Music Conference 2007**
+        (https://hal.archives-ouvertes.fr/hal-01161388).
 
         :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`.
-        :see also: This "model navigator" class is created with the metaclass :class:`~MetaModelNavigator.MetaModelNavigator`.
+        :see also: This "model navigator" class is created with the
+            metaclass :class:`~MetaModelNavigator.MetaModelNavigator`.
 
         :Example:
 
@@ -110,11 +112,11 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         """ TODO: Docstring (very important!) """
 
     @abstractmethod
-    def _free_navigation(self, **kwargs) -> List[int]:
+    def _free_navigation(self, **kwargs) -> List[CorpusEvent]:
         """ TODO: Docstring """
 
     @abstractmethod
-    def _simply_guided_navigation(self, label: Dyci2Label, **kwargs) -> List[int]:
+    def _simply_guided_navigation(self, label: Dyci2Label, **kwargs) -> List[CorpusEvent]:
         """ TODO: Docstring"""
 
     @abstractmethod
@@ -127,7 +129,7 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         """ TODO: docstring """
 
     ################################################################################################################
-    # PUBLIC: IMPLEMENTED ABSTRACT METHODS
+    # PUBLIC: INHERITED METHODS
     ################################################################################################################
 
     def read_memory(self, corpus: Corpus, **kwargs) -> None:
@@ -165,12 +167,11 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         if self.corpus is None:
             raise StateError("No corpus has been loaded")
 
-        indices: List[int]  # at the moment, list is always of length 0 or 1, it will never contain multiple candidates
         if isinstance(influence, LabelInfluence) and isinstance(influence.value, Dyci2Label):
-            indices_and_scores = self._simply_guided_navigation(influence.value)
+            candidates: List[CorpusEvent] = self._simply_guided_navigation(influence.value)
         elif isinstance(influence, NoInfluence):
-            indices_and_scores = self._free_navigation(forward_context_length_min=forward_context_length_min,
-                                                       shift_index=shift_index)
+            candidates = self._free_navigation(forward_context_length_min=forward_context_length_min,
+                                               shift_index=shift_index)
         else:
             raise QueryError(f"class {self.__class__.__name__} cannot handle "
                              f"influences of type {influence.__class__.__name__}")
@@ -178,10 +179,7 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         if self.next_output is not None:
             warnings.warn(f"Existing state in {self.__class__.__name__} overwritten without output")
 
-        event_and_scores: List[Tuple[CorpusEvent, int]]
-        events_and_scores = [(self._model.internal_event_at(i), s) for i, s in indices_and_scores]
-        self.next_output = ListCandidates([Candidate(e, s, None, self.corpus) for e, s in events_and_scores],
-                                          self.corpus)
+        self.next_output = ListCandidates([Candidate(e, 1.0, None, self.corpus) for e in candidates], self.corpus)
 
     def peek_candidates(self) -> Candidates:
         if self.next_output is None:
@@ -270,7 +268,7 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
                          label_type=label_type)
 
     ################################################################################################################
-    # PUBLIC: IMPLEMENTED ABSTRACT METHODS
+    # PUBLIC: INHERITED METHODS
     ################################################################################################################
 
     # TODO[Jerome]: This one needs some more attention - inconsistencies between randoms ([1..len] vs [0..len-1])
@@ -285,8 +283,8 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
         if self._navigator.current_position_in_sequence < 0:
             if len(influences) > 0:
                 init_states: List[int] = [i for i in range(1, self._model.get_internal_index_last_state()) if
-                                          self._model.direct_transitions.get(i)
-                                          and self._model.equiv(self._model.direct_transitions.get(i)[0], influences[0])]
+                                          self._model.direct_transitions.get(i) and
+                                          self._model.equiv(self._model.direct_transitions.get(i)[0], influences[0])]
                 # TODO: Handle case where init_states is empty?
                 new_position: int = random.randint(0, len(init_states) - 1)
                 self._navigator.set_position_in_sequence(new_position)
@@ -295,12 +293,12 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
                 self._navigator.set_position_in_sequence(new_position)
 
     ################################################################################################################
-    # PRIVATE: IMPLEMENTED ABSTRACT METHODS
+    # PRIVATE: INHERITED METHODS
     ################################################################################################################
 
     def _free_navigation(self,
                          forward_context_length_min: int = 0,
-                         shift_index: int = 0) -> List[int]:
+                         shift_index: int = 0) -> List[CorpusEvent]:
         authorized_indices: List[int] = self._model.continuations(
             index_state=self._navigator.current_position_in_sequence,
             forward_context_length_min=forward_context_length_min
@@ -311,14 +309,15 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
         authorized_indices = self._continuation_based_navigation(authorized_indices=authorized_indices,
                                                                  required_label=None,
                                                                  shift_index=shift_index)
-        return authorized_indices
+
+        return [self._model.get_event_by_internal_index(i) for i in authorized_indices]
 
     def _simply_guided_navigation(self,
                                   required_label: Dyci2Label,
                                   forward_context_length_min: int = 0,
                                   shift_index: int = 0,
                                   no_empty_event: bool = True
-                                  ) -> List[int]:
+                                  ) -> List[CorpusEvent]:
         authorized_indices: List[int] = self._model.continuations_with_label(
             index_state=self._navigator.current_position_in_sequence,
             required_label=required_label,
@@ -332,7 +331,7 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
                                                                  shift_index=shift_index,
                                                                  no_empty_event=no_empty_event)
 
-        return authorized_indices
+        return [self._model.get_event_by_internal_index(i) for i in authorized_indices]
 
     def _clear(self) -> None:
         pass  # No additional actions required

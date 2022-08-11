@@ -117,7 +117,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         self.generation_process: GenerationProcess = GenerationProcess()
 
     ################################################################################################################
-    # PUBLIC: IMPLEMENTED ABSTRACT METHODS
+    # PUBLIC: INHERITED METHODS
     ################################################################################################################
 
     def process_query(self, query: Query, **kwargs) -> None:
@@ -207,11 +207,6 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
     @property
     def performance_time(self) -> int:
         return self._performance_time
-
-    @performance_time.setter
-    def performance_time(self, value: int):
-        self._performance_time = value
-        print("New value of current performance time: {}".format(self._performance_time))
 
     ################################################################################################################
     # TODO: CLEAN UP REQUIRED

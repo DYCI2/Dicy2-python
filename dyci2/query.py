@@ -1,4 +1,7 @@
 
+# TODO: These are commented out because they are not used - only Queries from the shared architecture should be used
+#  once these changes have been properly tested, these can be safely removed.
+
 # class Query(ABC):
 #     def __init__(self, start_date: int = 0, time_mode: TimeMode = TimeMode.ABSOLUTE, print_info: bool = True):
 #         self.start_date: int = start_date

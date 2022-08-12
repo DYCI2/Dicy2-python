@@ -192,6 +192,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
     ################################################################################################################
 
     def start(self) -> None:
+        self.clear()
         self._performance_time = 0
         self._running = True
 

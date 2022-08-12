@@ -29,7 +29,7 @@ def candidate_format(lst: List[Candidate]):
 #     def test_basic(self):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG, format='%(message)s')
-    random.seed(2)
+    random.seed(0)
     # warnings.filterwarnings("ignore")
     # original_stdout = sys.stdout
     # sys.stdout = None
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     for (e, t) in zip(events, transforms):
         print(f"    {e} {t}")
 
-    print("With transforfmation: {}".format(
+    print("\033[1;32mWith transforfmation: {}\033[0m".format(
         chord_format(gen_scheduler.formatted_output_couple_content_transfo())))
 
     # sys.exit(0)
@@ -119,7 +119,7 @@ if __name__ == '__main__':
     gen_scheduler.process_query(query=query)
     print("Output of the run: {}".format(gen_scheduler.generation_process.last_sequence()))
 
-    print("With transforfmation: {}".format(
+    print("\033[1;32mWith transforfmation: {}\033[0m".format(
         chord_format(gen_scheduler.formatted_output_couple_content_transfo())))
 
     sys.stdout = None

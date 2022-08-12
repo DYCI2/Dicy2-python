@@ -162,6 +162,9 @@ class FactorOracle(Model[T]):
     def decode_with_transform(self, transform: Transform) -> None:
         self.labels = [None] + transform.decode_sequence(self.labels[1::])
 
+    def clear(self) -> None:
+        pass    # does not alter runtime state
+
     ################################################################################################################
     # PUBLIC: CLASS-SPECIFIC RUNTIME CONTROL
     ################################################################################################################

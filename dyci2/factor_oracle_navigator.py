@@ -79,7 +79,8 @@ class FactorOracleNavigator(Navigator[T]):
         self.continuity_with_future: Parameter[Tuple[float, float]] = Parameter(continuity_with_future)
         self.execution_trace = {}
 
-        self.history_and_taboos: List[Optional[int]] = [0] * (len(self.sequence))
+        # TODO: DOCUMENTATION NEEDED ON HISTORY_AND_TABOO BEHAVIOUR / DATA FORMAT
+        self.history_and_taboos: List[Optional[int]] = []
         self.current_continuity: int = -1
         self.current_position_in_sequence: int = -1
         self.current_navigation_index: int = -1
@@ -141,7 +142,11 @@ class FactorOracleNavigator(Navigator[T]):
         self.labels.append(label)
         current_last_idx = len(self.history_and_taboos) - 1
         self._authorize_indexes([current_last_idx])
-        self.history_and_taboos.append(None)
+        # TODO[Jerome]: Breaking change (None is, as far as I know, reserved for the initial state. Correct?)
+        #  The old code caused a lot of bugs when `clear` wasn't called after learning each event, since the last added
+        #  event would get automatically taboo'ed.
+        #  old code: self.history_and_taboos.append(None)
+        self.history_and_taboos.append(0)
 
     def rewind_generation(self, time_index: int) -> None:
         self._go_to_anterior_state_using_execution_trace(index_in_navigation=time_index)

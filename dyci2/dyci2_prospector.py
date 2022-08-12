@@ -161,17 +161,23 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
                 influence: Influence,
                 forward_context_length_min: int = 0,
                 print_info: bool = False,
-                shift_index: int = 0,
+                index_in_generation_cycle: int = 0,
                 no_empty_event: bool = True,
                 **kwargs) -> None:
         if self.corpus is None:
             raise StateError("No corpus has been loaded")
 
+        candidates: List[CorpusEvent]
         if isinstance(influence, LabelInfluence) and isinstance(influence.value, Dyci2Label):
-            candidates: List[CorpusEvent] = self._simply_guided_navigation(influence.value)
+            candidates = self._simply_guided_navigation(influence.value,
+                                                        forward_context_length_min=forward_context_length_min,
+                                                        shift_index=index_in_generation_cycle,
+                                                        no_empty_event=no_empty_event,
+                                                        **kwargs)
         elif isinstance(influence, NoInfluence):
             candidates = self._free_navigation(forward_context_length_min=forward_context_length_min,
-                                               shift_index=shift_index)
+                                               shift_index=index_in_generation_cycle,
+                                               **kwargs)
         else:
             raise QueryError(f"class {self.__class__.__name__} cannot handle "
                              f"influences of type {influence.__class__.__name__}")
@@ -201,6 +207,8 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
 
     def clear(self) -> None:
         self.next_output = None
+        self._navigator.clear()
+        self._model.clear()
 
     ################################################################################################################
     # PUBLIC: CLASS-SPECIFIC METHODS
@@ -406,8 +414,8 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
 
         selected_indices: List[int]
         # Case 1: Transition to state immediately following the previous one if reachable and matching
-        selected_indices =  self._navigator.follow_continuation_using_transition(authorized_indices,
-                                                                                  self._model.direct_transitions)
+        selected_indices = self._navigator.follow_continuation_using_transition(authorized_indices,
+                                                                                self._model.direct_transitions)
 
         if len(selected_indices) > 0:
             str_print_info += f" -{self._navigator.labels[selected_indices[0]]}-> {selected_indices[0]}"
@@ -417,7 +425,7 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
 
         # Case 2: Transition to any other filtered, reachable candidate matching the required_label
         selected_indices = self._navigator.follow_continuation_with_jump(authorized_indices,
-                                                                           self._model.direct_transitions)
+                                                                         self._model.direct_transitions)
         if len(selected_indices) > 0:
             prev_index: int = selected_indices[0] - 1
             str_print_info += f" ...> {prev_index} - {self._model.direct_transitions.get(prev_index)[0]} " \

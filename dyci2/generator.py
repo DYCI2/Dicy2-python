@@ -147,7 +147,7 @@ class Dyci2Generator(Generator):
             self.prospector.process(influence=NoInfluence(),
                                     forward_context_length_min=forward_context_length_min,
                                     print_info=print_info,
-                                    shift_index=i)
+                                    index_in_generation_cycle=i)
 
             candidates: Candidates = self.prospector.pop_candidates()
             output: Optional[Candidate] = self._decide(candidates, disable_fallback=False)
@@ -203,7 +203,7 @@ class Dyci2Generator(Generator):
             self.prospector.process(influence=label,
                                     forward_context_length_min=forward_context_length_min,
                                     print_info=print_info,
-                                    shift_index=i + shift_index)
+                                    index_in_generation_cycle=i + shift_index)
             candidates: Candidates = self.prospector.pop_candidates()
 
             if break_when_none and candidates.size() == 0:
@@ -309,8 +309,7 @@ class Dyci2Generator(Generator):
         shift_index: int = original_query_length - len(list_of_labels) + 1
         for (i, influence) in enumerate(list_of_labels[1:]):  # type: int, Influence
             self.prospector.process(influence=influence,
-                                    index_in_generation=shift_index + i,
-                                    previous_steps=generated_sequence,
+                                    index_in_generation_cycle=shift_index + i,
                                     no_empty_event=False)
             candidates: Candidates = self.prospector.pop_candidates()
             output: Optional[Candidate] = self._decide(candidates, disable_fallback=True)

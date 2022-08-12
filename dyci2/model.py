@@ -92,3 +92,7 @@ class Model(Parametric, Generic[T], ABC):
     @abstractmethod
     def decode_with_transform(self, transform: Transform) -> None:
         """ TODO: Docstring """
+
+    @abstractmethod
+    def clear(self) -> None:
+        """ TODO: Docstring """

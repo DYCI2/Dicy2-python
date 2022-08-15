@@ -22,9 +22,9 @@ import logging
 import random
 import warnings
 from abc import ABC, abstractmethod
-from typing import Callable, Tuple, Optional, List, Type, Dict, Union, TypeVar, Generic
+from typing import Callable, Tuple, Optional, List, Type, Dict, Union
 
-from dyci2.dyci2_label import Dyci2Label
+from dyci2.label import Dyci2Label
 from dyci2.factor_oracle_model import FactorOracle
 from dyci2.factor_oracle_navigator import FactorOracleNavigator
 from dyci2.model import Model
@@ -39,11 +39,8 @@ from merge.main.exceptions import QueryError, StateError
 from merge.main.influence import Influence, LabelInfluence, NoInfluence
 from merge.main.prospector import Prospector
 
-M = TypeVar('M', bound=Model)
-N = TypeVar('N', bound=Navigator)
 
-
-class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
+class Dyci2Prospector(Prospector, Parametric, ABC):
     """
         **Factor Oracle Navigator class**.
         This class implements heuristics of navigation through a Factor Oracle automaton for creative applications:
@@ -64,12 +61,7 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         >>> #FON = FactorOracleGenerator(sequence, labels)
     """
 
-    def __init__(self,
-                 model: M,
-                 navigator: N,
-                 corpus: Optional[Corpus],
-                 label_type: Type[Dyci2Label],
-                 *args, **kwargs):
+    def __init__(self, corpus: Optional[Corpus], label_type: Type[Dyci2Label], *args, **kwargs):
         """
         Constructor for the class FactorOracleNavigator.
         :see also: The class FactorOracle in FactorOracleAutomaton.py
@@ -83,8 +75,6 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         """
         super().__init__(*args, **kwargs)
         self.logger = logging.getLogger(__name__)
-        self._model: M = model
-        self._navigator: N = navigator
         self.label_type: Type[Dyci2Label] = label_type
 
         self.next_output: Optional[Candidates] = None
@@ -92,8 +82,6 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         self.corpus: Optional[Corpus] = None
         if corpus is not None:
             self.read_memory(corpus)
-
-        self._navigator.clear()
 
     ################################################################################################################
     # CLASS METHODS
@@ -128,12 +116,23 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
     def _clear(self) -> None:
         """ TODO: docstring """
 
+    @property
+    @abstractmethod
+    def model(self) -> Model:
+        """ TODO: Docstring """
+
+    @property
+    @abstractmethod
+    def navigator(self) -> Navigator:
+        """ TODO: Docstring """
+
     ################################################################################################################
     # PUBLIC: INHERITED METHODS
     ################################################################################################################
 
     def read_memory(self, corpus: Corpus, **kwargs) -> None:
         if self.corpus is not None:
+            # TODO: Add support for this
             raise StateError(f"Loading a new corpus into an existing {self.__class__.__name__} is not supported")
 
         self.corpus = corpus
@@ -152,8 +151,8 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         label: Optional[Dyci2Label] = event.get_label(self.label_type)
         if isinstance(event, self.corpus.get_content_type()) and label is not None:
             self.corpus.append(event)
-            self._model.learn_event(event, label)
-            self._navigator.learn_event(event, label)
+            self.model.learn_event(event, label)
+            self.navigator.learn_event(event, label)
         else:
             raise TypeError(f"Invalid content/label type for event {str(event)}")
 
@@ -202,13 +201,13 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         return output
 
     def feedback(self, output_event: Optional[Candidate], **kwargs) -> None:
-        self._model.feedback(output_event)
-        self._navigator.feedback(output_event)
+        self.model.feedback(output_event)
+        self.navigator.feedback(output_event)
 
     def clear(self) -> None:
         self.next_output = None
-        self._navigator.clear()
-        self._model.clear()
+        self.navigator.clear()
+        self.model.clear()
 
     ################################################################################################################
     # PUBLIC: CLASS-SPECIFIC METHODS
@@ -232,20 +231,24 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
         self.next_output = self._scenario_initial_candidate(labels, authorized_transformations)
 
     def rewind_generation(self, index_in_navigation: int) -> None:
-        self._navigator.rewind_generation(index_in_navigation)
+        self.navigator.rewind_generation(index_in_navigation)
+
+    def set_time(self, time: int) -> None:
+        """ TODO: Docstring (difference from rewind is that it may go forward or backward in time)"""
+        self.navigator.set_time(time)
 
     def encode_with_transform(self, transform: Transform):
-        self._model.encode_with_transform(transform)
+        self.model.encode_with_transform(transform)
 
     def decode_with_transform(self, transform: Transform):
-        self._model.decode_with_transform(transform)
+        self.model.decode_with_transform(transform)
 
     def get_corpus(self) -> Corpus:
         return self.corpus
 
     def set_equiv_function(self, equiv: Callable[[Dyci2Label, Dyci2Label], bool]):
-        self._model.equiv = equiv
-        self._navigator.equiv = equiv
+        self.model.equiv = equiv
+        self.navigator.equiv = equiv
 
     ################################################################################################################
     # PRIVATE
@@ -256,7 +259,7 @@ class Dyci2Prospector(Prospector, Parametric, Generic[M, N], ABC):
                and len(authorized_transformations) > 0 and authorized_transformations != [0]
 
 
-class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator]):
+class FactorOracleProspector(Dyci2Prospector):
     def __init__(self,
                  corpus: Optional[Corpus],
                  label_type: Type[Dyci2Label],
@@ -265,15 +268,14 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
                  history_parameters=(),
                  equiv: Callable = (lambda x, y: x == y),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
-        super().__init__(model=FactorOracle(equiv=equiv),
-                         navigator=FactorOracleNavigator(
-                             equiv=equiv,
-                             max_continuity=max_continuity,
-                             control_parameters=control_parameters,
-                             execution_trace_parameters=history_parameters,
-                             continuity_with_future=continuity_with_future),
-                         corpus=corpus,
+        super().__init__(corpus=corpus,
                          label_type=label_type)
+        self._model = FactorOracle(equiv=equiv)
+        self._navigator = FactorOracleNavigator(equiv=equiv,
+                                                max_continuity=max_continuity,
+                                                control_parameters=control_parameters,
+                                                execution_trace_parameters=history_parameters,
+                                                continuity_with_future=continuity_with_future)
 
     ################################################################################################################
     # PUBLIC: INHERITED METHODS
@@ -285,20 +287,20 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
             raise QueryError(f"Invalid label type encountered in {self.__class__.__name__}")
 
         if init:
-            self._navigator.clear()
+            self.navigator.clear()
 
         # Navigator has not generated anything
-        if self._navigator.current_position_in_sequence < 0:
+        if self.navigator.current_position_in_sequence < 0:
             if len(influences) > 0:
-                init_states: List[int] = [i for i in range(1, self._model.get_internal_index_last_state()) if
-                                          self._model.direct_transitions.get(i) and
-                                          self._model.equiv(self._model.direct_transitions.get(i)[0], influences[0])]
+                init_states: List[int] = [i for i in range(1, self.model.get_internal_index_last_state()) if
+                                          self.model.direct_transitions.get(i) and
+                                          self.model.equiv(self.model.direct_transitions.get(i)[0], influences[0])]
                 # TODO: Handle case where init_states is empty?
                 new_position: int = random.randint(0, len(init_states) - 1)
-                self._navigator.set_position_in_sequence(new_position)
+                self.navigator.set_position_in_sequence(new_position)
             else:
-                new_position: int = random.randint(1, self._model.get_internal_index_last_state())
-                self._navigator.set_position_in_sequence(new_position)
+                new_position: int = random.randint(1, self.model.get_internal_index_last_state())
+                self.navigator.set_position_in_sequence(new_position)
 
     ################################################################################################################
     # PRIVATE: INHERITED METHODS
@@ -307,18 +309,18 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
     def _free_navigation(self,
                          forward_context_length_min: int = 0,
                          shift_index: int = 0) -> List[CorpusEvent]:
-        authorized_indices: List[int] = self._model.continuations(
-            index_state=self._navigator.current_position_in_sequence,
+        authorized_indices: List[int] = self.model.continuations(
+            index_state=self.navigator.current_position_in_sequence,
             forward_context_length_min=forward_context_length_min
         )
 
-        authorized_indices = self._navigator.filter_using_history_and_taboos(authorized_indices)
+        authorized_indices = self.navigator.filter_using_history_and_taboos(authorized_indices)
 
         authorized_indices = self._continuation_based_navigation(authorized_indices=authorized_indices,
                                                                  required_label=None,
                                                                  shift_index=shift_index)
 
-        return [self._model.get_event_by_internal_index(i) for i in authorized_indices]
+        return [self.model.get_event_by_internal_index(i) for i in authorized_indices]
 
     def _simply_guided_navigation(self,
                                   required_label: Dyci2Label,
@@ -326,29 +328,26 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
                                   shift_index: int = 0,
                                   no_empty_event: bool = True
                                   ) -> List[CorpusEvent]:
-        authorized_indices: List[int] = self._model.continuations_with_label(
-            index_state=self._navigator.current_position_in_sequence,
+        authorized_indices: List[int] = self.model.continuations_with_label(
+            index_state=self.navigator.current_position_in_sequence,
             required_label=required_label,
             forward_context_length_min=forward_context_length_min,
         )
 
-        authorized_indices = self._navigator.filter_using_history_and_taboos(authorized_indices)
+        authorized_indices = self.navigator.filter_using_history_and_taboos(authorized_indices)
 
         authorized_indices = self._continuation_based_navigation(authorized_indices=authorized_indices,
                                                                  required_label=required_label,
                                                                  shift_index=shift_index,
                                                                  no_empty_event=no_empty_event)
 
-        return [self._model.get_event_by_internal_index(i) for i in authorized_indices]
-
-    def _clear(self) -> None:
-        pass  # No additional actions required
+        return [self.model.get_event_by_internal_index(i) for i in authorized_indices]
 
     def _scenario_initial_candidate(self, labels: List[Dyci2Label],
                                     authorized_transformations: List[int]) -> Candidates:
         # use model's internal corpus model to handle the initial None object
-        valid_indices: List[int] = list(range(self._model.get_internal_sequence_length()))
-        authorized_indices: List[int] = self._navigator.filter_using_history_and_taboos(valid_indices)
+        valid_indices: List[int] = list(range(self.model.get_internal_sequence_length()))
+        authorized_indices: List[int] = self.navigator.filter_using_history_and_taboos(valid_indices)
 
         use_intervals: bool = self._use_intervals(authorized_transformations)
         if use_intervals:
@@ -362,9 +361,9 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
         # FactorOracleModel's representation of the memory is slightly different from the Corpus
         modelled_events: List[Optional[CorpusEvent]]
         modelled_labels: List[Optional[Dyci2Label]]
-        modelled_events, modelled_labels = self._model.get_internal_corpus_model()
+        modelled_events, modelled_labels = self.model.get_internal_corpus_model()
 
-        index_delta_prefixes: Dict[int, List[List[int]]] = self._navigator.find_prefix_matching_with_labels(
+        index_delta_prefixes: Dict[int, List[List[int]]] = self.navigator.find_prefix_matching_with_labels(
             use_intervals=use_intervals,
             memory_labels=modelled_labels,
             labels_to_match=labels,
@@ -389,6 +388,17 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
         else:
             return ListCandidates.new_empty(self.corpus)
 
+    def _clear(self) -> None:
+        pass  # No additional actions required
+
+    @property
+    def model(self) -> FactorOracle:
+        return self._model
+
+    @property
+    def navigator(self) -> FactorOracleNavigator:
+        return self._navigator
+
     ################################################################################################################
     # PRIVATE: CLASS-SPECIFIC METHODS
     ################################################################################################################
@@ -409,47 +419,47 @@ class FactorOracleProspector(Dyci2Prospector[FactorOracle, FactorOracleNavigator
                                        shift_index: Optional[int] = None,
                                        no_empty_event: bool = True) -> List[int]:
         str_print_info: str = f"{shift_index} " \
-                              f"(cont. = {self._navigator.current_continuity}/{self._navigator.max_continuity.get()})" \
-                              f": {self._navigator.current_position_in_sequence}"
+                              f"(cont. = {self.navigator.current_continuity}/{self.navigator.max_continuity.get()})" \
+                              f": {self.navigator.current_position_in_sequence}"
 
         selected_indices: List[int]
         # Case 1: Transition to state immediately following the previous one if reachable and matching
-        selected_indices = self._navigator.follow_continuation_using_transition(authorized_indices,
-                                                                                self._model.direct_transitions)
+        selected_indices = self.navigator.follow_continuation_using_transition(authorized_indices,
+                                                                               self.model.direct_transitions)
 
         if len(selected_indices) > 0:
-            str_print_info += f" -{self._navigator.labels[selected_indices[0]]}-> {selected_indices[0]}"
+            str_print_info += f" -{self.navigator.labels[selected_indices[0]]}-> {selected_indices[0]}"
 
             self.logger.debug(str_print_info)
             return selected_indices
 
         # Case 2: Transition to any other filtered, reachable candidate matching the required_label
-        selected_indices = self._navigator.follow_continuation_with_jump(authorized_indices,
-                                                                         self._model.direct_transitions)
+        selected_indices = self.navigator.follow_continuation_with_jump(authorized_indices,
+                                                                        self.model.direct_transitions)
         if len(selected_indices) > 0:
             prev_index: int = selected_indices[0] - 1
-            str_print_info += f" ...> {prev_index} - {self._model.direct_transitions.get(prev_index)[0]} " \
-                              f"-> {self._model.direct_transitions.get(prev_index)[1]}"
+            str_print_info += f" ...> {prev_index} - {self.model.direct_transitions.get(prev_index)[0]} " \
+                              f"-> {self.model.direct_transitions.get(prev_index)[1]}"
             self.logger.debug(str_print_info)
             return selected_indices
 
         # Case 3: Filtered, _unreachable_ candidates
         # TODO: I have no idea why `last` is excluded here
         # TODO 2: using range(0, N-1) instead of (1, N) or (1, N-1) WILL crash the system if 0 is selected as output.
-        additional_indices: List[int] = list(range(self._model.get_internal_index_last_state()))
-        additional_indices = self._navigator.filter_using_history_and_taboos(additional_indices)
+        additional_indices: List[int] = list(range(self.model.get_internal_index_last_state()))
+        additional_indices = self.navigator.filter_using_history_and_taboos(additional_indices)
 
         if required_label is not None:
             if no_empty_event:
                 # Case 3.1 (simply guided): Transition to any filtered _unreachable_ candidate matching the label
-                additional_indices = self._navigator.find_matching_label_without_continuation(required_label,
-                                                                                              additional_indices)
+                additional_indices = self.navigator.find_matching_label_without_continuation(required_label,
+                                                                                             additional_indices)
                 if len(additional_indices) > 0:
                     authorized_indices = additional_indices
         else:
             # Case 3.2: Transition to any filtered _unreachable_ candidate (if free navigation, i.e. no label)
-            additional_indices = self._navigator.follow_continuation_with_jump(additional_indices,
-                                                                               self._model.direct_transitions)
+            additional_indices = self.navigator.follow_continuation_with_jump(additional_indices,
+                                                                              self.model.direct_transitions)
             if len(additional_indices) > 0:
                 selected_indices = additional_indices
 

@@ -21,7 +21,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
-from dyci2.dyci2_label import ChordLabel, Dyci2Label
+from dyci2.label import ChordLabel, Dyci2Label
 
 
 # from numpy import roll

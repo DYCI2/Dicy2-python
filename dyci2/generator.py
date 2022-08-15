@@ -2,7 +2,7 @@ import logging
 from typing import Optional, Type, List
 
 from dyci2.candidate_selector import TempCandidateSelector, DefaultFallbackSelector
-from dyci2.dyci2_prospector import Dyci2Prospector
+from dyci2.prospector import Dyci2Prospector
 from dyci2.transforms import Transform, NoTransform
 from merge.main.candidate import Candidate
 from merge.main.candidates import Candidates, ListCandidates
@@ -72,6 +72,10 @@ class Dyci2Generator(Generator):
         self.prospector.read_memory(corpus, **kwargs)
 
     def learn_event(self, event: CorpusEvent, **kwargs) -> None:
+        """
+            raises: TypeError if event is incompatible with current memory
+            StateError if no `Corpus` has been loaded
+        """
         # TODO: Handle multicorpus case: learning a corpus in only a particular Prospector => PathSpec argument
         self.prospector.learn_event(event, **kwargs)
 
@@ -252,8 +256,8 @@ class Dyci2Generator(Generator):
                     # Old code for compatibility with line below:
                     #   self.prospector.navigator.set_position_in_sequence(fallback_output.index)
                 else:
-                    # TODO[Jerome]: Is this really a good idea? Shouldn't it be random state? + PRIVATE
-                    self.prospector._navigator.set_position_in_sequence(0)
+                    # TODO[Jerome]: Is this really a good idea? Shouldn't it be random state?
+                    self.prospector.navigator.reset_position_in_sequence(randomize=False)
                 generated_sequence.append(fallback_output)
 
         return generated_sequence

@@ -21,9 +21,9 @@ import logging
 from typing import Optional, Callable, Type, List
 
 from dyci2.candidate_selector import TempCandidateSelector
-from dyci2.dyci2_label import Dyci2Label
+from dyci2.label import Dyci2Label
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
-from dyci2.dyci2_prospector import Dyci2Prospector
+from dyci2.prospector import Dyci2Prospector
 from dyci2.generation_process import GenerationProcess
 from dyci2.generator import Dyci2Generator
 from dyci2.parameter import Parametric
@@ -149,8 +149,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
                               f"generation_time = {self.generation_process.generation_time}")
             self.generator.prospector.rewind_generation(generation_index - 1)
 
-        # TODO[Jerome] UNSOLVED! Isn't this the same as rewind_generation? Looks very similar to line above.
-        self.generator.prospector._navigator.current_navigation_index = generation_index - 1
+        self.generator.prospector.set_time(generation_index - 1)
 
         output: List[Optional[Candidate]] = self.generator.process_query(query)
 
@@ -182,6 +181,10 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         self.generator.read_memory(corpus, **kwargs)
 
     def learn_event(self, event: CorpusEvent, **kwargs) -> None:
+        """
+            raises: TypeError if event is incompatible with current memory
+            StateError if no `Corpus` has been loaded
+        """
         self.generator.learn_event(event, **kwargs)
 
     def clear(self) -> None:
@@ -208,6 +211,10 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
     @property
     def performance_time(self) -> int:
         return self._performance_time
+
+    @property
+    def corpus(self) -> Optional[Corpus]:
+        return self.generator.prospector.corpus
 
     ################################################################################################################
     # TODO: CLEAN UP REQUIRED

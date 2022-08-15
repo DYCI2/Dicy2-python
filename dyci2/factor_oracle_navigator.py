@@ -5,7 +5,7 @@ import warnings
 from typing import List, Optional, Callable, Dict, Tuple, TypeVar
 
 from dyci2 import intervals
-from dyci2.dyci2_label import Dyci2Label
+from dyci2.label import Dyci2Label
 from dyci2.navigator import Navigator
 from dyci2.parameter import Parameter, OrdinalRange
 from dyci2.prefix_indexing import PrefixIndexing
@@ -76,7 +76,9 @@ class FactorOracleNavigator(Navigator[T]):
         self.equiv: Callable = equiv
         self.max_continuity: Parameter[int] = Parameter(max_continuity, OrdinalRange(0, None))
         self.avoid_repetitions_mode: Parameter[int] = Parameter(0)
+        # TODO: DOCUMENTATION ON CONTINUITY_WITH_FUTURE DATA FORMAT / BEHAVIOUR
         self.continuity_with_future: Parameter[Tuple[float, float]] = Parameter(continuity_with_future)
+        # TODO: DOCUMENTATION ON EXECUTION TRACE FORMAT (should probably be its own class)
         self.execution_trace = {}
 
         # TODO: DOCUMENTATION NEEDED ON HISTORY_AND_TABOO BEHAVIOUR / DATA FORMAT
@@ -148,6 +150,9 @@ class FactorOracleNavigator(Navigator[T]):
         #  old code: self.history_and_taboos.append(None)
         self.history_and_taboos.append(0)
 
+    def set_time(self, time: int) -> None:
+        self.current_navigation_index = time
+
     def rewind_generation(self, time_index: int) -> None:
         self._go_to_anterior_state_using_execution_trace(index_in_navigation=time_index)
 
@@ -162,6 +167,13 @@ class FactorOracleNavigator(Navigator[T]):
     def feedback(self, output_event: Optional[Candidate]) -> None:
         if output_event is not None:
             self.set_position_in_sequence(output_event.event.index + 1)  # To account for Model's initial None
+
+    def reset_position_in_sequence(self, randomize: bool = False):
+        # TODO: Implement?
+        if randomize:
+            warnings.warn("randomization is not implemented yet")
+        else:
+            self.set_position_in_sequence(0)
 
     ################################################################################################################
     # PUBLIC: CLASS-SPECIFIC RUNTIME CONTROL

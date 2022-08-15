@@ -24,7 +24,7 @@ Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/Factor
 from abc import ABC, abstractmethod
 from typing import Callable, List, Optional, TypeVar, Generic
 
-from dyci2.dyci2_label import Dyci2Label
+from dyci2.label import Dyci2Label
 from dyci2.parameter import Parametric
 from dyci2.transforms import Transform
 from merge.main.candidate import Candidate

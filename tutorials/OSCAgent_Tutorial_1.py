@@ -25,9 +25,9 @@ print("\nCreation of a OSC agent \nModel type = Factor Oracle\nSequence: {}\nLab
 
 authorized_intervals = list(range(-6,6))
 agent = OSCAgent(sequence = sequence, labels = labels, authorized_transformations = authorized_intervals)
-agent.generation_handler.memory.avoid_repetitions_mode = 1 
-agent.generation_handler.memory.max_continuity = 3
-agent.generation_handler.memory.no_empty_event = False
+agent.generation_scheduler.memory.avoid_repetitions_mode = 1
+agent.generation_scheduler.memory.max_continuity = 3
+agent.generation_scheduler.memory.no_empty_event = False
 
 agent.start()
 

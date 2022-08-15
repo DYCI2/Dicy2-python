@@ -19,10 +19,11 @@ The classes defined in this module are used in association with models (cf. :mod
 **model navigator** classes (cf. :mod:`ModelNavigator`).
 
 """
+import warnings
 from abc import ABC, abstractmethod
 from typing import List, Optional, Callable, Generic, TypeVar
 
-from dyci2.dyci2_label import Dyci2Label
+from dyci2.label import Dyci2Label
 from dyci2.parameter import Parametric
 from merge.main.candidate import Candidate
 
@@ -47,12 +48,21 @@ class Navigator(Parametric, Generic[T], ABC):
         """ TODO: Docstring (can be copied from Model / FactorOracle) """
 
     @abstractmethod
-    def feedback(self, output_event: Optional[Candidate]) -> None:
-        """ TODO: Docstring """
+    def set_time(self, time: int) -> None:
+        """ TODO: Docstring (difference from rewind is that it may go forward or backward in time) """
 
     @abstractmethod
     def rewind_generation(self, time_index: int) -> None:
         """ TODO: Docstring """
+
+    @abstractmethod
+    def feedback(self, output_event: Optional[Candidate]) -> None:
+        """ TODO: Docstring """
+
+    @abstractmethod
+    def reset_position_in_sequence(self, randomize: bool = False):
+        """ TODO: Docstring """
+
 
     @abstractmethod
     def clear(self) -> None:

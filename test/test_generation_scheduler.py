@@ -5,9 +5,9 @@ import typing
 import warnings
 from typing import List, Tuple
 
-from dyci2.dyci2_label import ChordLabel, from_list_to_labels
+from dyci2.label import ChordLabel, from_list_to_labels
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
-from dyci2.dyci2_prospector import FactorOracleProspector
+from dyci2.prospector import FactorOracleProspector
 from dyci2.generation_scheduler import Dyci2GenerationScheduler
 from dyci2.transforms import Transform
 from merge.main.candidate import Candidate

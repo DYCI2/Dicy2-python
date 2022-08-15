@@ -37,18 +37,21 @@ class Dyci2Label(Label):
     def __repr__(self):
         return "Label " + str(self.label)
 
+    def __str__(self):
+        return self.__class__.__name__
+
     @classmethod
     def __desc__(self):
         return "Label"
 
     @classmethod
-    def from_string(cls, s) -> Type['Dyci2Label']:
+    def from_string(cls, s: str) -> Type['Dyci2Label']:
         """ raises: TypeError if string doesn't match a type"""
-        if s == "Label":
+        if s.lower() == "label":
             return Dyci2Label
-        elif s == "ListLabel":
+        elif s.lower() == "listlabel":
             return ListLabel
-        elif s == "ChordLabel":
+        elif s.lower() == "chordlabel":
             return ChordLabel
         else:
             raise ValueError(f"No label '{s}' exists")

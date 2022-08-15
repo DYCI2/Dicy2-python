@@ -1,7 +1,7 @@
 import logging
 from typing import Optional, Callable, List, Type, TypeVar, Generic, Tuple
 
-from dyci2.dyci2_label import Dyci2Label
+from dyci2.label import Dyci2Label
 from dyci2.model import Model
 from dyci2.transforms import Transform
 from merge.main.candidate import Candidate

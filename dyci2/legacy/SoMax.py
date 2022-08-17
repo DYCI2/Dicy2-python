@@ -379,7 +379,7 @@ def activity_free_navigation(self, *args, time=None, update=True, **kwargs):
 # In the DYCI2 framework, the simply guided navigation corresponds to the SoMax influence
 def activity_simply_guided_navigation(self, required_labels, *args, time=None, **kwargs):
     if kwargs.get('equiv') is None:
-        equiv = self.equiv
+        equiv = self.eq
     if not kwargs.get('new_max_continuity') is None:
         self.max_continuity = kwargs.get('new_max_continuity')
     if not kwargs.get('init') is None:
@@ -412,7 +412,7 @@ def ngram_influence(somax_navigator, required_label, activity_space, equiv=None)
     prefix = list(somax_navigator.influence_history)[-(somax_navigator.ngram_size-1):]
     prefix.append(required_label)
     
-    equiv = somax_navigator.equiv if equiv is None else equiv
+    equiv = somax_navigator.eq if equiv is None else equiv
     
     filtered_prefixes = dict(filter(lambda x: equiv(tuple(prefix), x[0]), somax_navigator.subsequences.items()))
     valid_indexes = set()

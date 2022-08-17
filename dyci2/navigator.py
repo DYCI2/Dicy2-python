@@ -19,10 +19,10 @@ The classes defined in this module are used in association with models (cf. :mod
 **model navigator** classes (cf. :mod:`ModelNavigator`).
 
 """
-import warnings
 from abc import ABC, abstractmethod
-from typing import List, Optional, Callable, Generic, TypeVar
+from typing import List, Optional, Generic, TypeVar
 
+from dyci2.equiv import Equiv
 from dyci2.label import Dyci2Label
 from dyci2.parameter import Parametric
 from merge.main.candidate import Candidate
@@ -37,14 +37,14 @@ class Navigator(Parametric, Generic[T], ABC):
     def learn_sequence(self,
                        sequence: List[Optional[T]],
                        labels: List[Optional[Dyci2Label]],
-                       equiv: Optional[Callable] = None) -> None:
+                       equiv: Optional[Equiv] = None) -> None:
         """ TODO: Docstring (can be copied from Model / FactorOracle) """
 
     @abstractmethod
     def learn_event(self,
                     event: Optional[T],
                     label: Optional[Dyci2Label],
-                    equiv: Optional[Callable] = None) -> None:
+                    equiv: Optional[Equiv] = None) -> None:
         """ TODO: Docstring (can be copied from Model / FactorOracle) """
 
     @abstractmethod
@@ -62,7 +62,6 @@ class Navigator(Parametric, Generic[T], ABC):
     @abstractmethod
     def reset_position_in_sequence(self, randomize: bool = False):
         """ TODO: Docstring """
-
 
     @abstractmethod
     def clear(self) -> None:

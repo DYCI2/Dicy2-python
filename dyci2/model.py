@@ -22,8 +22,9 @@ Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/Factor
 
 """
 from abc import ABC, abstractmethod
-from typing import Callable, List, Optional, TypeVar, Generic
+from typing import List, Optional, TypeVar, Generic
 
+from dyci2.equiv import Equiv
 from dyci2.label import Dyci2Label
 from dyci2.parameter import Parametric
 from dyci2.transforms import Transform
@@ -50,7 +51,7 @@ class Model(Parametric, Generic[T], ABC):
     def learn_sequence(self,
                        sequence: List[Optional[T]],
                        labels: List[Optional[Dyci2Label]],
-                       equiv: Optional[Callable] = None) -> None:
+                       equiv: Optional[Equiv] = None) -> None:
         """ TODO: Update Docstring
         Learns (appends) a new sequence in the model.
 
@@ -68,7 +69,7 @@ class Model(Parametric, Generic[T], ABC):
     def learn_event(self,
                     event: Optional[T],
                     label: Optional[Dyci2Label],
-                    equiv: Optional[Callable] = None) -> None:
+                    equiv: Optional[Equiv] = None) -> None:
         """ TODO: Docstring (can be copied/moved from FactorOracle, probably)
         Learns (appends) a new state in the model.
 

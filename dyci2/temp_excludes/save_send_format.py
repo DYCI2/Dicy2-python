@@ -14,7 +14,6 @@ Tools to save, send, and format models and sequence using different format.
 """
 
 import os, json
-from dyci2.generator_builder import *
 #TODO : pour "extract..." --> a remettre dans un meilleur module
 
 #####################################################################################
@@ -26,25 +25,7 @@ from dyci2.generator_builder import *
 #TODO: Faire methode VRAIMENT générale write-obj-as-antescofo-struct qui fait ce qui faut selon type d'event (TODO), ie de label et content(TODO)
 #ICI NE MARCHE QUE SI COUPLE CONTENT TRANSFO
 #ATTENTION: LE "-1" après obj[0] ne marche que si comme dans Oracle, état[0] est vide
-def write_obj_as_antescofo_struct(obj):
-	if len(obj) == 2:
-		return write_content_and_tranfo_as_antescofo_tab(obj[0]-1, obj[1])
-
-def write_content_and_tranfo_as_antescofo_tab(content, transfo):
-	return "TAB [{}, {}]".format(content, transfo)
-
-def write_list_as_antescofo_map (seq, start_idx):
-	s = "MAP {"
-	i = 0
-
-	for el in seq:
-		s += "({}, {})".format(i+start_idx,write_obj_as_antescofo_struct(el))
-		i += 1
-		if i < len(seq):
-			s+= ", "
-		else:
-			s+=" }"
-	return s
+from dyci2.temp_excludes.generator_builder import extract_labels_and_contents_from_dict_memory
 
 #TODO : REGLER CES HISTOIRES DE 2 DATES DANS TIME ET DE SECONDES / MILLISECONDES
 def load_dates_dict_memory_in_antescofo(dict_memory,keys_labels):
@@ -76,13 +57,15 @@ def load_dates_dict_memory_in_antescofo(dict_memory,keys_labels):
 	print("{} LABELS: {}".format(len(l_labels),l_labels))
 	return l_dates, l_labels, length, l_pos
 
-def load_dates_json_memory_in_antescofo(path_json_file,keys_labels):
-	if not os.path.isfile(path_json_file):
-		print("Need a valid json file")
-	with open(path_json_file, 'r') as jfile:
-		dict_memory = json.load(jfile)
 
-	return load_dates_dict_memory_in_antescofo(dict_memory,keys_labels)
+# TODO: Update together with json loading/saving
+# def load_dates_json_memory_in_antescofo(path_json_file,keys_labels):
+# 	if not os.path.isfile(path_json_file):
+# 		print("Need a valid json file")
+# 	with open(path_json_file, 'r') as jfile:
+# 		dict_memory = json.load(jfile)
+#
+# 	return load_dates_dict_memory_in_antescofo(dict_memory,keys_labels)
 
 
 

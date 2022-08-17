@@ -35,10 +35,10 @@ class Dyci2Label(Label):
             self.set_label(label)
 
     def __repr__(self):
-        return "Label " + str(self.label)
+        return f"{self.__class__.__name__}({str(self.label)})"
 
     def __str__(self):
-        return self.__class__.__name__
+        return str(self.label)
 
     @classmethod
     def __desc__(self):
@@ -47,7 +47,7 @@ class Dyci2Label(Label):
     @classmethod
     def from_string(cls, s: str) -> Type['Dyci2Label']:
         """ raises: TypeError if string doesn't match a type"""
-        if s.lower() == "label":
+        if s.lower() == "label" or s.lower() == "dyci2label":
             return Dyci2Label
         elif s.lower() == "listlabel":
             return ListLabel

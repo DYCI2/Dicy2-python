@@ -21,8 +21,6 @@ from dyci2.corpus_builder import *
 
 # TODO: Possibilité de faire multimodal key
 # TODO: test si clé demandée est bien ou non dedans
-from legacy.legacy_generation_handler import GenerationHandlerOld
-
 
 def extract_labels_and_contents_from_dict_memory(dict_memory, keys_labels, keys_contents):
     """

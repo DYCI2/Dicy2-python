@@ -2,6 +2,7 @@ import logging
 from typing import Optional, Type, List
 
 from dyci2.candidate_selector import TempCandidateSelector, DefaultFallbackSelector
+from dyci2.parameter import Parametric
 from dyci2.prospector import Dyci2Prospector
 from dyci2.transforms import Transform, NoTransform
 from merge.main.candidate import Candidate
@@ -15,7 +16,7 @@ from merge.main.query import Query
 from merge.main.query import TriggerQuery, InfluenceQuery
 
 
-class Dyci2Generator(Generator):
+class Dyci2Generator(Generator, Parametric):
     def __init__(self,
                  prospector: Dyci2Prospector,
                  jury_type: Type[Jury] = TempCandidateSelector,
@@ -75,6 +76,7 @@ class Dyci2Generator(Generator):
         """
             raises: TypeError if event is incompatible with current memory
             StateError if no `Corpus` has been loaded
+            LabelError if attempting to learn an event with a label type that doesn't exist in the Corpus
         """
         # TODO: Handle multicorpus case: learning a corpus in only a particular Prospector => PathSpec argument
         self.prospector.learn_event(event, **kwargs)

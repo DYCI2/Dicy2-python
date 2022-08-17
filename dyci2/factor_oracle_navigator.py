@@ -5,11 +5,12 @@ import warnings
 from typing import List, Optional, Callable, Dict, Tuple, TypeVar
 
 from dyci2 import intervals
+from dyci2.equiv import BasicEquiv, Equiv
 from dyci2.label import Dyci2Label
 from dyci2.navigator import Navigator
 from dyci2.parameter import Parameter, OrdinalRange
 from dyci2.prefix_indexing import PrefixIndexing
-from dyci2.utils import noneIsInfinite
+from dyci2.utils import none_is_infinite
 from merge.main.candidate import Candidate
 
 T = TypeVar('T')
@@ -65,7 +66,7 @@ class FactorOracleNavigator(Navigator[T]):
     """
 
     def __init__(self,
-                 equiv: Optional[Callable] = (lambda x, y: x == y),
+                 equiv: Optional[Equiv] = BasicEquiv(),
                  max_continuity: int = 20,
                  control_parameters=(),
                  execution_trace_parameters=(),
@@ -73,7 +74,7 @@ class FactorOracleNavigator(Navigator[T]):
         self.logger = logging.getLogger(__name__)
         self.sequence: List[Optional[T]] = [None]  # initial state
         self.labels: List[Optional[Dyci2Label]] = [None]  # initial state
-        self.equiv: Callable = equiv
+        self.equiv: Equiv = equiv
         self.max_continuity: Parameter[int] = Parameter(max_continuity, OrdinalRange(0, None))
         self.avoid_repetitions_mode: Parameter[int] = Parameter(0)
         # TODO: DOCUMENTATION ON CONTINUITY_WITH_FUTURE DATA FORMAT / BEHAVIOUR
@@ -115,7 +116,7 @@ class FactorOracleNavigator(Navigator[T]):
     def learn_sequence(self,
                        sequence: List[Optional[T]],
                        labels: List[Optional[Dyci2Label]],
-                       equiv: Optional[Callable] = None) -> None:
+                       equiv: Optional[Equiv] = None) -> None:
         """
         TODO: Update docstring
         Learns (appends) a new sequence in the model.
@@ -139,7 +140,7 @@ class FactorOracleNavigator(Navigator[T]):
     def learn_event(self,
                     event: Optional[T],
                     label: Optional[Dyci2Label],
-                    equiv: Optional[Callable] = None) -> None:
+                    equiv: Optional[Equiv] = None) -> None:
         self.sequence.append(event)
         self.labels.append(label)
         current_last_idx = len(self.history_and_taboos) - 1
@@ -293,7 +294,7 @@ class FactorOracleNavigator(Navigator[T]):
                     f"\nTrying to avoid repetitions: possible continuations {authorized_indices}...")
                 # TODO: This nested list comprehension could be optimized
                 minimum_history_taboo_value: int = min([self.history_and_taboos[i] for i in authorized_indices],
-                                                       key=noneIsInfinite)
+                                                       key=none_is_infinite)
                 authorized_indices = [i for i in authorized_indices
                                       if self.history_and_taboos[i] == minimum_history_taboo_value]
                 self.logger.debug(f"... reduced to {authorized_indices}.")
@@ -329,7 +330,7 @@ class FactorOracleNavigator(Navigator[T]):
     def find_matching_label_without_continuation(self,
                                                  required_label: Dyci2Label,
                                                  authorized_indices: List[int],
-                                                 equiv: Optional[Callable] = None) -> List[int]:
+                                                 equiv: Optional[Equiv] = None) -> List[int]:
 
         """
         Random state in the sequence matching required_label if self.no_empty_event is True (else None).
@@ -348,7 +349,7 @@ class FactorOracleNavigator(Navigator[T]):
         if equiv is None:
             equiv = self.equiv
 
-        authorized_indices = [i for i in authorized_indices if equiv(self.labels[i], required_label)]
+        authorized_indices = [i for i in authorized_indices if equiv.eq(self.labels[i], required_label)]
         if len(authorized_indices) > 0:
             random_choice: int = random.randint(0, len(authorized_indices) - 1)
             return [authorized_indices[random_choice]]

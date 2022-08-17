@@ -17,6 +17,7 @@ See the different tutorials accompanied with Max patches.
 """
 
 import logging
+from abc import abstractmethod
 from multiprocessing import Process
 from typing import Optional, Any, Union, List, Tuple, Type
 
@@ -27,26 +28,30 @@ from maxosc.maxformatter import MaxFormatter
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
 
-from dyci2 import save_send_format
+from dyci2 import utils
+from dyci2.io_formatting import AntescofoFormatting
 from dyci2.corpus_event import Dyci2CorpusEvent
-from dyci2.dyci2_time import Dyci2Timepoint
+from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
 from dyci2.label import Dyci2Label
 from dyci2.parameter import Parameter
 from dyci2.prospector import Dyci2Prospector, FactorOracleProspector
-from generation_scheduler import Dyci2GenerationScheduler
+from dyci2.generation_scheduler import Dyci2GenerationScheduler
+from merge.io.osc_sender import OscLogForwarder, OscSender
 from merge.main.corpus import GenericCorpus, Corpus
-from merge.main.exceptions import InputError, StateError
+from merge.main.exceptions import InputError, StateError, LabelError
+from merge.main.influence import Influence
+from merge.main.query import Query, TriggerQuery, InfluenceQuery
 
 
-class Target:
-    WARNING_ADDRESS = "/warning"
-
-    def __init__(self, port: int, ip: str):
-        self._client: Sender = Sender(ip=ip, port=port, send_format=SendFormat.FLATTEN, cnmat_compatibility=True,
-                                      warning_address=Target.WARNING_ADDRESS)
-
-    def send(self, address: str, content: Any, **_kwargs):
-        self._client.send(address, content)
+# class Target:
+#     WARNING_ADDRESS = "/warning"
+#
+#     def __init__(self, port: int, ip: str):
+#         self._client: Sender = Sender(ip=ip, port=port, send_format=SendFormat.FLATTEN, cnmat_compatibility=True,
+#                                       warning_address=Target.WARNING_ADDRESS)
+#
+#     def send(self, address: str, content: Any, **_kwargs):
+#         self._client.send(address, content)
 
 
 class Server(Process, Caller):
@@ -56,20 +61,38 @@ class Server(Process, Caller):
     DEFAULT_OUTPORT = 1234
     DEBUG = True
 
-    def __init__(self, inport: int = DEFAULT_INPORT, outport: int = DEFAULT_OUTPORT, **kwargs):
-        Process.__init__(self, **kwargs)
+    def __init__(self,
+                 inport: int = DEFAULT_INPORT,
+                 outport: int = DEFAULT_OUTPORT,
+                 osc_log_address: Optional[str] = None,
+                 log_level: int = logging.DEBUG,
+                 **kwargs):
+        Process.__init__(self)
         Caller.__init__(self, parse_parenthesis_as_list=True, discard_duplicate_args=False)
 
         self.logger = logging.getLogger(__name__)
-        logging.basicConfig(level=logging.DEBUG, format='%(message)s')
+        self._log_level: int = log_level
+        logging.basicConfig(level=log_level, format='%(message)s')
+        self.osc_log_address: Optional[str] = osc_log_address
 
         self._inport: int = inport
         self._outport: int = outport
         self._server: Optional[BlockingOSCUDPServer] = None  # Initialized on `run` call
-        self._client: Target = Target(self._outport, Server.DEFAULT_IP)
+        self._client: OscSender = OscSender(ip=Server.DEFAULT_IP, port=self._outport)
+
+    @abstractmethod
+    def _on_log_handler_added(self, handler: logging.Handler) -> None:
+        pass
 
     def run(self) -> None:
         """ raises: OSError is server already is in use """
+        self.logger = logging.getLogger(__name__)
+        logging.basicConfig(level=self._log_level, format='%(message)s')
+        if self.osc_log_address is not None:
+            osc_log_handler = OscLogForwarder(self._client, self.osc_log_address)
+            self.logger.addHandler(osc_log_handler)
+            self._on_log_handler_added(osc_log_handler)
+
         osc_dispatcher: Dispatcher = Dispatcher()
         osc_dispatcher.map(self.SERVER_ADDRESS, self.__process_osc)
         osc_dispatcher.set_default_handler(self.__unmatched_osc)
@@ -90,16 +113,19 @@ class Server(Process, Caller):
         try:
             self.call(args_str)
         except MaxOscError as e:
-            self.logger.error(f"Incorrectly formatted input: {str(e)}.")
+            self.logger.error(f"Incorrectly formatted input: {str(e)}")
             return
         except Exception as e:
             self.logger.error(e)
-            self.logger.debug(repr(e))
             if self.DEBUG:
                 raise
 
     def __unmatched_osc(self, address: str, *_args, **_kwargs) -> None:
-        self.logger.error(f"OSC address {address} is not registered. Use {self.SERVER_ADDRESS} for communication.")
+        self.logger.error(f"OSC address {address} is not registered. Use {self.SERVER_ADDRESS} for communication")
+
+
+class ValueErorr:
+    pass
 
 
 class OSCAgent(Server):
@@ -118,7 +144,7 @@ class OSCAgent(Server):
         # TODO: ContentType was removed. If need to reimplement this constraint, see https://trello.com/c/BhfKYtSP
 
         corpus: GenericCorpus = GenericCorpus([], label_types=[label_type])
-        prospector: Dyci2Prospector = FactorOracleProspector(corpus=corpus, label_type=label_type, **kwargs)
+        prospector: Dyci2Prospector = FactorOracleProspector(corpus=corpus, label_type=label_type)
         self.generation_scheduler: Dyci2GenerationScheduler = Dyci2GenerationScheduler(prospector=prospector)
 
         self.max_length_osc_mess: int = max_length_osc_mess
@@ -151,55 +177,71 @@ class OSCAgent(Server):
         for i, v in enumerate(query_as_list):
             self.logger.debug(f"Element {i}  = {v}")
 
+        if not (isinstance(start_date, int) or isinstance(start_date, float)) or start_date < 0:
+            self.logger.error(f"Start date must be greater than or equal to 0. Query was ignored")
+            return
+
         try:
             time_mode: TimeMode = TimeMode.from_string(start_type)
         except ValueError as e:
-            self.logger.error(f"{str(e)}. Query was ignored.")
+            self.logger.error(f"{str(e)}. Query was ignored")
             return
 
-        if label_type_str is None and labels_str is None and query_scope > 0:
-            query: Query = FreeQuery(num_events=query_scope, start_date=start_date, time_mode=time_mode)
+        timepoint: Dyci2Timepoint = Dyci2Timepoint(start_date=int(start_date), time_mode=time_mode)
+
+        if label_type_str is None and labels_str is None and isinstance(query_scope, int) and query_scope > 0:
+            query: Query = TriggerQuery(content=query_scope, time=timepoint)
+
         elif label_type_str is not None and labels_str is not None and query_scope == len(labels_str):
             try:
                 label_type: Type[Dyci2Label] = Dyci2Label.from_string(label_type_str)
                 labels: List[Dyci2Label] = [label_type(s) for s in labels_str]
-                query: Query = LabelQuery(labels=labels, start_date=start_date, time_mode=time_mode)
+                query: Query = InfluenceQuery(content=Influence.from_labels(labels), time=timepoint)
             except ValueError as e:
-                self.logger.error(f"{str(e)}. Query was ignored.")
+                self.logger.error(f"{str(e)}. Query was ignored")
                 return
         else:
-            self.logger.error(f"Invalid query format. Query was ignored.")
+            self.logger.error(f"Invalid query format. Query was ignored")
             return
 
         self._client.send("/server_received_query", str(name))
 
-        # TODO: Format the output
+        try:
+            self.generation_scheduler.process_query(query=query)
+        except RuntimeError as e:
+            self.logger.error(f"{str(e)}. Query was ignored")
+            return
 
-        abs_start_date: int = self.generation_scheduler.process_query(query=query)
-        self.logger.debug(
-            f"Output of the run of {name}: {self.generation_scheduler.generation_process.last_sequence()}")
+        abs_start_date: int = self.generation_scheduler.generation_index()
 
-        # TODO: Note! This format has also changed. Old:
-        # message: list = [str(name), abs_start_date, start_unit, "absolute", scope_duration, scope_unit,
-        #                  self.generation_handler.formatted_output_string()]
+        self.logger.debug(f"Output of the run of {name}: "
+                          f"{self.generation_scheduler.generation_process.last_sequence()}")
+
         message: List[Any] = [str(name), abs_start_date, "absolute", query_scope,
-                              self.generation_scheduler.formatted_output_string()]
+                              self._formatted_output_string()]
+
         self._client.send("/result_run_query", message)
-        self._client.send("/updated_buffered_impro", self.generation_scheduler.formatted_generation_trace_string())
-        self._send_to_antescofo(self.generation_scheduler.formatted_output_couple_content_transfo(), abs_start_date)
+        self._client.send("/updated_buffered_impro", self._formatted_generation_trace_string())
+        self._send_to_antescofo(self._formatted_output_couple_content_transfo(), abs_start_date)
 
     def set_performance_time(self, new_time: int):
         if (isinstance(new_time, int) or isinstance(new_time, float)) and new_time >= 0:
             self.generation_scheduler.update_performance_time(time=Dyci2Timepoint(start_date=int(new_time)))
         else:
-            raise InputError(f"set_performance_time can only handle integers larger than or equal to 0")
+            self.logger.error(f"set_performance_time can only handle integers larger than or equal to 0")
+            return
 
     ################################################################################################################
     # MODIFY STATE (OSC)
     ################################################################################################################
 
     def new_empty_memory(self, label_type: str = Dyci2Label.__class__.__name__) -> None:
-        label_type: Type[Dyci2Label] = Dyci2Label.from_string(str(label_type))
+        try:
+            label_type: Type[Dyci2Label] = Dyci2Label.from_string(str(label_type))
+        except ValueError as e:
+            self.logger.error(f"{str(e)}. Could not create new memory")
+            return
+
         # TODO: Don't know how `content_type` works: need explicit protocol
         # content_type: Optional[TODO_INSERTTYPE] = None
         # if keys_content != "state":
@@ -214,7 +256,7 @@ class OSCAgent(Server):
         prospector: Dyci2Prospector = FactorOracleProspector(corpus=corpus, label_type=label_type)
         self.generation_scheduler: Dyci2GenerationScheduler = Dyci2GenerationScheduler(prospector)
 
-        self._client.send("/new_empty_memory", str(label_type))
+        self._client.send("/new_empty_memory", label_type.__class__.__name__)
         self.send_init_control_parameters()
 
     def learn_event(self, label_type_str: str, label_value: Any, content_value: str) -> None:
@@ -238,16 +280,20 @@ class OSCAgent(Server):
         except (TypeError, StateError) as e:
             self.logger.error(f"{str(e)}. Could not learn event")
             return
+        except LabelError:
+            self.logger.error(f"Corpus can only handle events of type(s) '"
+                              f"{','.join([t.__name__ for t in corpus.label_types])}'. Could not learn event")
+            return
 
         self.logger.debug(f"index last state = {index}")
-        self.logger.debug(f"associated label = {label} ({type(label)})")
-        self.logger.debug(f"associated event = {event.renderer_info()} ({type(event)}")
+        self.logger.debug(f"associated label = {label} ({label.__class__.__name__})")
+        self.logger.debug(f"associated event = {event.renderer_info()} ({event.__class__.__name__})")
 
         self._client.send("/new_event_learned", "bang")
-        self.logger.info(f"Learned event {event}.")
+        self.logger.info(f"Learned event '{event.renderer_info()}'")
 
     ################################################################################################################
-    # PARAMETERS AND TEMPORAL CONTROL (OSC)
+    # PARAMETERS AND CONTROL (OSC)
     ################################################################################################################
 
     def set_control_parameter(self, parameter_path_str: str, value: Any) -> None:
@@ -256,6 +302,7 @@ class OSCAgent(Server):
             self.generation_scheduler.set_parameter(parameter_path, value)
         except (ValueError, KeyError) as e:
             self.logger.error(f"Could not set control parameter: {str(e)}")
+            return
 
     def send_init_control_parameters(self) -> None:
         parameters: List[Tuple[List[str], Parameter]] = self.generation_scheduler.get_parameters()
@@ -264,13 +311,43 @@ class OSCAgent(Server):
             value: Any = parameter.get()
             self._client.send("/control_parameter", [path, value])
 
-    def set_delta_transformation(self, delta: int) -> None:
+    def set_delta_transformations(self, delta: int) -> None:
+        if delta < 0:
+            self.logger.error("Value must be greater than or equal to 0. No transformations were set")
+            return
+
         self.generation_scheduler.authorized_transforms = list(range(-delta, delta))
-        # TODO: UI feedback (use self.logger.info(...))
+
+        if delta == 0:
+            self.logger.debug(f"Transforms disabled")
+        else:
+            transforms_str: str = ', '.join([str(t) for t in self.generation_scheduler.authorized_transforms])
+            self.logger.debug(f"Transforms {transforms_str} enabled")
+
+    def set_log_level(self, log_level: int) -> None:
+        self.logger.setLevel(log_level)
+        self.generation_scheduler.logger.setLevel(log_level)
+        self.generation_scheduler.generation_process.logger.setLevel(log_level)
+        self.generation_scheduler.generator.logger.setLevel(log_level)
+        self.generation_scheduler.generator.prospector.logger.setLevel(log_level)
+        self.generation_scheduler.generator.prospector.navigator.logger.setLevel(log_level)
+        self.generation_scheduler.generator.prospector.model.logger.setLevel(log_level)
+        self._log_level = log_level
+        self.logger.debug(f"log level set to {logging.getLevelName(log_level)}")
 
     ################################################################################################################
     # PRIVATE
     ################################################################################################################
+
+    def _on_log_handler_added(self, handler: logging.Handler) -> None:
+        # TODO: Temporary, ugly solution for logging all messages to OSC
+        self.generation_scheduler.logger.addHandler(handler)
+        self.generation_scheduler.generation_process.logger.addHandler(handler)
+        self.generation_scheduler.generator.logger.addHandler(handler)
+        self.generation_scheduler.generator.prospector.logger.addHandler(handler)
+        self.generation_scheduler.generator.prospector.navigator.logger.addHandler(handler)
+        self.generation_scheduler.generator.prospector.model.logger.addHandler(handler)
+
 
     # TODO: Design test case and update/simplify
     def _send_to_antescofo(self, original_output, abs_start_date):
@@ -287,5 +364,6 @@ class OSCAgent(Server):
             # TODO: What to do with None?
             if len(list_to_send) > 0:
                 print("... SENT TO MAX : {}".format(list_to_send))
-                map_antescofo = save_send_format.write_list_as_antescofo_map(list_to_send, abs_start_date)
+                map_antescofo = AntescofoFormatting.write_list_as_antescofo_map(list_to_send, abs_start_date)
                 self._client.send("/antescofo", ["/updated_buffered_impro_with_info_transfo", map_antescofo])
+

@@ -3,6 +3,7 @@ import itertools
 import logging
 from typing import List, Optional
 
+from dyci2 import utils
 from merge.main.candidate import Candidate
 
 
@@ -52,3 +53,17 @@ class GenerationProcess:
     @property
     def generation_trace(self):
         return self._generation_trace
+
+    def formatted_output_couple_content_transfo(self):
+        # TODO: Update
+        return [(c.event, c.transform.renderer_info())
+                for c in self.last_sequence()]
+
+    def formatted_output_string(self):
+        # TODO: Update
+        return utils.format_list_as_list_of_strings(self.last_sequence())
+
+    def formatted_generation_trace_string(self):
+        # TODO: Update
+        return utils.format_list_as_list_of_strings(self.generation_trace)
+

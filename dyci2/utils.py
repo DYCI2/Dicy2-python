@@ -27,7 +27,7 @@ def format_obj_as_string(o):
     return s
 
 
-def noneIsInfinite(value):
+def none_is_infinite(value):
     if value is None:
         return float("inf")
     else:

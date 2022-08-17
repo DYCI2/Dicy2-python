@@ -21,13 +21,13 @@ import logging
 from typing import Optional, Callable, Type, List
 
 from dyci2.candidate_selector import TempCandidateSelector
-from dyci2.label import Dyci2Label
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
-from dyci2.prospector import Dyci2Prospector
+from dyci2.equiv import Equiv
 from dyci2.generation_process import GenerationProcess
 from dyci2.generator import Dyci2Generator
+from dyci2.label import Dyci2Label
 from dyci2.parameter import Parametric
-from dyci2.utils import format_list_as_list_of_strings
+from dyci2.prospector import Dyci2Prospector
 from merge.main.candidate import Candidate
 from merge.main.corpus import Corpus
 from merge.main.corpus_event import CorpusEvent
@@ -169,12 +169,12 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
 
         self._performance_time = time.start_date
 
-        print(f"NEW PERF TIME = {self._performance_time}")
+        self.logger.debug(f"NEW PERF TIME = {self._performance_time}")
         # TODO : EPSILON POUR LANCER NOUVELLE GENERATION
         if self.generation_process.generation_time < self._performance_time:
             old = self.generation_process.generation_time
             self.generation_process.update_generation_time(self._performance_time)
-            print(f"CHANGED PERF TIME = {old} --> {self.generation_process.generation_time}")
+            self.logger.debug(f"CHANGED PERF TIME = {old} --> {self.generation_process.generation_time}")
 
     def read_memory(self, corpus: Corpus, **kwargs) -> None:
         self.clear()
@@ -184,6 +184,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         """
             raises: TypeError if event is incompatible with current memory
             StateError if no `Corpus` has been loaded
+            LabelError if attempting to learn an event with a label type that doesn't exist in the Corpus
         """
         self.generator.learn_event(event, **kwargs)
 
@@ -199,7 +200,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         self._performance_time = 0
         self._running = True
 
-    def set_equiv_function(self, equiv: Callable[[Dyci2Label, Dyci2Label], bool]) -> None:
+    def set_equiv_function(self, equiv: Equiv) -> None:
         self.generator.prospector.set_equiv_function(equiv=equiv)
 
     def increment_performance_time(self, increment: int = 1) -> None:
@@ -215,17 +216,3 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
     @property
     def corpus(self) -> Optional[Corpus]:
         return self.generator.prospector.corpus
-
-    ################################################################################################################
-    # TODO: CLEAN UP REQUIRED
-    #  Formatting/parsing is generally an IO operation that should live in the Agent/IO class than in the logic class
-    ################################################################################################################
-
-    def formatted_output_couple_content_transfo(self):
-        return [(c.event, c.transform.renderer_info()) for c in self.generation_process.last_sequence()]
-
-    def formatted_output_string(self):
-        return format_list_as_list_of_strings(self.current_generation_output)
-
-    def formatted_generation_trace_string(self):
-        return format_list_as_list_of_strings(self.generation_trace)

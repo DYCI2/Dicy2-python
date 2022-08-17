@@ -24,6 +24,7 @@ import warnings
 from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, List, Type, Dict, Union
 
+from dyci2.equiv import Equiv, BasicEquiv
 from dyci2.label import Dyci2Label
 from dyci2.factor_oracle_model import FactorOracle
 from dyci2.factor_oracle_navigator import FactorOracleNavigator
@@ -143,6 +144,7 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
         """
             raises: TypeError if event is incompatible with current memory
                     StateError if no `Corpus` has been loaded
+                    LabelError if attempting to learn an event with a label type that doesn't exist in the Corpus
         """
         # TODO Need a strategy for initializing an empty corpus, since this is what normally (always?) happens in DYCI2
         if self.corpus is None:
@@ -246,7 +248,7 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
     def get_corpus(self) -> Corpus:
         return self.corpus
 
-    def set_equiv_function(self, equiv: Callable[[Dyci2Label, Dyci2Label], bool]):
+    def set_equiv_function(self, equiv: Equiv):
         self.model.equiv = equiv
         self.navigator.equiv = equiv
 
@@ -266,7 +268,7 @@ class FactorOracleProspector(Dyci2Prospector):
                  max_continuity=20,
                  control_parameters=(),
                  history_parameters=(),
-                 equiv: Callable = (lambda x, y: x == y),
+                 equiv: Equiv = BasicEquiv(),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
         super().__init__(corpus=corpus,
                          label_type=label_type)
@@ -294,7 +296,7 @@ class FactorOracleProspector(Dyci2Prospector):
             if len(influences) > 0:
                 init_states: List[int] = [i for i in range(1, self.model.get_internal_index_last_state()) if
                                           self.model.direct_transitions.get(i) and
-                                          self.model.equiv(self.model.direct_transitions.get(i)[0], influences[0])]
+                                          self.model.equiv.eq(self.model.direct_transitions.get(i)[0], influences[0])]
                 # TODO: Handle case where init_states is empty?
                 new_position: int = random.randint(0, len(init_states) - 1)
                 self.navigator.set_position_in_sequence(new_position)

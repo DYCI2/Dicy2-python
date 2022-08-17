@@ -86,7 +86,7 @@ if __name__ == '__main__':
         print(f"    {e} {t}")
 
     print("\033[1;32mWith transforfmation: {}\033[0m".format(
-        chord_format(gen_scheduler.formatted_output_couple_content_transfo())))
+        chord_format(gen_scheduler.generation_process.formatted_output_couple_content_transfo())))
 
     # sys.exit(0)
     # sys.stdout = None
@@ -120,7 +120,7 @@ if __name__ == '__main__':
     print("Output of the run: {}".format(gen_scheduler.generation_process.last_sequence()))
 
     print("\033[1;32mWith transforfmation: {}\033[0m".format(
-        chord_format(gen_scheduler.formatted_output_couple_content_transfo())))
+        chord_format(gen_scheduler.generation_process.formatted_output_couple_content_transfo())))
 
     sys.stdout = None
 

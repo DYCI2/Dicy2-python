@@ -1,10 +1,12 @@
 import copy
 import itertools
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple, Any
 
 from dyci2 import utils
+from dyci2.corpus_event import Dyci2CorpusEvent
 from merge.main.candidate import Candidate
+from merge.main.exceptions import StateError
 
 
 class GenerationProcess:
@@ -47,23 +49,34 @@ class GenerationProcess:
         self._generation_time = new_time
 
     @property
-    def generation_time(self):
+    def generation_time(self) -> int:
         return self._generation_time
 
     @property
-    def generation_trace(self):
+    def generation_trace(self) -> List[Optional[Candidate]]:
         return self._generation_trace
 
     def formatted_output_couple_content_transfo(self):
-        # TODO: Update
-        return [(c.event, c.transform.renderer_info())
-                for c in self.last_sequence()]
+        """ raises: StateError if GenerationProcess has an event of an invalid type """
+        output: List[Tuple[str, int]] = []
+        for candidate in self.last_sequence():
+            if candidate is not None:
+                # TODO: Migrate this behaviour to Renderable interface
+                if isinstance(candidate.event, Dyci2CorpusEvent):
+                    output.append((candidate.event.renderer_info(), candidate.transform.renderer_info()))
+                else:
+                    raise StateError(f"Invalid event of type {type(candidate)} encountered")
+            else:
+                output.append(("None", 0))
+        return output
 
-    def formatted_output_string(self):
-        # TODO: Update
-        return utils.format_list_as_list_of_strings(self.last_sequence())
+    # TODO: Remove
+    # def formatted_output_string(self):
+    #     # TODO: Update
+    #     return utils.format_list_as_list_of_strings(self.last_sequence())
 
-    def formatted_generation_trace_string(self):
-        # TODO: Update
-        return utils.format_list_as_list_of_strings(self.generation_trace)
+    # TODO: Remove
+    # def formatted_generation_trace_string(self):
+    #     # TODO: Update
+    #     return utils.format_list_as_list_of_strings(self.generation_trace)
 

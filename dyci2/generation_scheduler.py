@@ -31,6 +31,7 @@ from dyci2.prospector import Dyci2Prospector
 from merge.main.candidate import Candidate
 from merge.main.corpus import Corpus
 from merge.main.corpus_event import CorpusEvent
+from merge.main.exceptions import TimepointError, QueryError
 from merge.main.generation_scheduler import GenerationScheduler
 from merge.main.jury import Jury
 from merge.main.query import Query
@@ -121,17 +122,20 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
     ################################################################################################################
 
     def process_query(self, query: Query, **kwargs) -> None:
-        """ raises: RuntimeError if receiving a relative query as the first query. """
+        """ raises: TimepointError if the timepoint of the query is invalid
+                    QueryError if the query is invalid
+                    StateError if the internal state of the system is invalid for querying (no corpus loaded, ...)
+        """
         self.logger.debug("\n--------------------")
         self.logger.debug(f"current_performance_time: {self._performance_time}")
         self.logger.debug(f"current_generation_time: {self.generation_process.generation_time}")
 
         if not isinstance(query.time, Dyci2Timepoint):
-            raise RuntimeError(f"Can only handle queries with time format '{Dyci2Timepoint.__name__}'")
+            raise TimepointError(f"Can only handle queries with time format '{Dyci2Timepoint.__name__}'")
 
         # TODO[Jerome]: Is this really a good strategy / relevant?
         if self.generator.initialized and not self._running and query.time.time_mode == TimeMode.RELATIVE:
-            raise RuntimeError("Cannot handle a relative query as the first query")
+            raise QueryError("Cannot handle a relative query as the first query")
 
         self.logger.debug(f"PROCESS QUERY\n {query}")
         if query.time.time_mode == TimeMode.RELATIVE:
@@ -153,7 +157,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
 
         output: List[Optional[Candidate]] = self.generator.process_query(query)
 
-        self.logger.debug(f"self.current_generation_output {output}")
+        self.logger.debug(f"self.current_generation_output {str(output)}")
         self.generation_process.add_output(generation_index, output)
 
         # TODO: Handle in parser: This value corresponds to GenerationProcess._start_of_last_sequence

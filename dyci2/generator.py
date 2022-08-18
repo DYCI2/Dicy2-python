@@ -39,6 +39,9 @@ class Dyci2Generator(Generator, Parametric):
     ################################################################################################################
 
     def process_query(self, query: Query, print_info: bool = False, **kwargs) -> List[Optional[Candidate]]:
+        """ raises: RuntimeError if the query is invalid
+                    StateError if the internal state of the system is invalid for querying (no corpus loaded, ...)
+        """
         self.logger.debug(f"****************************\nPROCESS QUERY: QUERY = \n**************************\n{query}")
         self.logger.debug(f"****************************\nGENERATION MATCHING QUERY: QUERY = \n**************\n{query}")
 

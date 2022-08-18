@@ -20,14 +20,13 @@ Tutorial in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`
 """
 import logging
 import random
-import warnings
 from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, List, Type, Dict, Union
 
 from dyci2.equiv import Equiv, BasicEquiv
-from dyci2.label import Dyci2Label
 from dyci2.factor_oracle_model import FactorOracle
 from dyci2.factor_oracle_navigator import FactorOracleNavigator
+from dyci2.label import Dyci2Label
 from dyci2.model import Model
 from dyci2.navigator import Navigator
 from dyci2.parameter import Parametric
@@ -98,7 +97,8 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
 
     @abstractmethod
     def prepare_navigation(self, influences: List[Influence], init: bool = False) -> None:
-        """ TODO: Docstring (very important!) """
+        """ TODO: Docstring (very important!)
+            raises: StateError if no corpus has been loaded or if memory is empty """
 
     @abstractmethod
     def _free_navigation(self, **kwargs) -> List[CorpusEvent]:
@@ -165,8 +165,13 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
                 index_in_generation_cycle: int = 0,
                 no_empty_event: bool = True,
                 **kwargs) -> None:
+        """ raises: StateError if the internal state of the system is invalid for querying (no corpus loaded, ...)
+                    QueryError if the query is invalid"""
         if self.corpus is None:
             raise StateError("No corpus has been loaded")
+
+        if len(self.corpus) == 0:
+            raise StateError("Memory is empty")
 
         candidates: List[CorpusEvent]
         if isinstance(influence, LabelInfluence) and isinstance(influence.value, Dyci2Label):
@@ -184,7 +189,7 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
                              f"influences of type {influence.__class__.__name__}")
 
         if self.next_output is not None:
-            warnings.warn(f"Existing state in {self.__class__.__name__} overwritten without output")
+            self.logger.warning(f"Existing state in {self.__class__.__name__} overwritten without output")
 
         self.next_output = ListCandidates([Candidate(e, 1.0, None, self.corpus) for e in candidates], self.corpus)
 
@@ -228,7 +233,7 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
             labels.append(influence.value)
 
         if self.next_output is not None:
-            warnings.warn(f"Existing state in {self.__class__.__name__} overwritten without output")
+            self.logger.warning(f"Existing state in {self.__class__.__name__} overwritten without output")
 
         self.next_output = self._scenario_initial_candidate(labels, authorized_transformations)
 
@@ -285,6 +290,14 @@ class FactorOracleProspector(Dyci2Prospector):
 
     # TODO[Jerome]: This one needs some more attention - inconsistencies between randoms ([1..len] vs [0..len-1])
     def prepare_navigation(self, influences: List[Influence], init: bool = False) -> None:
+        """ raises: StateError if the internal state of the system is invalid for navigation (no corpus loaded, ...)
+                    QueryError if the query is invalid"""
+        if self.corpus is None:
+            raise StateError("No corpus has been loaded")
+
+        if len(self.corpus) == 0:
+            raise StateError("Memory is empty")
+
         if not all([isinstance(influence.value, Dyci2Label) for influence in influences]):
             raise QueryError(f"Invalid label type encountered in {self.__class__.__name__}")
 
@@ -296,7 +309,8 @@ class FactorOracleProspector(Dyci2Prospector):
             if len(influences) > 0:
                 init_states: List[int] = [i for i in range(1, self.model.get_internal_index_last_state()) if
                                           self.model.direct_transitions.get(i) and
-                                          self.model.equiv.eq(self.model.direct_transitions.get(i)[0], influences[0])]
+                                          self.model.equiv.eq(self.model.direct_transitions.get(i)[0],
+                                                              influences[0].value)]
                 # TODO: Handle case where init_states is empty?
                 new_position: int = random.randint(0, len(init_states) - 1)
                 self.navigator.set_position_in_sequence(new_position)
@@ -457,7 +471,7 @@ class FactorOracleProspector(Dyci2Prospector):
                 additional_indices = self.navigator.find_matching_label_without_continuation(required_label,
                                                                                              additional_indices)
                 if len(additional_indices) > 0:
-                    authorized_indices = additional_indices
+                    selected_indices = additional_indices
         else:
             # Case 3.2: Transition to any filtered _unreachable_ candidate (if free navigation, i.e. no label)
             additional_indices = self.navigator.follow_continuation_with_jump(additional_indices,

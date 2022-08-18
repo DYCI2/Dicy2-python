@@ -21,24 +21,24 @@ from abc import abstractmethod
 from multiprocessing import Process
 from typing import Optional, Any, Union, List, Tuple, Type
 
-from maxosc import Sender, SendFormat
 from maxosc.caller import Caller
 from maxosc.exceptions import MaxOscError
 from maxosc.maxformatter import MaxFormatter
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
 
-from dyci2 import utils
-from dyci2.io_formatting import AntescofoFormatting
 from dyci2.corpus_event import Dyci2CorpusEvent
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
+from dyci2.generation_scheduler import Dyci2GenerationScheduler
+from dyci2.io_formatting import AntescofoFormatting
 from dyci2.label import Dyci2Label
 from dyci2.parameter import Parameter
 from dyci2.prospector import Dyci2Prospector, FactorOracleProspector
-from dyci2.generation_scheduler import Dyci2GenerationScheduler
+from dyci2.utils import FormattingUtils
 from merge.io.osc_sender import OscLogForwarder, OscSender
+from merge.main.candidate import Candidate
 from merge.main.corpus import GenericCorpus, Corpus
-from merge.main.exceptions import InputError, StateError, LabelError
+from merge.main.exceptions import StateError, LabelError, QueryError, TimepointError
 from merge.main.influence import Influence
 from merge.main.query import Query, TriggerQuery, InfluenceQuery
 
@@ -52,6 +52,10 @@ from merge.main.query import Query, TriggerQuery, InfluenceQuery
 #
 #     def send(self, address: str, content: Any, **_kwargs):
 #         self._client.send(address, content)
+
+def basic_equiv(x, y):
+    return x == y
+
 
 
 class Server(Process, Caller):
@@ -171,8 +175,8 @@ class OSCAgent(Server):
               start_type: str,
               query_scope: int,
               label_type_str: Optional[str] = None,
-              labels_str: Optional[List[str]] = None):
-        query_as_list: List[Union[str, int]] = [name, start_date, start_type, query_scope, label_type_str, labels_str]
+              labels_data: Optional[List[str]] = None):
+        query_as_list: List[Union[str, int]] = [name, start_date, start_type, query_scope, label_type_str, labels_data]
         self.logger.debug(f"query_as_list = {query_as_list}")
         for i, v in enumerate(query_as_list):
             self.logger.debug(f"Element {i}  = {v}")
@@ -189,13 +193,13 @@ class OSCAgent(Server):
 
         timepoint: Dyci2Timepoint = Dyci2Timepoint(start_date=int(start_date), time_mode=time_mode)
 
-        if label_type_str is None and labels_str is None and isinstance(query_scope, int) and query_scope > 0:
+        if label_type_str is None and labels_data is None and isinstance(query_scope, int) and query_scope > 0:
             query: Query = TriggerQuery(content=query_scope, time=timepoint)
 
-        elif label_type_str is not None and labels_str is not None and query_scope == len(labels_str):
+        elif label_type_str is not None and labels_data is not None and query_scope == len(labels_data):
             try:
                 label_type: Type[Dyci2Label] = Dyci2Label.from_string(label_type_str)
-                labels: List[Dyci2Label] = [label_type(s) for s in labels_str]
+                labels: List[Dyci2Label] = [label_type(s) for s in labels_data]
                 query: Query = InfluenceQuery(content=Influence.from_labels(labels), time=timepoint)
             except ValueError as e:
                 self.logger.error(f"{str(e)}. Query was ignored")
@@ -208,21 +212,34 @@ class OSCAgent(Server):
 
         try:
             self.generation_scheduler.process_query(query=query)
-        except RuntimeError as e:
+        except (QueryError, StateError, TimepointError) as e:
             self.logger.error(f"{str(e)}. Query was ignored")
             return
 
         abs_start_date: int = self.generation_scheduler.generation_index()
 
-        self.logger.debug(f"Output of the run of {name}: "
-                          f"{self.generation_scheduler.generation_process.last_sequence()}")
+        # output_str: str = "', '".join([c.event.renderer_info()
+        #                                if c is not None and isinstance(c.event, Dyci2CorpusEvent)
+        #                                else "None"
+        #                                for c in self.generation_scheduler.generation_process.last_sequence()
+        #                                ])
 
+        output_sequence: List[Optional[Candidate]] = self.generation_scheduler.generation_process.last_sequence()
+        generation_trace: List[Optional[Candidate]] = self.generation_scheduler.generation_process.generation_trace
+
+        self.logger.debug(f"Output of the run of {name}: "
+                          f"'{FormattingUtils.output_without_transforms(output_sequence, use_max_format=False)}'")
+
+        # TODO[Jerome]: Add support for transforms
         message: List[Any] = [str(name), abs_start_date, "absolute", query_scope,
-                              self._formatted_output_string()]
+                              FormattingUtils.output_without_transforms(output_sequence, use_max_format=True)]
 
         self._client.send("/result_run_query", message)
-        self._client.send("/updated_buffered_impro", self._formatted_generation_trace_string())
-        self._send_to_antescofo(self._formatted_output_couple_content_transfo(), abs_start_date)
+        self._client.send("/updated_buffered_impro",
+                          FormattingUtils.output_without_transforms(generation_trace, use_max_format=True))
+
+        # TODO[Jerome]: Remove antescofo behaviour entirely
+        # self._send_to_antescofo(self._formatted_output_couple_content_transfo(), abs_start_date)
 
     def set_performance_time(self, new_time: int):
         if (isinstance(new_time, int) or isinstance(new_time, float)) and new_time >= 0:
@@ -299,7 +316,8 @@ class OSCAgent(Server):
     def set_control_parameter(self, parameter_path_str: str, value: Any) -> None:
         try:
             parameter_path: List[str] = parameter_path_str.split(self.PATH_SEPARATOR)
-            self.generation_scheduler.set_parameter(parameter_path, value)
+            param: Parameter = self.generation_scheduler.set_parameter(parameter_path, value)
+            self.logger.debug(f"parameter '{parameter_path_str}' set to {param.value}")
         except (ValueError, KeyError) as e:
             self.logger.error(f"Could not set control parameter: {str(e)}")
             return
@@ -348,7 +366,6 @@ class OSCAgent(Server):
         self.generation_scheduler.generator.prospector.navigator.logger.addHandler(handler)
         self.generation_scheduler.generator.prospector.model.logger.addHandler(handler)
 
-
     # TODO: Design test case and update/simplify
     def _send_to_antescofo(self, original_output, abs_start_date):
         if len(original_output) > 0:
@@ -366,4 +383,3 @@ class OSCAgent(Server):
                 print("... SENT TO MAX : {}".format(list_to_send))
                 map_antescofo = AntescofoFormatting.write_list_as_antescofo_map(list_to_send, abs_start_date)
                 self._client.send("/antescofo", ["/updated_buffered_impro_with_info_transfo", map_antescofo])
-

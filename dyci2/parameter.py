@@ -49,14 +49,14 @@ class Parameter(Generic[T]):
         self.func: Optional[Callable[[Any], T]] = func
 
     def set(self, value: Any) -> None:
-        """ raises: ValueError if value is outside of the defined range"""
+        """ raises: ValueError if value is outside the defined range"""
         if self.func is not None:
             self._set(self.func(value))
         else:
             self._set(value)
 
     def _set(self, value: Any) -> None:
-        """ raises: ValueError if value is outside of the defined range"""
+        """ raises: ValueError if value is outside the defined range"""
         if self.value_range is not None and value not in self.value_range:
             raise ValueError(f"Value {value} is outside defined range")
         else:
@@ -71,18 +71,19 @@ class Parameter(Generic[T]):
 
 class Parametric:
 
-    def set_parameter(self, parameter_path: List[str], value: Any) -> None:
-        """ raises: ValueError if value is outside of the defined parameter's range,
+    def set_parameter(self, parameter_path: List[str], value: Any) -> Parameter:
+        """ raises: ValueError if value is outside the defined parameter's range,
                     KeyError if the parameter path is invalid """
         try:
             obj: Any = self.__dict__[parameter_path.pop(0)]
             if len(parameter_path) == 0:
                 if isinstance(obj, Parameter):
                     obj.set(value)
+                    return obj
                 else:
                     raise KeyError("The value at the given address is not a parameter")
             elif isinstance(obj, Parametric):
-                obj.set_parameter(parameter_path, value)
+                return obj.set_parameter(parameter_path, value)
             else:
                 raise KeyError(f"The object {str(obj)} is not part of the Parametric hierarchy")
 

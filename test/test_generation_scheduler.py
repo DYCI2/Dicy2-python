@@ -5,6 +5,7 @@ import typing
 import warnings
 from typing import List, Tuple
 
+from dyci2.corpus_event import Dyci2CorpusEvent
 from dyci2.label import ChordLabel, from_list_to_labels
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
 from dyci2.prospector import FactorOracleProspector
@@ -17,7 +18,7 @@ from merge.main.influence import LabelInfluence
 from merge.main.query import InfluenceQuery, TriggerQuery, Query
 
 
-def chord_format(lst: List[Tuple[GenericCorpusEvent, int]]):
+def chord_format(lst: List[Tuple[Dyci2CorpusEvent, int]]):
     return [[e.data, t] for (e, t) in lst]
 
 
@@ -44,10 +45,7 @@ if __name__ == '__main__':
     sequence: List[ChordLabel] = from_list_to_labels(labels=list_for_sequence, label_type=ChordLabel)
     print(labels)
     print(sequence)
-    event: GenericCorpusEvent[ChordLabel] = GenericCorpusEvent(sequence[0], 0, descriptors=None,
-                                                               labels={ChordLabel: labels[0]})
-    print(event)
-    memory: GenericCorpus[ChordLabel] = GenericCorpus([GenericCorpusEvent(content, i, labels={type(label): label})
+    memory: GenericCorpus[ChordLabel] = GenericCorpus([Dyci2CorpusEvent(content, i, label=label)
                                                        for (i, (content, label)) in
                                                        enumerate(zip(sequence, labels))],
                                                       label_types=[ChordLabel])
@@ -60,6 +58,7 @@ if __name__ == '__main__':
                                                                        authorized_tranformations=authorized_transf)
 
     gen_scheduler.read_memory(memory)
+
 
     # TODO: Not a good way to set parameters, use Parameter/Parametric
     gen_scheduler.generator.prospector._navigator.avoid_repetitions_mode.set(1)
@@ -85,8 +84,7 @@ if __name__ == '__main__':
     for (e, t) in zip(events, transforms):
         print(f"    {e} {t}")
 
-    print("\033[1;32mWith transforfmation: {}\033[0m".format(
-        chord_format(gen_scheduler.generation_process.formatted_output_couple_content_transfo())))
+    print("\033[1;32mWith transforfmation: {}\033[0m".format(gen_scheduler.generation_process.formatted_output_couple_content_transfo()))
 
     # sys.exit(0)
     # sys.stdout = None
@@ -120,7 +118,7 @@ if __name__ == '__main__':
     print("Output of the run: {}".format(gen_scheduler.generation_process.last_sequence()))
 
     print("\033[1;32mWith transforfmation: {}\033[0m".format(
-        chord_format(gen_scheduler.generation_process.formatted_output_couple_content_transfo())))
+        gen_scheduler.generation_process.formatted_output_couple_content_transfo()))
 
     sys.stdout = None
 

@@ -102,6 +102,8 @@ class TransposeTransform(Transform):
         return 'TransposeTransform'
 
     def encode(self, thing):
+        if self.semitone == 0:
+            return thing
         # if isinstance(thing, AbstractEvent):
         #    new_thing = deepcopy(thing)
         #    new_thing.label = self.encode(new_thing.label)
@@ -111,7 +113,7 @@ class TransposeTransform(Transform):
             thing.label = self.encode(thing.event.label())
             return thing
 
-        if type(thing) is ChordLabel:
+        elif type(thing) is ChordLabel:
             # new_label = deepcopy(thing)
             # new_label.transpose_root(+self.semitone)# pas precis : rajouter les bornes et les accords
             # new_label = Label.ChordLabel()
@@ -142,13 +144,15 @@ class TransposeTransform(Transform):
             raise TransformError(thing, self)
 
     def decode(self, thing):
+        if self.semitone == 0:
+            return thing
         # if isinstance(thing, AbstractEvent):
         #    new_thing = deepcopy(thing)
         #    new_thing.label = self.decode(new_thing.label)
         #    new_thing.contents = self.decode(new_thing.contents)
         #    return new_thing
         # if type(thing) is Label.ChordLabel:
-        if isinstance(thing, Candidate):
+        elif isinstance(thing, Candidate):
             thing.label = self.decode(thing.event.label())
             return thing
 

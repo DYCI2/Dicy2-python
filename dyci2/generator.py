@@ -1,4 +1,5 @@
 import logging
+import warnings
 from typing import Optional, Type, List
 
 from dyci2.candidate_selector import TempCandidateSelector, DefaultFallbackSelector
@@ -289,6 +290,9 @@ class Dyci2Generator(Generator, Parametric):
         self.active_transform = NoTransform()
 
         generated_sequence: List[Candidate] = []
+
+        # TODO: CRITICAL: CHANGES STATE ABOVE, IF CRASHING IN INITIALIZE_SCENARIO, WILL BREAK
+        warnings.warn("EXCEPTIONS HERE WILL BREAK STATE! FIX")
 
         # Initial candidate (prefix indexing)
         self.prospector.initialize_scenario(influences=list_of_labels,

@@ -121,7 +121,7 @@ def filtered_prefix_indexing_intervals(sequence, pattern, sequence_to_interval_f
     prefixes_delta, max_length = prefix_indexing_intervals(sequence, pattern, sequence_to_interval_fun = sequence_to_interval_fun, equiv = equiv, print_info = print_info)
 
     if "length_interval" in args.keys():
-        length_interval = args["length_interval"].get()
+        length_interval = args["length_interval"]
         if type(length_interval[0]) == float or type(length_interval[1]) == float: ###
             length_interval = max(1,round(length_interval[0]*max_length)), min(round(length_interval[1]*max_length), max_length)
 

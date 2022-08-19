@@ -163,7 +163,7 @@ class PrefixIndexing:
         return prefixes_pattern_left_pos_in_sequence
 
     @staticmethod
-    def prefix_indexing(sequence, pattern, **args):
+    def prefix_indexing(sequence, pattern, **kwargs):
         """ Index the prefixes of a pattern in a sequence.
 
         :param sequence:
@@ -206,12 +206,12 @@ class PrefixIndexing:
 
         """
 
-        if "equiv" in args.keys():
-            equiv = args["equiv"]
+        if "equiv" in kwargs.keys():
+            equiv = kwargs["equiv"]
         else:
             equiv = (lambda x, y: x == y)
-        if "print_info" in args.keys():
-            print_info = args["print_info"]
+        if "print_info" in kwargs.keys():
+            print_info = kwargs["print_info"]
         else:
             print_info = 0
 
@@ -311,7 +311,7 @@ class PrefixIndexing:
         return prefixes, tmp_len_longest_prefix
 
     @staticmethod
-    def filtered_prefix_indexing(sequence, pattern, **args):
+    def filtered_prefix_indexing(sequence, pattern, **kwargs):
         """ Filtered index of the prefixes of a pattern in a sequence (filtered regarding lengths and positions).
 
         :param sequence:
@@ -363,12 +363,12 @@ class PrefixIndexing:
         >>> 	print("Length {}: at left position(s) {}.".format(length,list_of_left_pos_in_sequence))
         """
 
-        if "equiv" in args.keys():
-            equiv = args["equiv"]
+        if "equiv" in kwargs.keys():
+            equiv = kwargs["equiv"]
         else:
             equiv = (lambda x, y: x == y)
-        if "print_info" in args.keys():
-            print_info = args["print_info"]
+        if "print_info" in kwargs.keys():
+            print_info = kwargs["print_info"]
         else:
             print_info = 0
 
@@ -377,8 +377,8 @@ class PrefixIndexing:
 
         index_prefixes, max_length = PrefixIndexing.prefix_indexing(sequence, pattern, equiv=equiv, print_info=print_info)
 
-        if "length_interval" in args.keys():
-            interval = args["length_interval"]
+        if "length_interval" in kwargs.keys():
+            interval = kwargs["length_interval"]
             if type(interval[0]) == float or type(interval[0]) == float:
                 interval = max(1, round(interval[0] * max_length)), min(round(interval[1] * max_length), max_length)
 
@@ -390,8 +390,8 @@ class PrefixIndexing:
                 if l > tmp_max_length:
                     tmp_max_length = l
 
-                if "authorized_indexes" in args.keys():
-                    filtered_positions = [p for p in index_prefixes[l] if p in args["authorized_indexes"]]
+                if "authorized_indexes" in kwargs.keys():
+                    filtered_positions = [p for p in index_prefixes[l] if p in kwargs["authorized_indexes"]]
                 else:
                     filtered_positions = index_prefixes[l]
 

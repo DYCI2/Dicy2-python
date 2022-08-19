@@ -138,9 +138,9 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
 
         self.corpus = corpus
         for event in corpus.events:
-            self.learn_event(event)
+            self.learn_event(event, append_to_corpus=False)
 
-    def learn_event(self, event: CorpusEvent, **kwargs):
+    def learn_event(self, event: CorpusEvent, append_to_corpus: bool = True, **kwargs):
         """
             raises: TypeError if event is incompatible with current memory
                     StateError if no `Corpus` has been loaded
@@ -152,7 +152,8 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
 
         label: Optional[Dyci2Label] = event.get_label(self.label_type)
         if isinstance(event, self.corpus.get_content_type()) and label is not None:
-            self.corpus.append(event)
+            if append_to_corpus:
+                self.corpus.append(event)
             self.model.learn_event(event, label)
             self.navigator.learn_event(event, label)
         else:
@@ -479,19 +480,19 @@ class FactorOracleProspector(Dyci2Prospector):
             if len(additional_indices) > 0:
                 selected_indices = additional_indices
 
-        if len(selected_indices) > 0:
-            str_print_info += f" xxnothingxx - random: {selected_indices[0]}"
-        else:
-            str_print_info += " xxnothingxx"
+            if len(selected_indices) > 0:
+                str_print_info += f" xxnothingxx - random: {selected_indices[0]}"
+            else:
+                str_print_info += " xxnothingxx"
 
         self.logger.debug(str_print_info)
 
         return selected_indices
 
     # TODO: This function should be removed entirely and behaviour should be moved to Jury/OutputSelection
-    def _choose_prefix_from_list(
-            self,
-            index_delta_prefixes: Dict[int, List[List[int]]]) -> Tuple[Optional[int], int, Optional[int]]:
+    def _choose_prefix_from_list(self,
+                                 index_delta_prefixes: Dict[int, List[List[int]]]
+                                 ) -> Tuple[Optional[int], int, Optional[int]]:
         s: Optional[int] = None
         t: int = 0
         length_selected_prefix: Optional[int] = None

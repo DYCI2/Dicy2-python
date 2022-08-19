@@ -65,7 +65,7 @@ class GenerationProcess:
                 if isinstance(candidate.event, Dyci2CorpusEvent):
                     output.append((candidate.event.renderer_info(), candidate.transform.renderer_info()))
                 else:
-                    raise StateError(f"Invalid event of type {type(candidate)} encountered")
+                    raise StateError(f"Invalid event of type {type(candidate.event)} encountered")
             else:
                 output.append(("None", 0))
         return output

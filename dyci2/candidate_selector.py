@@ -1,3 +1,4 @@
+import logging
 import random
 import warnings
 from abc import ABC
@@ -10,7 +11,7 @@ from dyci2.parameter import Parametric
 
 
 class CandidateSelector(Jury, Parametric, ABC):
-    pass
+        pass
 
 
 class TempCandidateSelector(CandidateSelector):
@@ -30,11 +31,13 @@ class TempCandidateSelector(CandidateSelector):
 class DefaultFallbackSelector(CandidateSelector):
     def __init__(self):
         # TODO: Need to handle execution/generation trace properly here
+        self.logger = logging.getLogger(__name__)
         self.previous_output: Optional[Candidate] = None
 
     def decide(self, candidates: Candidates) -> Optional[Candidate]:
-        print("NO EMPTY EVENT")
+        self.logger.debug("NO EMPTY EVENT TRIGGERED")
         all_memory: List[Candidate] = candidates.get_candidates()
+        raise NotImplementedError("This is not working properly: should use candidates.get_corpora not candidates.get_candidates")
         if self.previous_output is not None:
             warnings.warn("This will probably cause issues if the FOModel's initial None still is a part of the Memory")
             next_index: int = self.previous_output.event.index + 1

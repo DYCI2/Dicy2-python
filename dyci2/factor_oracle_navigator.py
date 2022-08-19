@@ -219,7 +219,7 @@ class FactorOracleNavigator(Navigator[T]):
             index_delta_prefixes, _ = intervals.filtered_prefix_indexing_intervals(
                 sequence=memory_labels,
                 pattern=labels_to_match,
-                length_interval=self.continuity_with_future,
+                length_interval=self.continuity_with_future.value,
                 authorized_indexes=authorized_indices,
                 authorized_intervals=authorized_transformations,
                 sequence_to_interval_fun=sequence_to_interval_fun,
@@ -229,11 +229,11 @@ class FactorOracleNavigator(Navigator[T]):
 
         else:
             index_delta_prefixes, _ = PrefixIndexing.filtered_prefix_indexing(
-                sequence=labels_to_match,
-                pattern=memory_labels,
-                length_interval=self.continuity_with_future,
+                sequence=memory_labels,
+                pattern=labels_to_match,
+                length_interval=self.continuity_with_future.value,
                 authorized_indexes=authorized_indices,
-                equiv=self.equiv,
+                equiv=self.equiv.eq,
                 print_info=False
             )
 

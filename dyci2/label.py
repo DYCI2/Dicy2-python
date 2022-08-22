@@ -343,7 +343,7 @@ class ListLabel(Dyci2Label):
             i = 0
             depth = max(1, min(self.depth, a.depth, len(self.label), len(a.label)))
             while (result and i < depth):
-                if not (self.label[i] == "None" or a.label[i] == "None" or self.label[i] == a.label[i]):
+                if not (self.label[i] is None or a.label[i] is None or self.label[i] == a.label[i]):
                     result = False
                 i += 1
             return result

@@ -3,7 +3,7 @@ import warnings
 from typing import Optional, Type, List
 
 from dyci2.candidate_selector import TempCandidateSelector, DefaultFallbackSelector
-from dyci2.parameter import Parametric
+from dyci2.parameter import Parametric, Parameter, NominalRange
 from dyci2.prospector import Dyci2Prospector
 from dyci2.transforms import Transform, NoTransform
 from merge.main.candidate import Candidate
@@ -21,7 +21,8 @@ class Dyci2Generator(Generator, Parametric):
     def __init__(self,
                  prospector: Dyci2Prospector,
                  jury_type: Type[Jury] = TempCandidateSelector,
-                 authorized_transforms: List[int] = (0,)):
+                 authorized_transforms: List[int] = (0,),
+                 no_empty_event: bool = True):
         self.logger = logging.getLogger(__name__)
         # self._post_filters: List[PostFilter] = post_filters  # TODO: Implement
 
@@ -31,6 +32,8 @@ class Dyci2Generator(Generator, Parametric):
 
         self._authorized_transforms: List[int] = list(authorized_transforms)
         self.active_transform: Transform = NoTransform()
+
+        self.no_empty_event: Parameter = Parameter(no_empty_event, NominalRange([False, True]))
 
         self._jury: Jury = jury_type()
         self._fallback_jury: Jury = DefaultFallbackSelector()
@@ -160,7 +163,7 @@ class Dyci2Generator(Generator, Parametric):
                                     index_in_generation_cycle=i)
 
             candidates: Candidates = self.prospector.pop_candidates()
-            output: Optional[Candidate] = self._decide(candidates, disable_fallback=False)
+            output: Optional[Candidate] = self._decide(candidates, disable_fallback=not self.no_empty_event.value)
             if output is not None:
                 output.transform = self.active_transform
                 self.feedback(output)
@@ -213,13 +216,14 @@ class Dyci2Generator(Generator, Parametric):
             self.prospector.process(influence=label,
                                     forward_context_length_min=forward_context_length_min,
                                     print_info=print_info,
-                                    index_in_generation_cycle=i + shift_index)
+                                    index_in_generation_cycle=i + shift_index,
+                                    no_empty_event=self.no_empty_event.value)
             candidates: Candidates = self.prospector.pop_candidates()
 
             if break_when_none and candidates.size() == 0:
                 break
             else:
-                output: Optional[Candidate] = self._decide(candidates, disable_fallback=False)
+                output: Optional[Candidate] = self._decide(candidates, disable_fallback=not self.no_empty_event.value)
                 if output is not None:
                     output.transform = self.active_transform
                     self.feedback(output)
@@ -250,17 +254,17 @@ class Dyci2Generator(Generator, Parametric):
                                                                    original_query_length=len(list_of_labels),
                                                                    shift_index=current_index)
 
+            # Single phase ended with output
             if len(seq) > 0:
                 generated_sequence.extend(seq)
+
+            # Single phase ended without output
             else:
-                # TODO: Clunky to create Candidates instance for this. Also - doesn't have access to taboo/mask.
-                fallback_output: Optional[Candidate] = self._decide(ListCandidates([], self.prospector.get_corpus()))
+                fallback_output: Optional[Candidate] = self._decide(ListCandidates([], self.prospector.get_corpus()),
+                                                                    disable_fallback=not self.no_empty_event.value)
                 if fallback_output is not None:
                     fallback_output.transform = self.active_transform
-                    # New code:
                     self.feedback(fallback_output)
-                    # Old code for compatibility with line below:
-                    #   self.prospector.navigator.set_position_in_sequence(fallback_output.index)
                 else:
                     # TODO[Jerome]: Is this really a good idea? Shouldn't it be random state?
                     self.prospector.navigator.reset_position_in_sequence(randomize=False)
@@ -299,6 +303,7 @@ class Dyci2Generator(Generator, Parametric):
                                             authorized_transformations=self._authorized_transforms)
         candidates: Candidates = self.prospector.pop_candidates()
 
+        # Terminate and let `handle_scenario_based_generation` handle fallback for this phase if none were found
         output: Optional[Candidate] = self._decide(candidates, disable_fallback=True)
         if output is None:
             return []
@@ -321,10 +326,12 @@ class Dyci2Generator(Generator, Parametric):
         # Consecutive candidates
         shift_index: int = original_query_length - len(list_of_labels) + 1
         for (i, influence) in enumerate(list_of_labels[1:]):  # type: int, Influence
+            # no_empty_event as argument: do not allow searching for any unavailable event matching the label
             self.prospector.process(influence=influence,
                                     index_in_generation_cycle=shift_index + i,
                                     no_empty_event=False)
             candidates: Candidates = self.prospector.pop_candidates()
+            # No fallback: End phase if none were found
             output: Optional[Candidate] = self._decide(candidates, disable_fallback=True)
 
             if output is not None:

@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from merge.main.candidate import Candidate
 from merge.main.candidates import Candidates
+from merge.main.corpus_event import CorpusEvent
 from merge.main.jury import Jury
 from dyci2.parameter import Parametric
 
@@ -36,19 +37,24 @@ class DefaultFallbackSelector(CandidateSelector):
 
     def decide(self, candidates: Candidates) -> Optional[Candidate]:
         self.logger.debug("NO EMPTY EVENT TRIGGERED")
-        all_memory: List[Candidate] = candidates.get_candidates()
-        raise NotImplementedError("This is not working properly: should use candidates.get_corpora not candidates.get_candidates")
+        all_events: List[CorpusEvent] = candidates.associated_corpora()[0].events
+
+        # If a history of output exists, select the next one
         if self.previous_output is not None:
-            warnings.warn("This will probably cause issues if the FOModel's initial None still is a part of the Memory")
-            next_index: int = self.previous_output.event.index + 1
-            if next_index < len(all_memory):
-                return all_memory[next_index]
+            next_index: int = (self.previous_output.event.index + 1) % len(all_events)
+            # Note: Transform is set by Generator
+            output_event: CorpusEvent = all_events[next_index]
 
-        if len(all_memory) > 0:
-            next_index: int = random.randint(0, len(all_memory) - 1)
-            return all_memory[next_index]
+        # otherwise select an event at random, assuming memory is not empty
+        elif len(all_events) > 0:
+            next_index: int = random.randint(0, len(all_events) - 1)
+            output_event = all_events[next_index]
 
-        return None
+        # if memory is empty
+        else:
+            return None
+
+        return Candidate(output_event, 1.0, None, candidates.associated_corpora()[0])
 
     def feedback(self, candidate: Optional[Candidate], **kwargs) -> None:
         self.previous_output = candidate

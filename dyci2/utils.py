@@ -1,10 +1,8 @@
-from abc import ABC, abstractmethod
-from enum import Enum
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any
 
 from dyci2.corpus_event import Dyci2CorpusEvent
 from merge.main.candidate import Candidate
-from merge.main.exceptions import StateError
+from merge.main.exceptions import StateError, QueryError
 
 
 class FormattingUtils:
@@ -29,6 +27,39 @@ class FormattingUtils:
                 output.append((str(candidate), 0))
 
         return output
+
+
+class GenerationTraceFormatter:
+    @staticmethod
+    def query(keyword: str,
+              generation_trace: List[Optional[Candidate]],
+              start: Optional[int] = None,
+              end: Optional[int] = None) -> List[Any]:
+        if not keyword or keyword == "bang":
+            return [FormattingUtils.output_without_transforms(generation_trace, use_max_format=True)]
+
+        elif keyword.lower() == "len" or keyword.lower() == "length":
+            return [keyword, len(generation_trace)]
+
+        elif keyword.lower() == "range":
+            if start is not None and not isinstance(start, int):
+                raise QueryError(f"Invalid start index ({start}) for keyword '{keyword}': expected integer or 'None'")
+            if end is not None and not isinstance(start, int):
+                raise QueryError(f"Invalid end index ({start}) for keyword '{keyword}': expected integer or 'None'")
+            return [keyword, FormattingUtils.output_without_transforms(generation_trace[start:end])]
+
+        elif keyword.lower() == "mth":
+            if start is None:
+                raise QueryError(f"Missing argument for keyword '{keyword}'.")
+            elif not isinstance(start, int):
+                raise QueryError(f"Invalid argument for keyword '{keyword}': expected integer (actual: {type(start)}")
+            else:
+                try:
+                    return [FormattingUtils.output_without_transforms([generation_trace[start]])]
+                except IndexError:
+                    raise QueryError(f"Index {start} is out of range (valid range is 0, {len(generation_trace) - 1})")
+        else:
+            raise QueryError(f"Invalid keyword '{keyword}'. Valid keywords are: 'len', 'range', 'mth'")
 
 
 # TODO: Remove

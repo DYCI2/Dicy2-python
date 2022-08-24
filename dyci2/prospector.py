@@ -312,8 +312,11 @@ class FactorOracleProspector(Dyci2Prospector):
                                           self.model.direct_transitions.get(i) and
                                           self.model.equiv.eq(self.model.direct_transitions.get(i)[0],
                                                               influences[0].value)]
-                # TODO: Handle case where init_states is empty?
-                new_position: int = random.randint(0, len(init_states) - 1)
+                if len(init_states) > 0:
+                    new_position: int = random.randint(0, len(init_states) - 1)
+                else:
+                    # TODO[Jerome] This line was added to handle case when init state are empty. Should it rather be 0?
+                        new_position = random.randint(1, self.model.get_internal_index_last_state())
                 self.navigator.set_position_in_sequence(new_position)
             else:
                 new_position: int = random.randint(1, self.model.get_internal_index_last_state())

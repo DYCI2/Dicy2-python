@@ -34,7 +34,7 @@ from dyci2.io_formatting import AntescofoFormatting
 from dyci2.label import Dyci2Label
 from dyci2.parameter import Parameter
 from dyci2.prospector import Dyci2Prospector, FactorOracleProspector
-from dyci2.utils import FormattingUtils
+from dyci2.utils import FormattingUtils, GenerationTraceFormatter
 from merge.io.osc_sender import OscLogForwarder, OscSender
 from merge.main.candidate import Candidate
 from merge.main.corpus import GenericCorpus, Corpus
@@ -55,7 +55,6 @@ from merge.main.query import Query, TriggerQuery, InfluenceQuery
 
 def basic_equiv(x, y):
     return x == y
-
 
 
 class Server(Process, Caller):
@@ -218,14 +217,7 @@ class OSCAgent(Server):
 
         abs_start_date: int = self.generation_scheduler.generation_index()
 
-        # output_str: str = "', '".join([c.event.renderer_info()
-        #                                if c is not None and isinstance(c.event, Dyci2CorpusEvent)
-        #                                else "None"
-        #                                for c in self.generation_scheduler.generation_process.last_sequence()
-        #                                ])
-
         output_sequence: List[Optional[Candidate]] = self.generation_scheduler.generation_process.last_sequence()
-        generation_trace: List[Optional[Candidate]] = self.generation_scheduler.generation_process.generation_trace
 
         self.logger.debug(f"Output of the run of {name}: "
                           f"'{FormattingUtils.output_without_transforms(output_sequence, use_max_format=False)}'")
@@ -235,11 +227,6 @@ class OSCAgent(Server):
                               FormattingUtils.output_without_transforms(output_sequence, use_max_format=True)]
 
         self._client.send("/result_run_query", message)
-        self._client.send("/updated_buffered_impro",
-                          FormattingUtils.output_without_transforms(generation_trace, use_max_format=True))
-
-        # TODO[Jerome]: Remove antescofo behaviour entirely
-        # self._send_to_antescofo(self._formatted_output_couple_content_transfo(), abs_start_date)
 
     def set_performance_time(self, new_time: int):
         if (isinstance(new_time, int) or isinstance(new_time, float)) and new_time >= 0:
@@ -352,6 +339,24 @@ class OSCAgent(Server):
         self.generation_scheduler.generator.prospector.model.logger.setLevel(log_level)
         self._log_level = log_level
         self.logger.debug(f"log level set to {logging.getLevelName(log_level)}")
+
+    ################################################################################################################
+    # QUERY STATE
+    ################################################################################################################
+
+    def query_generation_trace(self, keyword: str = "", start: Optional[int] = None, end: Optional[int] = None):
+        generation_trace: List[Optional[Candidate]] = self.generation_scheduler.generation_process.generation_trace
+        if len(generation_trace) == 0:
+            self.logger.error("No generation trace exists yet")
+            return
+
+        try:
+            msg: List[Any] = GenerationTraceFormatter.query(keyword, generation_trace, start=start, end=end)
+            self._client.send("/query_generation_trace", *msg)
+        except QueryError as e:
+            self.logger.error(str(e))
+            return
+
 
     ################################################################################################################
     # PRIVATE

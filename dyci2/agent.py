@@ -30,8 +30,8 @@ from pythonosc.osc_server import BlockingOSCUDPServer
 from dyci2.corpus_event import Dyci2CorpusEvent
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
 from dyci2.generation_scheduler import Dyci2GenerationScheduler
-from dyci2.io_formatting import AntescofoFormatting
 from dyci2.label import Dyci2Label
+from dyci2.osc_protocol import OscProtocol
 from dyci2.parameter import Parameter
 from dyci2.prospector import Dyci2Prospector, FactorOracleProspector
 from dyci2.utils import FormattingUtils, GenerationTraceFormatter
@@ -42,16 +42,6 @@ from merge.main.exceptions import StateError, LabelError, QueryError, TimepointE
 from merge.main.influence import Influence
 from merge.main.query import Query, TriggerQuery, InfluenceQuery
 
-
-# class Target:
-#     WARNING_ADDRESS = "/warning"
-#
-#     def __init__(self, port: int, ip: str):
-#         self._client: Sender = Sender(ip=ip, port=port, send_format=SendFormat.FLATTEN, cnmat_compatibility=True,
-#                                       warning_address=Target.WARNING_ADDRESS)
-#
-#     def send(self, address: str, content: Any, **_kwargs):
-#         self._client.send(address, content)
 
 def basic_equiv(x, y):
     return x == y
@@ -207,7 +197,7 @@ class OSCAgent(Server):
             self.logger.error(f"Invalid query format. Query was ignored")
             return
 
-        self._client.send("/server_received_query", str(name))
+        self._client.send(OscProtocol.SERVER_RECEIVED_QUERY, str(name))
 
         try:
             self.generation_scheduler.process_query(query=query)
@@ -226,14 +216,24 @@ class OSCAgent(Server):
         message: List[Any] = [str(name), abs_start_date, "absolute", query_scope,
                               FormattingUtils.output_without_transforms(output_sequence, use_max_format=True)]
 
-        self._client.send("/result_run_query", message)
+        self._client.send(OscProtocol.QUERY_RESULT, message)
 
-    def set_performance_time(self, new_time: int):
+    def set_performance_time(self, new_time: int) -> None:
         if (isinstance(new_time, int) or isinstance(new_time, float)) and new_time >= 0:
-            self.generation_scheduler.update_performance_time(time=Dyci2Timepoint(start_date=int(new_time)))
+            timepoint = Dyci2Timepoint(start_date=int(new_time))
+            self.generation_scheduler.update_performance_time(time=timepoint)
+            self._client.send(OscProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
         else:
             self.logger.error(f"set_performance_time can only handle integers larger than or equal to 0")
             return
+
+    def increment_performance_time(self, increment: int = 1) -> None:
+        if not isinstance(increment, int):
+            self.logger.error(f"increment_performance_time can only handle integers")
+            return
+
+        self.generation_scheduler.increment_performance_time(increment=increment)
+        self._client.send(OscProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
 
     ################################################################################################################
     # MODIFY STATE (OSC)
@@ -260,7 +260,7 @@ class OSCAgent(Server):
         prospector: Dyci2Prospector = FactorOracleProspector(corpus=corpus, label_type=label_type)
         self.generation_scheduler: Dyci2GenerationScheduler = Dyci2GenerationScheduler(prospector)
 
-        self._client.send("/new_empty_memory", label_type.__class__.__name__)
+        self._client.send(OscProtocol.NEW_EMPTY_MEMORY, label_type.__class__.__name__)
         self.send_init_control_parameters()
 
     def learn_event(self, label_type_str: str, label_value: Any, content_value: str) -> None:
@@ -293,11 +293,11 @@ class OSCAgent(Server):
         self.logger.debug(f"associated label = {label} ({label.__class__.__name__})")
         self.logger.debug(f"associated event = {event.renderer_info()} ({event.__class__.__name__})")
 
-        self._client.send("/new_event_learned", "bang")
+        self._client.send(OscProtocol.EVENT_LEARNED, "bang")
         self.logger.info(f"Learned event '{event.renderer_info()}'")
 
     ################################################################################################################
-    # PARAMETERS AND CONTROL (OSC)
+    # PARAMETERS AND STATE CONTROL (OSC)
     ################################################################################################################
 
     def set_control_parameter(self, parameter_path_str: str, value: Any) -> None:
@@ -314,7 +314,7 @@ class OSCAgent(Server):
         for parameter_path, parameter in parameters:
             path: str = self.PATH_SEPARATOR.join(parameter_path)
             value: Any = parameter.get()
-            self._client.send("/control_parameter", [path, value])
+            self._client.send(OscProtocol.CONTROL_PARAMETER, [path, value])
 
     def set_delta_transformations(self, delta: int) -> None:
         if delta < 0:
@@ -329,6 +329,7 @@ class OSCAgent(Server):
             transforms_str: str = ', '.join([str(t) for t in self.generation_scheduler.authorized_transforms])
             self.logger.debug(f"Transforms {transforms_str} enabled")
 
+    # TODO: Temp solution to handle logging over OSC
     def set_log_level(self, log_level: int) -> None:
         self.logger.setLevel(log_level)
         self.generation_scheduler.logger.setLevel(log_level)
@@ -339,6 +340,11 @@ class OSCAgent(Server):
         self.generation_scheduler.generator.prospector.model.logger.setLevel(log_level)
         self._log_level = log_level
         self.logger.debug(f"log level set to {logging.getLevelName(log_level)}")
+
+    def clear(self) -> None:
+        self.generation_scheduler.clear()
+        self._client.send(OscProtocol.CLEAR, "bang")
+        self._client.send(OscProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
 
     ################################################################################################################
     # QUERY STATE
@@ -352,11 +358,10 @@ class OSCAgent(Server):
 
         try:
             msg: List[Any] = GenerationTraceFormatter.query(keyword, generation_trace, start=start, end=end)
-            self._client.send("/query_generation_trace", *msg)
+            self._client.send(OscProtocol.QUERY_GENERATION_TRACE, *msg)
         except QueryError as e:
             self.logger.error(str(e))
             return
-
 
     ################################################################################################################
     # PRIVATE
@@ -370,21 +375,3 @@ class OSCAgent(Server):
         self.generation_scheduler.generator.prospector.logger.addHandler(handler)
         self.generation_scheduler.generator.prospector.navigator.logger.addHandler(handler)
         self.generation_scheduler.generator.prospector.model.logger.addHandler(handler)
-
-    # TODO: Design test case and update/simplify
-    def _send_to_antescofo(self, original_output, abs_start_date):
-        if len(original_output) > 0:
-            i = 0
-            e = original_output[i]
-            list_to_send = []
-            while i < len(original_output) and e is not None:
-                e = original_output[i]
-                if e is not None:
-                    list_to_send.append(e)
-                i = i + 1
-
-            # TODO: What to do with None?
-            if len(list_to_send) > 0:
-                print("... SENT TO MAX : {}".format(list_to_send))
-                map_antescofo = AntescofoFormatting.write_list_as_antescofo_map(list_to_send, abs_start_date)
-                self._client.send("/antescofo", ["/updated_buffered_impro_with_info_transfo", map_antescofo])

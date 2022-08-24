@@ -193,6 +193,8 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         self.generator.learn_event(event, **kwargs)
 
     def clear(self) -> None:
+        self._performance_time = 0
+        self.generation_process.clear()
         self.generator.clear()
 
     ################################################################################################################

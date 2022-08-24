@@ -23,5 +23,5 @@ class Dyci2Timepoint(Timepoint):
 
     def to_absolute(self, performance_time: int) -> None:
         if self.time_mode == TimeMode.RELATIVE:
-            self.start_date: int = max(performance_time + self.start_date, performance_time)
+            self.start_date: int = max(0, performance_time + self.start_date)
             self.time_mode = TimeMode.ABSOLUTE

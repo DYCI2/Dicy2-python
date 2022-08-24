@@ -1,9 +1,7 @@
 import copy
-import itertools
 import logging
-from typing import List, Optional, Tuple, Any
+from typing import List, Optional, Tuple
 
-from dyci2 import utils
 from dyci2.corpus_event import Dyci2CorpusEvent
 from merge.main.candidate import Candidate
 from merge.main.exceptions import StateError
@@ -16,11 +14,15 @@ class GenerationProcess:
         self._generation_time: int = -1
         self._start_of_last_sequence: int = -1
 
+    def clear(self) -> None:
+        self._generation_trace: List[Optional[Candidate]] = []
+        self._generation_time: int = -1
+        self._start_of_last_sequence: int = -1
+
     def add_output(self, generation_index: int, generation_output: List[Optional[Candidate]]):
         # generated_output_length: int = len(list(itertools.takewhile(lambda e: e is not None, generation_output)))
         # self.logger.debug(f"corrected length output = {generated_output_length}")
         generated_output_length: int = len(generation_output)
-
 
         prev_generation_time: int = self._generation_time
 
@@ -81,4 +83,3 @@ class GenerationProcess:
     # def formatted_generation_trace_string(self):
     #     # TODO: Update
     #     return utils.format_list_as_list_of_strings(self.generation_trace)
-

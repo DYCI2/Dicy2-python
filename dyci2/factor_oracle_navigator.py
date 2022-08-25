@@ -1,8 +1,7 @@
 import copy
 import logging
 import random
-import warnings
-from typing import List, Optional, Callable, Dict, Tuple, TypeVar
+from typing import List, Optional, Callable, Dict, Tuple, TypeVar, Any
 
 from dyci2 import intervals
 from dyci2.equiv import BasicEquiv, Equiv
@@ -79,8 +78,9 @@ class FactorOracleNavigator(Navigator[T]):
         self.avoid_repetitions_mode: Parameter[int] = Parameter(0)
         # TODO: DOCUMENTATION ON CONTINUITY_WITH_FUTURE DATA FORMAT / BEHAVIOUR
         self.continuity_with_future: Parameter[Tuple[float, float]] = Parameter(continuity_with_future)
-        # TODO: DOCUMENTATION ON EXECUTION TRACE FORMAT (should probably be its own class)
-        self.execution_trace = {}
+
+        # Format: {time_index: {parameter_name: value_at_given_time_index}}
+        self.execution_trace: Dict[int: Dict[str, Any]] = {}
 
         # TODO: DOCUMENTATION NEEDED ON HISTORY_AND_TABOO BEHAVIOUR / DATA FORMAT
         self.history_and_taboos: List[Optional[int]] = []
@@ -99,7 +99,9 @@ class FactorOracleNavigator(Navigator[T]):
         else:
             self.logger.debug("argument control_parameters = None")
 
-        self.execution_trace_parameters = ["current_position_in_sequence", "history_and_taboos", "current_continuity"]
+        self.execution_trace_parameters: List[str] = ["current_position_in_sequence",
+                                                      "history_and_taboos",
+                                                      "current_continuity"]
         for param in execution_trace_parameters:
             # TODO : TRY ASSERT... POUR ETRE PLUS PROPRE
             if param in self.__dict__.keys():
@@ -145,10 +147,6 @@ class FactorOracleNavigator(Navigator[T]):
         self.labels.append(label)
         current_last_idx = len(self.history_and_taboos) - 1
         self._authorize_indexes([current_last_idx])
-        # TODO[Jerome]: Breaking change (None is, as far as I know, reserved for the initial state. Correct?)
-        #  The old code caused a lot of bugs when `clear` wasn't called after learning each event, since the last added
-        #  event would get automatically taboo'ed.
-        #  old code: self.history_and_taboos.append(None)
         self.history_and_taboos.append(0)
 
     def set_time(self, time: int) -> None:
@@ -166,13 +164,9 @@ class FactorOracleNavigator(Navigator[T]):
         self.current_navigation_index = - 1
 
     def feedback(self, output_event: Optional[Candidate]) -> None:
+        self.increment_generation_index()
         if output_event is not None:
             self.set_position_in_sequence(output_event.event.index + 1)  # To account for Model's initial None
-
-    def reset_position_in_sequence(self, randomize: bool = False):
-        # TODO: Implement?
-        if randomize:
-            warnings.warn("randomization is not implemented yet")
         else:
             self.set_position_in_sequence(0)
 
@@ -180,26 +174,31 @@ class FactorOracleNavigator(Navigator[T]):
     # PUBLIC: CLASS-SPECIFIC RUNTIME CONTROL
     ################################################################################################################
 
-    def set_position_in_sequence(self, val_attr: Optional[int]) -> None:
-        self.current_position_in_sequence = val_attr
-        if val_attr is not None and val_attr > -1:
-            self.current_navigation_index += 1
-            self.logger.debug("\nNEW POSITION IN SEQUENCE: {}".format(val_attr))
-            self.logger.debug("NEW NAVIGATION INDEX: {}".format(self.current_navigation_index))
-            self.logger.debug("OLD LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
+    def set_position_in_sequence(self, new_position: Optional[int]) -> None:
+        self.current_position_in_sequence = new_position
+        if new_position is None or new_position <= -1:
+            self.logger.debug("INVALID POSITION IN SEQUENCE")
+            return
 
-            if (self.current_navigation_index > 0 and val_attr ==
-                    self.execution_trace[self.current_navigation_index - 1]["current_position_in_sequence"] + 1):
-                self.current_continuity += 1
-                self.logger.debug("Continuity + 1 = {}".format(self.current_continuity))
-            else:
-                self.current_continuity = 0
-                self.logger.debug("Continuity set to 0")
+        self.logger.debug(f"NEW POSITION IN SEQUENCE: {new_position}")
 
-            self._update_history_and_taboos(val_attr)
-            self._record_execution_trace(self.current_navigation_index)
-            self.logger.debug("NEW LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
-        # print("NEW EXECUTION TRACE: {}".format(self.execution_trace))
+        # An existing execution trace is recorded for the previous generation time index
+        if (self.current_navigation_index - 1 in self.execution_trace and
+                new_position == self.execution_trace[self.current_navigation_index - 1][
+                    "current_position_in_sequence"] + 1):
+            self.current_continuity += 1
+            self.logger.debug("Continuity + 1 = {}".format(self.current_continuity))
+        else:
+            self.current_continuity = 0
+            self.logger.debug("Continuity set to 0")
+
+        self._update_history_and_taboos(new_position)
+        self._record_execution_trace(self.current_navigation_index)
+        self.logger.debug("LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
+
+    def increment_generation_index(self) -> None:
+        self.current_navigation_index += 1
+        self.logger.debug("\nNEW NAVIGATION INDEX: {}".format(self.current_navigation_index))
 
     ################################################################################################################
     #   PUBLIC: NAVIGATION STRATEGIES
@@ -369,7 +368,7 @@ class FactorOracleNavigator(Navigator[T]):
     #   PRIVATE
     ################################################################################################################
 
-    def _go_to_anterior_state_using_execution_trace(self, index_in_navigation):
+    def _go_to_anterior_state_using_execution_trace(self, index_in_navigation: int) -> None:
 
         """
         This method is called when the run of a new query rewrites previously generated anticipations.
@@ -383,14 +382,22 @@ class FactorOracleNavigator(Navigator[T]):
 
         """
 
-        self.logger.debug(
-            "GO TO ANTERIOR STATE USING EXECUTION TRACE\nGoing back to state when {} was generated:\n{}".format(
-                index_in_navigation, self.execution_trace[index_in_navigation]))
-        history_after_generating_prev = self.execution_trace[index_in_navigation]
-        for name_slot, value_slot in history_after_generating_prev.items():
-            self.__dict__[name_slot] = value_slot
+        self.logger.debug(f"GO TO ANTERIOR STATE USING EXECUTION TRACE\n")
 
-    def _record_execution_trace(self, index_in_navigation):
+        if index_in_navigation in self.execution_trace:
+            self.logger.debug(f"Going back to state when {index_in_navigation} was generated:\n"
+                              f"{self.execution_trace[index_in_navigation]}")
+            history_after_generating_prev: Dict[str, Any] = self.execution_trace[index_in_navigation]
+            for name_slot, value_slot in history_after_generating_prev.items():  # type: str, Any
+                self.__dict__[name_slot] = value_slot
+
+        else:
+            self.logger.debug(f"No execution trace exists for state {index_in_navigation}: ignoring")
+            # TODO: Verify this with Jerome
+            self.logger.critical("##### TODO: Is this correct??? ######")
+            self.clear()
+
+    def _record_execution_trace(self, index_in_navigation: int) -> None:
         """
         Stores in :attr:`self.execution_trace` the values of different parameters of the model when generating thefu
         event in the sequence at the index given in argument.
@@ -402,14 +409,13 @@ class FactorOracleNavigator(Navigator[T]):
         in :attr:`self.execution_trace_parameters`.
 
         """
-        trace_index = {}
-        for name_slot in self.execution_trace_parameters:
-            # trace_index[name_slot] = copy.deepcopy(self.__dict__[name_slot])
+        trace_index: Dict[str, Any] = {}
+        for name_slot in self.execution_trace_parameters:  # type: str
             trace_index[name_slot] = copy.deepcopy(self.__dict__[name_slot])
 
         self.execution_trace[index_in_navigation] = trace_index
 
-    def _update_history_and_taboos(self, index_in_sequence):
+    def _update_history_and_taboos(self, index_in_sequence: int) -> None:
 
         """
         Increases the value associated to the index given in argument in :attr:`self.history_and_taboos`.
@@ -420,40 +426,32 @@ class FactorOracleNavigator(Navigator[T]):
 
 
         """
-        # print("Record history_and_taboos for index {} in sequence.\nPREVIOUSLY:\n{}".format(index_in_sequence,
-        #                                                                                     self.history_and_taboos))
         if not self.history_and_taboos[index_in_sequence] is None:
             self.history_and_taboos[index_in_sequence] += 1
-        # print("Increases history of selected index.\nNew self.history_and_taboos = {}".format(self.history_and_taboos))
-        previous_continuity = None
-        previous_position_in_sequence = None
-        previous_previous_continuity_in_sequence = None
 
-        if self.current_navigation_index > 0:
-            previous_continuity = self.execution_trace[self.current_navigation_index - 1]["current_continuity"]
-            # print("Current continuity = {}, previous continuity = {}".format(self.current_continuity, previous_continuity))
-            previous_position_in_sequence = self.execution_trace[self.current_navigation_index - 1][
-                "current_position_in_sequence"]
-            # print("Previous position in sequence = {}".format(previous_position_in_sequence))
-            if self.current_navigation_index > 1:
-                previous_previous_continuity_in_sequence = self.execution_trace[self.current_navigation_index - 2][
-                    "current_continuity"]
+        prev_continuity: Optional[int] = None
+        prev_position_in_sequence: Optional[int] = None
+        prev_prev_continuity_in_sequence: Optional[int] = None
 
-        if self.current_continuity == self.max_continuity.get() - 1 and self.current_position_in_sequence + 1 < self._index_last_state():
+        if self.current_navigation_index - 1 in self.execution_trace:
+            prev_execution_trace_entry: Dict[str, Any] = self.execution_trace[self.current_navigation_index - 1]
+            prev_continuity = prev_execution_trace_entry["current_continuity"]
+            prev_position_in_sequence = prev_execution_trace_entry["current_position_in_sequence"]
+
+            if self.current_navigation_index - 2 in self.execution_trace:
+                prev_prev_execution_trace_entry = self.execution_trace[self.current_navigation_index - 2]
+                prev_prev_continuity_in_sequence = prev_prev_execution_trace_entry["current_continuity"]
+
+        if self.current_continuity == self.max_continuity.get() - 1 and \
+                self.current_position_in_sequence + 1 < self._index_last_state():
             self._forbid_indexes([self.current_position_in_sequence + 1])
-        # print("Continuity reaches (self.max_continuity - 1). \n"
-        #       "New self.history_and_taboos = {}".format(self.history_and_taboos))
 
-        elif not previous_previous_continuity_in_sequence is None \
-                and self.current_continuity == 0 \
-                and not previous_position_in_sequence is None \
-                and previous_position_in_sequence < self._index_last_state() \
-                and not previous_continuity is None:  # and previous_continuity > 0:
-            self.history_and_taboos[previous_position_in_sequence + 1] = previous_previous_continuity_in_sequence
-        # print("Delete taboo set because of max_continuity at last step. \n"
-        #       "New self.history_and_taboos = {}".format(self.history_and_taboos))
+        elif prev_prev_continuity_in_sequence is not None and self.current_continuity == 0 \
+                and prev_position_in_sequence is not None and prev_position_in_sequence < self._index_last_state() \
+                and prev_continuity is not None:
+            self.history_and_taboos[prev_position_in_sequence + 1] = prev_prev_continuity_in_sequence
 
-    def _forbid_indexes(self, indexes):
+    def _forbid_indexes(self, indexes: List[int]) -> None:
 
         """
         Introduces "taboos" (events that cannot be retrieved) in the navigation mechanisms.
@@ -465,7 +463,7 @@ class FactorOracleNavigator(Navigator[T]):
         for i in indexes:
             self.history_and_taboos[i] = None
 
-    def _authorize_indexes(self, indexes):
+    def _authorize_indexes(self, indexes: List[int]) -> None:
 
         """
         Delete the "taboos" (events that cannot be retrieved) in the navigation mechanisms for the states listed in
@@ -478,11 +476,11 @@ class FactorOracleNavigator(Navigator[T]):
         for i in indexes:
             self.history_and_taboos[i] = 0
 
-    def _is_taboo(self, index):
+    def _is_taboo(self, index: int) -> bool:
 
         return self.history_and_taboos[index] is None
 
-    def _delete_taboos(self):
+    def _delete_taboos(self) -> None:
 
         """
         Delete all the "taboos" (events that cannot be retrieved) in the navigation mechanisms.

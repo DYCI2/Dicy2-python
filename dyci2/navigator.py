@@ -60,9 +60,5 @@ class Navigator(Parametric, Generic[T], ABC):
         """ TODO: Docstring """
 
     @abstractmethod
-    def reset_position_in_sequence(self, randomize: bool = False):
-        """ TODO: Docstring """
-
-    @abstractmethod
     def clear(self) -> None:
         """ TODO: Docstring """

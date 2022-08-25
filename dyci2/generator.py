@@ -247,35 +247,21 @@ class Dyci2Generator(Generator, Parametric):
         """
         generated_sequence: List[Optional[Candidate]] = []
         self.logger.debug("SCENARIO BASED GENERATION 0")
+
         while len(generated_sequence) < len(list_of_labels):
             current_index: int = len(generated_sequence)
-            seq: List[Candidate]
+            seq: List[Optional[Candidate]]
             seq = self._handle_scenario_based_generation_one_phase(list_of_labels=list_of_labels[current_index:],
                                                                    original_query_length=len(list_of_labels),
                                                                    shift_index=current_index)
-
-            # Single phase ended with output
-            if len(seq) > 0:
-                generated_sequence.extend(seq)
-
-            # Single phase ended without output
-            else:
-                fallback_output: Optional[Candidate] = self._decide(ListCandidates([], self.prospector.get_corpus()),
-                                                                    disable_fallback=not self.no_empty_event.value)
-                if fallback_output is not None:
-                    fallback_output.transform = self.active_transform
-                    self.feedback(fallback_output)
-                else:
-                    # TODO[Jerome]: Is this really a good idea? Shouldn't it be random state?
-                    self.prospector.navigator.reset_position_in_sequence(randomize=False)
-                generated_sequence.append(fallback_output)
+            generated_sequence.extend(seq)
 
         return generated_sequence
 
     def _handle_scenario_based_generation_one_phase(self,
                                                     list_of_labels: List[Influence],
                                                     original_query_length: int,
-                                                    shift_index: int = 0) -> List[Candidate]:
+                                                    shift_index: int = 0) -> List[Optional[Candidate]]:
         """
         # :param list_of_labels: "current scenario", suffix of the scenario given in argument to
         # :meth:`Generator.Generator.handle_scenario_based_generation`.
@@ -303,17 +289,21 @@ class Dyci2Generator(Generator, Parametric):
                                             authorized_transformations=self._authorized_transforms)
         candidates: Candidates = self.prospector.pop_candidates()
 
-        # Terminate and let `handle_scenario_based_generation` handle fallback for this phase if none were found
         output: Optional[Candidate] = self._decide(candidates, disable_fallback=True)
+
+        # No initial candidate was found: End phase with either fallback or `None` as output
         if output is None:
-            return []
+            fallback_output: Optional[Candidate] = self._decide(ListCandidates([], self.prospector.get_corpus()),
+                                                                disable_fallback=not self.no_empty_event.value)
+            fallback_output.transform = self.active_transform
+            self.feedback(fallback_output)
+            return [fallback_output]
 
         generated_sequence.append(output)
-        self.active_transform = output.transform
         self.feedback(output)
+        self.active_transform = output.transform
 
         self.logger.debug(f"SCENARIO BASED ONE PHASE SETS POSITION: {output.event.index}")
-        self.logger.debug(f"current_position_in_sequence: {output.event.index}")
         self.logger.debug(f"{shift_index} NEW STARTING POINT {output.event.get_label(self.prospector.label_type)} "
                           f"(orig. --): {output.event.index}\n"
                           f"length future = {output.score} - FROM NOW {self.active_transform}")
@@ -326,21 +316,22 @@ class Dyci2Generator(Generator, Parametric):
         # Consecutive candidates
         shift_index: int = original_query_length - len(list_of_labels) + 1
         for (i, influence) in enumerate(list_of_labels[1:]):  # type: int, Influence
-            # no_empty_event as argument: do not allow searching for any unavailable event matching the label
+            # Search available candidates only (`no_empty_event=False`)
             self.prospector.process(influence=influence,
                                     index_in_generation_cycle=shift_index + i,
                                     no_empty_event=False)
             candidates: Candidates = self.prospector.pop_candidates()
-            # No fallback: End phase if none were found
+
             output: Optional[Candidate] = self._decide(candidates, disable_fallback=True)
 
+            # Candidate found: append and continue iteration
             if output is not None:
                 generated_sequence.append(output)
                 output.transform = self.active_transform
                 self.feedback(output)
 
+            # No candidates found: End phase without appending None/fallback
             else:
-                # End phase if no candidates are found
                 break
 
         self.logger.debug(f"---------END handle_scenario_based ->> Return {generated_sequence}")

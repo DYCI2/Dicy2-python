@@ -26,7 +26,7 @@ from typing import Callable, Tuple, Optional, List, Type, Dict, Union
 from dyci2.equiv import Equiv, BasicEquiv
 from dyci2.factor_oracle_model import FactorOracle
 from dyci2.factor_oracle_navigator import FactorOracleNavigator
-from dyci2.label import Dyci2Label
+from dyci2.label import Dyci2Label, IntervallicLabel
 from dyci2.model import Model
 from dyci2.navigator import Navigator
 from dyci2.parameter import Parametric
@@ -369,7 +369,9 @@ class FactorOracleProspector(Dyci2Prospector):
         valid_indices: List[int] = list(range(self.model.get_internal_sequence_length()))
         authorized_indices: List[int] = self.navigator.filter_using_history_and_taboos(valid_indices)
 
-        use_intervals: bool = self._use_intervals(authorized_transformations)
+        use_intervals: bool = (issubclass(self.label_type, IntervallicLabel) and
+                               len(authorized_transformations) > 0 and
+                               authorized_transformations != [0])
         if use_intervals:
             func_intervals_to_labels: Optional[Callable]
             func_intervals_to_labels = self.label_type.make_sequence_of_intervals_from_sequence_of_labels

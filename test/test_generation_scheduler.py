@@ -6,7 +6,7 @@ import warnings
 from typing import List, Tuple
 
 from dyci2.corpus_event import Dyci2CorpusEvent
-from dyci2.label import ChordLabel, from_list_to_labels
+from dyci2.label import ChordLabel
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
 from dyci2.prospector import FactorOracleProspector
 from dyci2.generation_scheduler import Dyci2GenerationScheduler
@@ -41,8 +41,8 @@ if __name__ == '__main__':
     list_for_sequence = ["d m7(1)", "d m7(2)", "g 7(3)", "g 7(4)", "c maj7(5)", "c maj7(6)", "c# maj7(7)",
                          "c# maj7(8)",
                          "d# m7(9)", "d# m7(10)", "g# 7(11)", "g# 7(12)", "c# maj7(13)", "c# maj7(14)"]
-    labels: List[ChordLabel] = from_list_to_labels(labels=list_for_labels, label_type=ChordLabel)
-    sequence: List[ChordLabel] = from_list_to_labels(labels=list_for_sequence, label_type=ChordLabel)
+    labels: List[ChordLabel] = ChordLabel.sequence_from_list(list_for_labels)
+    sequence: List[ChordLabel] = ChordLabel.sequence_from_list(list_for_sequence)
     print(labels)
     print(sequence)
     memory: GenericCorpus[ChordLabel] = GenericCorpus([Dyci2CorpusEvent(content, i, label=label)
@@ -63,20 +63,21 @@ if __name__ == '__main__':
     # TODO: Not a good way to set parameters, use Parameter/Parametric
     gen_scheduler.generator.prospector._navigator.avoid_repetitions_mode.set(1)
     gen_scheduler.generator.prospector._navigator.max_continuity.set(3)
-    warnings.warn("This is not a settable parameter anymore: no_empty_event")
-    # gen_scheduler.prospector.navigator.no_empty_event = False
+    # gen_scheduler.generator.no_empty_event.set(False)
 
     gen_scheduler.start()
 
     print("\n --- Starting simulation of interactions (receiving and processing query)...  --- ")
 
     list_for_scenario: List[str] = ["g m7", "g m7", "c 7", "c 7", "f maj7", "f maj7"]
-    labels_for_scenario: List[ChordLabel] = from_list_to_labels(list_for_scenario, ChordLabel)
+    labels_for_scenario: List[ChordLabel] = ChordLabel.sequence_from_list(list_for_scenario)
     influences_for_scenario: List[LabelInfluence] = [LabelInfluence(label) for label in labels_for_scenario]
     query: InfluenceQuery = InfluenceQuery(influences_for_scenario, time=Dyci2Timepoint())
     # query = new_temporal_query_sequence_of_events(handle=list_for_scenario, label_type=ChordLabel)
     print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
+
     gen_scheduler.process_query(query=query)
+
     output: List[Candidate] = gen_scheduler.generation_process.last_sequence()
     events: List[CorpusEvent] = [c.event for c in output]
     transforms: List[Transform] = [c.transform for c in output]
@@ -139,7 +140,7 @@ if __name__ == '__main__':
     # TODO : POURQUOI NE MARCHE PAS AVEC TRANSPO MIN DE -2 ????
     # scenario = make_sequence_of_chord_labels(["a maj7", "a maj7"])
     list_for_scenario = ["d m7", "d m7", "d m7"]
-    labels_for_scenario: List[ChordLabel] = from_list_to_labels(list_for_scenario, ChordLabel)
+    labels_for_scenario: List[ChordLabel] = ChordLabel.sequence_from_list(list_for_scenario)
     influences_for_scenario: List[LabelInfluence] = [LabelInfluence(label) for label in labels_for_scenario]
     query: InfluenceQuery = InfluenceQuery(influences_for_scenario,
                                            time=Dyci2Timepoint(start_date=2, time_mode=TimeMode.RELATIVE))

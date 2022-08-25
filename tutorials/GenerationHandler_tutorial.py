@@ -22,7 +22,8 @@ from candidate import Candidate
 from dyci2.factor_oracle_model import FactorOracle
 from dyci2.factor_oracle_navigator import FactorOracleNavigator
 from dyci2.generation_scheduler import GenerationScheduler
-from dyci2.label import from_list_to_labels, ChordLabel
+from dyci2.label import ChordLabel
+from dyci2.utils import from_list_to_labels
 from dyci2.memory import Memory, LabelEvent
 from dyci2.query import Query, FreeQuery, TimeMode, LabelQuery
 

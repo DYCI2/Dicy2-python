@@ -17,6 +17,7 @@ from dyci2.label import *
 from dyci2.agent import *
 
 # 1) IMPROVISE AND SEND
+from dyci2.utils import from_list_to_labels
 
 labels = from_list_to_labels(["d m7", "d m7", "g 7", "g 7", "c maj7","c maj7","c# maj7","c# maj7", "d# m7", "d# m7", "g# 7", "g# 7", "c# maj7", "c# maj7"],ChordLabel)
 sequence = from_list_to_labels(["d m7(1)", "d m7(2)", "g 7(3)", "g 7(4)", "c maj7(5)","c maj7(6)","c# maj7(7)","c# maj7(8)", "d# m7(9)", "d# m7(10)", "g# 7(11)", "g# 7(12)", "c# maj7(13)", "c# maj7(14)"],ChordLabel)

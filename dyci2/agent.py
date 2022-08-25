@@ -187,8 +187,8 @@ class OSCAgent(Server):
 
         elif label_type_str is not None and labels_data is not None and query_scope == len(labels_data):
             try:
-                label_type: Type[Dyci2Label] = Dyci2Label.from_string(label_type_str)
-                labels: List[Dyci2Label] = [label_type(s) for s in labels_data]
+                label_type: Type[Dyci2Label] = Dyci2Label.type_from_string(label_type_str)
+                labels: List[Dyci2Label] = [label_type.parse(s) for s in labels_data]
                 query: Query = InfluenceQuery(content=Influence.from_labels(labels), time=timepoint)
             except ValueError as e:
                 self.logger.error(f"{str(e)}. Query was ignored")
@@ -241,7 +241,7 @@ class OSCAgent(Server):
 
     def new_empty_memory(self, label_type: str = Dyci2Label.__class__.__name__) -> None:
         try:
-            label_type: Type[Dyci2Label] = Dyci2Label.from_string(str(label_type))
+            label_type: Type[Dyci2Label] = Dyci2Label.type_from_string(str(label_type))
         except ValueError as e:
             self.logger.error(f"{str(e)}. Could not create new memory")
             return
@@ -265,8 +265,8 @@ class OSCAgent(Server):
 
     def learn_event(self, label_type_str: str, label_value: Any, content_value: str) -> None:
         try:
-            label_type: Type[Dyci2Label] = Dyci2Label.from_string(str(label_type_str))
-            label: Dyci2Label = label_type(label_value)
+            label_type: Type[Dyci2Label] = Dyci2Label.type_from_string(str(label_type_str))
+            label: Dyci2Label = label_type.parse(label_value)
         except ValueError as e:
             self.logger.error(f"{str(e)}. Could not learn event")
             return

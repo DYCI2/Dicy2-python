@@ -184,8 +184,8 @@ class FactorOracleNavigator(Navigator[T]):
 
         # An existing execution trace is recorded for the previous generation time index
         if (self.current_navigation_index - 1 in self.execution_trace and
-                new_position == self.execution_trace[self.current_navigation_index - 1][
-                    "current_position_in_sequence"] + 1):
+                new_position ==
+                self.execution_trace[self.current_navigation_index - 1]["current_position_in_sequence"] + 1):
             self.current_continuity += 1
             self.logger.debug("Continuity + 1 = {}".format(self.current_continuity))
         else:

@@ -295,7 +295,8 @@ class Dyci2Generator(Generator, Parametric):
         if output is None:
             fallback_output: Optional[Candidate] = self._decide(ListCandidates([], self.prospector.get_corpus()),
                                                                 disable_fallback=not self.no_empty_event.value)
-            fallback_output.transform = self.active_transform
+            if fallback_output is not None:
+                fallback_output.transform = self.active_transform
             self.feedback(fallback_output)
             return [fallback_output]
 

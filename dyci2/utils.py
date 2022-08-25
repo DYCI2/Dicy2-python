@@ -1,6 +1,7 @@
-from typing import List, Optional, Tuple, Any
+from typing import List, Optional, Tuple, Any, Type
 
 from dyci2.corpus_event import Dyci2CorpusEvent
+from dyci2.label import Dyci2Label
 from merge.main.candidate import Candidate
 from merge.main.exceptions import StateError, QueryError
 
@@ -60,32 +61,6 @@ class GenerationTraceFormatter:
                     raise QueryError(f"Index {start} is out of range (valid range is 0, {len(generation_trace) - 1})")
         else:
             raise QueryError(f"Invalid keyword '{keyword}'. Valid keywords are: 'len', 'range', 'mth'")
-
-
-# TODO: Remove
-def format_list_as_list_of_strings(l):
-    result = []
-    for i in l:
-        i_s = ""
-        if type(i) == list:
-            for j in range(len(i) - 1):
-                i_s += format_obj_as_string(i[j]) + " "
-            i_s += format_obj_as_string(i[len(i) - 1])
-        else:
-            i_s = format_obj_as_string(i)
-        result.append(i_s)
-
-    return result
-
-
-# TODO: Remove
-def format_obj_as_string(o):
-    s = ""
-    if type(o) == str:
-        s = o.replace("u'", "").replace("'", "")
-    else:
-        s = format(o)
-    return s
 
 
 def none_is_infinite(value):

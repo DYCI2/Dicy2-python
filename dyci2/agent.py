@@ -43,10 +43,6 @@ from merge.main.influence import Influence
 from merge.main.query import Query, TriggerQuery, InfluenceQuery
 
 
-def basic_equiv(x, y):
-    return x == y
-
-
 class Server(Process, Caller):
     DEFAULT_IP = "127.0.0.1"
     SERVER_ADDRESS = "/server"
@@ -115,10 +111,6 @@ class Server(Process, Caller):
 
     def __unmatched_osc(self, address: str, *_args, **_kwargs) -> None:
         self.logger.error(f"OSC address {address} is not registered. Use {self.SERVER_ADDRESS} for communication")
-
-
-class ValueErorr:
-    pass
 
 
 class OSCAgent(Server):

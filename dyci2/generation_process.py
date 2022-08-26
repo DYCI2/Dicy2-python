@@ -20,8 +20,6 @@ class GenerationProcess:
         self._start_of_last_sequence: int = -1
 
     def add_output(self, generation_index: int, generation_output: List[Optional[Candidate]]):
-        # generated_output_length: int = len(list(itertools.takewhile(lambda e: e is not None, generation_output)))
-        # self.logger.debug(f"corrected length output = {generated_output_length}")
         generated_output_length: int = len(generation_output)
 
         prev_generation_time: int = self._generation_time
@@ -38,7 +36,6 @@ class GenerationProcess:
                 self.generation_trace.append(output_cloned)
 
         self._generation_time = generation_index + generated_output_length
-        self._generation_trace = self._generation_trace[:self._generation_time]
         self._start_of_last_sequence = generation_index
         self.logger.debug(f"generation time: {prev_generation_time} --> {self._generation_time}")
 

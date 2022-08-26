@@ -1,7 +1,7 @@
 import copy
 import logging
 import random
-from typing import List, Optional, Callable, Dict, Tuple, TypeVar, Any
+from typing import List, Optional, Callable, Dict, Tuple, TypeVar, Any, Type
 
 from dyci2 import intervals
 from dyci2.equiv import BasicEquiv, Equiv
@@ -161,7 +161,12 @@ class FactorOracleNavigator(Navigator[T]):
         self.history_and_taboos = [None] + [0] * (len(self.sequence) - 1)
         self.current_continuity = 0
         self.current_position_in_sequence = -1
-        self.current_navigation_index = - 1
+        self.current_navigation_index = -1
+
+    def reset_memory(self, label_type: Type[Dyci2Label] = Dyci2Label) -> None:
+        self.sequence: List[Optional[T]] = [None]  # initial state
+        self.labels: List[Optional[Dyci2Label]] = [None]  # initial state
+        self.clear()
 
     def feedback(self, output_event: Optional[Candidate]) -> None:
         self.increment_generation_index()

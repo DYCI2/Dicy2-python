@@ -30,8 +30,8 @@ from pythonosc.osc_server import BlockingOSCUDPServer
 from dyci2.corpus_event import Dyci2CorpusEvent
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
 from dyci2.generation_scheduler import Dyci2GenerationScheduler
-from dyci2.label import Dyci2Label
-from dyci2.osc_protocol import OscProtocol
+from dyci2.label import Dyci2Label, ListLabel
+from dyci2.osc_protocol import OscSendProtocol
 from dyci2.parameter import Parameter
 from dyci2.prospector import Dyci2Prospector, FactorOracleProspector
 from dyci2.utils import FormattingUtils, GenerationTraceFormatter
@@ -128,7 +128,7 @@ class OSCAgent(Server):
     def __init__(self,
                  inport: int = Server.DEFAULT_INPORT,
                  outport: int = Server.DEFAULT_OUTPORT,
-                 label_type: Type[Dyci2Label] = Dyci2Label,
+                 label_type: Type[Dyci2Label] = ListLabel,
                  max_length_osc_mess: int = DEFAULT_OSC_MAX_LEN,
                  **kwargs):
         Server.__init__(self, inport=inport, outport=outport, **kwargs)
@@ -197,7 +197,7 @@ class OSCAgent(Server):
             self.logger.error(f"Invalid query format. Query was ignored")
             return
 
-        self._client.send(OscProtocol.SERVER_RECEIVED_QUERY, str(name))
+        self._client.send(OscSendProtocol.SERVER_RECEIVED_QUERY, str(name))
 
         try:
             self.generation_scheduler.process_query(query=query)
@@ -216,13 +216,13 @@ class OSCAgent(Server):
         message: List[Any] = [str(name), abs_start_date, "absolute", query_scope,
                               FormattingUtils.output_without_transforms(output_sequence, use_max_format=True)]
 
-        self._client.send(OscProtocol.QUERY_RESULT, message)
+        self._client.send(OscSendProtocol.QUERY_RESULT, message)
 
     def set_performance_time(self, new_time: int) -> None:
         if (isinstance(new_time, int) or isinstance(new_time, float)) and new_time >= 0:
             timepoint = Dyci2Timepoint(start_date=int(new_time))
             self.generation_scheduler.update_performance_time(time=timepoint)
-            self._client.send(OscProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
+            self._client.send(OscSendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
         else:
             self.logger.error(f"set_performance_time can only handle integers larger than or equal to 0")
             return
@@ -233,41 +233,35 @@ class OSCAgent(Server):
             return
 
         self.generation_scheduler.increment_performance_time(increment=increment)
-        self._client.send(OscProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
+        self._client.send(OscSendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
 
     ################################################################################################################
     # MODIFY STATE (OSC)
     ################################################################################################################
 
-    def new_empty_memory(self, label_type: str = Dyci2Label.__class__.__name__) -> None:
+    def reset_memory(self,
+                     label_type: str = Dyci2Label.__class__.__name__,
+                     content_type: str = Dyci2CorpusEvent.__class__.__name__) -> None:
+        # TODO: content_type is unused and only added as a placeholder for now
+
         try:
             label_type: Type[Dyci2Label] = Dyci2Label.type_from_string(str(label_type))
         except ValueError as e:
             self.logger.error(f"{str(e)}. Could not create new memory")
             return
 
-        # TODO: Don't know how `content_type` works: need explicit protocol
-        # content_type: Optional[TODO_INSERTTYPE] = None
-        # if keys_content != "state":
-        #     content_type = Label.from_string(str(keys_content))
-        #     #exec("%s = %s" % ("content_type", keys_content))
-
         corpus: GenericCorpus = GenericCorpus([], label_types=[label_type])
 
-        # TODO: This solution (which was used in old versions of DYCI2) will
-        #  reset all parameters passed to the GenerationScheduler = not a good idea. Better to implement this with
-        #  >>> self.generation_handler.read_memory(corpus)
-        prospector: Dyci2Prospector = FactorOracleProspector(corpus=corpus, label_type=label_type)
-        self.generation_scheduler: Dyci2GenerationScheduler = Dyci2GenerationScheduler(prospector)
+        self.generation_scheduler.read_memory(corpus, override=True)
 
-        self._client.send(OscProtocol.NEW_EMPTY_MEMORY, label_type.__class__.__name__)
+        self._client.send(OscSendProtocol.RESET_MEMORY, label_type.__name__)
         self.send_init_control_parameters()
 
     def learn_event(self, label_type_str: str, label_value: Any, content_value: str) -> None:
         try:
             label_type: Type[Dyci2Label] = Dyci2Label.type_from_string(str(label_type_str))
             label: Dyci2Label = label_type.parse(label_value)
-        except ValueError as e:
+        except (ValueError, LabelError) as e:
             self.logger.error(f"{str(e)}. Could not learn event")
             return
 
@@ -293,7 +287,7 @@ class OSCAgent(Server):
         self.logger.debug(f"associated label = {label} ({label.__class__.__name__})")
         self.logger.debug(f"associated event = {event.renderer_info()} ({event.__class__.__name__})")
 
-        self._client.send(OscProtocol.EVENT_LEARNED, "bang")
+        self._client.send(OscSendProtocol.EVENT_LEARNED, "bang")
         self.logger.info(f"Learned event '{event.renderer_info()}'")
 
     ################################################################################################################
@@ -314,7 +308,7 @@ class OSCAgent(Server):
         for parameter_path, parameter in parameters:
             path: str = self.PATH_SEPARATOR.join(parameter_path)
             value: Any = parameter.get()
-            self._client.send(OscProtocol.CONTROL_PARAMETER, [path, value])
+            self._client.send(OscSendProtocol.CONTROL_PARAMETER, [path, value])
 
     def set_delta_transformations(self, delta: int) -> None:
         if delta < 0:
@@ -343,8 +337,8 @@ class OSCAgent(Server):
 
     def clear(self) -> None:
         self.generation_scheduler.clear()
-        self._client.send(OscProtocol.CLEAR, "bang")
-        self._client.send(OscProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
+        self._client.send(OscSendProtocol.CLEAR, "bang")
+        self._client.send(OscSendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
 
     ################################################################################################################
     # QUERY STATE
@@ -358,7 +352,7 @@ class OSCAgent(Server):
 
         try:
             msg: List[Any] = GenerationTraceFormatter.query(keyword, generation_trace, start=start, end=end)
-            self._client.send(OscProtocol.QUERY_GENERATION_TRACE, *msg)
+            self._client.send(OscSendProtocol.QUERY_GENERATION_TRACE, *msg)
         except QueryError as e:
             self.logger.error(str(e))
             return

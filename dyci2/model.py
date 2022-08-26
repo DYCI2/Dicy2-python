@@ -22,7 +22,7 @@ Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/Factor
 
 """
 from abc import ABC, abstractmethod
-from typing import List, Optional, TypeVar, Generic
+from typing import List, Optional, TypeVar, Generic, Type
 
 from dyci2.equiv import Equiv
 from dyci2.label import Dyci2Label
@@ -96,4 +96,8 @@ class Model(Parametric, Generic[T], ABC):
 
     @abstractmethod
     def clear(self) -> None:
+        """ TODO: Docstring """
+
+    @abstractmethod
+    def reset_memory(self, label_type: Type[Dyci2Label] = Dyci2Label) -> None:
         """ TODO: Docstring """

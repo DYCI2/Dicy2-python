@@ -20,7 +20,7 @@ The classes defined in this module are used in association with models (cf. :mod
 
 """
 from abc import ABC, abstractmethod
-from typing import List, Optional, Generic, TypeVar
+from typing import List, Optional, Generic, TypeVar, Type
 
 from dyci2.equiv import Equiv
 from dyci2.label import Dyci2Label
@@ -61,4 +61,8 @@ class Navigator(Parametric, Generic[T], ABC):
 
     @abstractmethod
     def clear(self) -> None:
+        """ TODO: Docstring """
+
+    @abstractmethod
+    def reset_memory(self, label_type: Type[Dyci2Label] = Dyci2Label) -> None:
         """ TODO: Docstring """

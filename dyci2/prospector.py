@@ -21,7 +21,7 @@ Tutorial in :file:`_Tutorials_/FactorOracleNavigator_tutorial.py`
 import logging
 import random
 from abc import ABC, abstractmethod
-from typing import Callable, Tuple, Optional, List, Type, Dict, Union
+from typing import Callable, Tuple, Optional, List, Type, Dict, Union, cast
 
 from dyci2.equiv import Equiv, BasicEquiv
 from dyci2.factor_oracle_model import FactorOracle
@@ -37,6 +37,7 @@ from merge.main.corpus import Corpus
 from merge.main.corpus_event import CorpusEvent
 from merge.main.exceptions import QueryError, StateError
 from merge.main.influence import Influence, LabelInfluence, NoInfluence
+from merge.main.label import Label
 from merge.main.prospector import Prospector
 
 
@@ -61,7 +62,7 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
         >>> #FON = FactorOracleGenerator(sequence, labels)
     """
 
-    def __init__(self, corpus: Optional[Corpus], label_type: Type[Dyci2Label], *args, **kwargs):
+    def __init__(self, label_type: Type[Dyci2Label], *args, **kwargs):
         """
         Constructor for the class FactorOracleNavigator.
         :see also: The class FactorOracle in FactorOracleAutomaton.py
@@ -80,8 +81,6 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
         self.next_output: Optional[Candidates] = None
 
         self.corpus: Optional[Corpus] = None
-        if corpus is not None:
-            self.read_memory(corpus)
 
     ################################################################################################################
     # CLASS METHODS
@@ -113,10 +112,6 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
                                     authorized_transformations: List[int]) -> Candidates:
         """ TODO: Docstring (very important!) """
 
-    @abstractmethod
-    def _clear(self) -> None:
-        """ TODO: docstring """
-
     @property
     @abstractmethod
     def model(self) -> Model:
@@ -131,10 +126,20 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
     # PUBLIC: INHERITED METHODS
     ################################################################################################################
 
-    def read_memory(self, corpus: Corpus, **kwargs) -> None:
+    def read_memory(self, corpus: Corpus, override: bool = False, **kwargs) -> None:
         if self.corpus is not None:
-            # TODO: Add support for this
-            raise StateError(f"Loading a new corpus into an existing {self.__class__.__name__} is not supported")
+            if not override:
+                raise StateError(f"A new memory cannot be loaded unless the previous one is reset. "
+                                 f"Use override=True to force reset")
+
+            if len(corpus.label_types) != 1:
+                raise StateError(f"{self.__class__.__name__} can only handle a corpus with a single label type. "
+                                 f"Actual: {len(corpus.label_types)}")
+
+            if not issubclass(corpus.label_types[0], Dyci2Label):
+                raise StateError(f"Invalid label type {corpus.label_types[0].__class__.__name__}")
+
+            self.reset_memory(cast(Type[Dyci2Label], corpus.label_types[0]))
 
         self.corpus = corpus
         for event in corpus.events:
@@ -221,6 +226,13 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
     # PUBLIC: CLASS-SPECIFIC METHODS
     ################################################################################################################
 
+    def reset_memory(self, label_type: Type[Dyci2Label] = Dyci2Label) -> None:
+        """ TODO: Docstring """
+        self.corpus = None
+        self.label_type = label_type
+        self.model.reset_memory(label_type=label_type)
+        self.navigator.reset_memory(label_type=label_type)
+
     def initialize_scenario(self, influences: List[Influence], authorized_transformations: List[int]) -> None:
         if self.corpus is None:
             raise StateError("No corpus has been loaded")
@@ -258,14 +270,6 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
         self.model.equiv = equiv
         self.navigator.equiv = equiv
 
-    ################################################################################################################
-    # PRIVATE
-    ################################################################################################################
-
-    def _use_intervals(self, authorized_transformations: List[int]) -> bool:
-        return self.label_type is not None and self.label_type.use_intervals \
-               and len(authorized_transformations) > 0 and authorized_transformations != [0]
-
 
 class FactorOracleProspector(Dyci2Prospector):
     def __init__(self,
@@ -276,14 +280,15 @@ class FactorOracleProspector(Dyci2Prospector):
                  history_parameters=(),
                  equiv: Equiv = BasicEquiv(),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
-        super().__init__(corpus=corpus,
-                         label_type=label_type)
-        self._model = FactorOracle(equiv=equiv)
+        super().__init__(label_type=label_type)
+        self._model = FactorOracle(label_type=label_type, equiv=equiv)
         self._navigator = FactorOracleNavigator(equiv=equiv,
                                                 max_continuity=max_continuity,
                                                 control_parameters=control_parameters,
                                                 execution_trace_parameters=history_parameters,
                                                 continuity_with_future=continuity_with_future)
+        if corpus is not None:
+            self.read_memory(corpus)
 
     ################################################################################################################
     # PUBLIC: INHERITED METHODS
@@ -315,7 +320,6 @@ class FactorOracleProspector(Dyci2Prospector):
                 if len(init_states) > 0:
                     new_position: int = random.randint(0, len(init_states) - 1)
                 else:
-                    # TODO[Jerome] This line was added to handle case when init state are empty. Should it rather be 0?
                     new_position = random.randint(1, self.model.get_internal_index_last_state())
                 self.navigator.set_position_in_sequence(new_position)
             else:
@@ -409,9 +413,6 @@ class FactorOracleProspector(Dyci2Prospector):
 
         else:
             return ListCandidates.new_empty(self.corpus)
-
-    def _clear(self) -> None:
-        pass  # No additional actions required
 
     @property
     def model(self) -> FactorOracle:

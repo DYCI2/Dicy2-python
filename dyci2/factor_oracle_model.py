@@ -166,6 +166,16 @@ class FactorOracle(Model[T]):
     def clear(self) -> None:
         pass    # does not alter runtime state
 
+    def reset_memory(self, label_type: Type[Dyci2Label] = Dyci2Label) -> None:
+        self.sequence: List[Optional[T]] = []
+        self.labels: List[Optional[Dyci2Label]] = []
+        self.label_type: Type[Dyci2Label] = label_type
+        self.direct_transitions = {}
+        self.factor_links = {}
+        self.suffix_links = {}
+        self.reverse_suffix_links = {}
+        self._init_model()
+
     ################################################################################################################
     # PUBLIC: CLASS-SPECIFIC RUNTIME CONTROL
     ################################################################################################################

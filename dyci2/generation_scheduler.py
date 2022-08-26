@@ -18,14 +18,13 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 
 """
 import logging
-from typing import Optional, Callable, Type, List
+from typing import Optional, Type, List
 
 from dyci2.candidate_selector import TempCandidateSelector
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
 from dyci2.equiv import Equiv
 from dyci2.generation_process import GenerationProcess
 from dyci2.generator import Dyci2Generator
-from dyci2.label import Dyci2Label
 from dyci2.parameter import Parametric
 from dyci2.prospector import Dyci2Prospector
 from merge.main.candidate import Candidate

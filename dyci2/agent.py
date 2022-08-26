@@ -232,8 +232,8 @@ class OSCAgent(Server):
     ################################################################################################################
 
     def reset_memory(self,
-                     label_type: str = Dyci2Label.__class__.__name__,
-                     content_type: str = Dyci2CorpusEvent.__class__.__name__) -> None:
+                     label_type: str = ListLabel.__name__,
+                     content_type: str = Dyci2CorpusEvent.__name__) -> None:
         # TODO: content_type is unused and only added as a placeholder for now
 
         try:

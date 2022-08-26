@@ -1,6 +1,6 @@
 class OscSendProtocol:
     SERVER_RECEIVED_QUERY = "/server_received_query"
-    QUERY_RESULT = "/query"
+    QUERY_RESULT = "/query_result"
     PERFORMANCE_TIME = "/performance_time"
     RESET_MEMORY = "/reset_memory"
     EVENT_LEARNED = "/new_event_learned"

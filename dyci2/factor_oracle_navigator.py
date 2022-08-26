@@ -82,7 +82,7 @@ class FactorOracleNavigator(Navigator[T]):
         # Format: {time_index: {parameter_name: value_at_given_time_index}}
         self.execution_trace: Dict[int: Dict[str, Any]] = {}
 
-        # TODO: DOCUMENTATION NEEDED ON HISTORY_AND_TABOO BEHAVIOUR / DATA FORMAT
+        # history_and_taboos: Format is None (initial state) followed by the number of occurrences for the rest
         self.history_and_taboos: List[Optional[int]] = []
         self.current_continuity: int = -1
         self.current_position_in_sequence: int = -1
@@ -90,10 +90,9 @@ class FactorOracleNavigator(Navigator[T]):
         self.clear()
 
         self.control_parameters = ["avoid_repetitions_mode", "max_continuity"]
-        if type(control_parameters) != type(None):
+        if control_parameters is not None:
             self.logger.debug("argument control_parameters = {}".format(control_parameters))
             for param in control_parameters:
-                # TODO : PLUTOT FAIRE AVEC UN TRY ASSERT... POUR ETRE PLUS PROPRE
                 if param in self.__dict__.keys():
                     self.control_parameters.append(param)
         else:
@@ -103,13 +102,11 @@ class FactorOracleNavigator(Navigator[T]):
                                                       "history_and_taboos",
                                                       "current_continuity"]
         for param in execution_trace_parameters:
-            # TODO : TRY ASSERT... POUR ETRE PLUS PROPRE
             if param in self.__dict__.keys():
                 self.execution_trace_parameters.append(param)
 
     def __setattr__(self, name_attr, val_attr):
         object.__setattr__(self, name_attr, val_attr)
-        # TODO : SUPPRIMER TRACE AVANT TEMPS PERFORMANCE
 
     ################################################################################################################
     # PUBLIC: INHERITED METHODS
@@ -398,9 +395,8 @@ class FactorOracleNavigator(Navigator[T]):
 
         else:
             self.logger.debug(f"No execution trace exists for state {index_in_navigation}: ignoring")
-            # TODO: Verify this with Jerome
-            self.logger.critical("##### TODO: Is this correct??? ######")
-            self.clear()
+            self.history_and_taboos = [None] + [0] * (len(self.sequence) - 1)
+            self.current_continuity = 0
 
     def _record_execution_trace(self, index_in_navigation: int) -> None:
         """

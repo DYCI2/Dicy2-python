@@ -1,5 +1,4 @@
 import logging
-import warnings
 from typing import Optional, Type, List
 
 from dyci2.candidate_selector import TempCandidateSelector, DefaultFallbackSelector
@@ -77,6 +76,7 @@ class Dyci2Generator(Generator, Parametric):
 
     def read_memory(self, corpus: Corpus, **kwargs) -> None:
         # TODO: Handle multicorpus case: learning a corpus in only a particular Prospector => PathSpec argument
+        self.clear()
         self.prospector.read_memory(corpus, **kwargs)
 
     def learn_event(self, event: CorpusEvent, **kwargs) -> None:
@@ -89,6 +89,7 @@ class Dyci2Generator(Generator, Parametric):
         self.prospector.learn_event(event, **kwargs)
 
     def clear(self) -> None:
+        self.active_transform: Transform = NoTransform()
         self._jury.clear()
         self._fallback_jury.clear()
         self.prospector.clear()
@@ -275,14 +276,13 @@ class Dyci2Generator(Generator, Parametric):
         """
         self.logger.debug("SCENARIO ONE PHASE 0")
 
+        # TODO: Note that these lines violates the strong exception guarantee. If an exception occurs, the state will
+        #    however not be inconsistent/invalid (there's no risk of chain-transforming using the same transform). Fix
         # Inverse apply transform to memory to reset to initial state of memory (no transform)
         self.decode_memory_with_current_transform()
         self.active_transform = NoTransform()
 
         generated_sequence: List[Candidate] = []
-
-        # TODO: CRITICAL: CHANGES STATE ABOVE, IF CRASHING IN INITIALIZE_SCENARIO, WILL BREAK
-        warnings.warn("EXCEPTIONS HERE WILL BREAK STATE! FIX")
 
         # Initial candidate (prefix indexing)
         self.prospector.initialize_scenario(influences=list_of_labels,

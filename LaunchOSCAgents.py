@@ -17,7 +17,7 @@ Associated Max patch Tuto_AM1,2,3...
 
 import sys
 import multiprocessing
-from dyci2.agent import OSCAgent
+from dyci2.agent import OscAgent
 
 
 if __name__ == '__main__':
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 				OSCinport += i
 				OSCoutport += i
 				print("\n--- Creation of DYCI2 agent num {}  ---\nModel type = Factor Oracle.\nEmpty (Empty sequence, empty labels)".format(i+1))
-				OSCAgent(inport = OSCinport, outport = OSCoutport).start()
+				OscAgent(recv_port= OSCinport, send_port= OSCoutport).start()
 				print("--- MODEL AND AGENT {} CREATED, OSC SERVER LAUNCHED: SEND YOUR QUERIES ! --- ".format(i+1))
 				#agent_1 = OSCAgent(inport = OSCinport, outport = OSCoutport)
 				#agent_1.start()

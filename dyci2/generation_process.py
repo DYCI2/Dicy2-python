@@ -12,12 +12,12 @@ class GenerationProcess:
         self.logger = logging.getLogger(__name__)
         self._generation_trace: List[Optional[Candidate]] = []
         self._generation_time: int = -1
-        self._start_of_last_sequence: int = -1
+        self._last_sequence: Optional[Tuple[int, int]] = None
 
     def clear(self) -> None:
         self._generation_trace: List[Optional[Candidate]] = []
         self._generation_time: int = -1
-        self._start_of_last_sequence: int = -1
+        self._last_sequence = None
 
     def add_output(self, generation_index: int, generation_output: List[Optional[Candidate]]):
         generated_output_length: int = len(generation_output)
@@ -36,15 +36,18 @@ class GenerationProcess:
                 self.generation_trace.append(output_cloned)
 
         self._generation_time = generation_index + generated_output_length
-        self._start_of_last_sequence = generation_index
+        self._last_sequence = generation_index, generation_index + len(generation_output)
         self.logger.debug(f"generation time: {prev_generation_time} --> {self._generation_time}")
 
     def last_sequence(self) -> List[Optional[Candidate]]:
-        """ raises: IndexError if no sequence has been generated """
-        return self.generation_trace[self._start_of_last_sequence:]
+        """ raises: StateError if no sequence has been generated """
+        try:
+            return self.generation_trace[self._last_sequence[0]:self._last_sequence[1]]
+        except (TypeError, IndexError):
+            raise StateError("Generation trace is empty")
 
     def start_index_of_last_sequence(self) -> int:
-        return self._start_of_last_sequence
+        return self._last_sequence[0]
 
     def update_generation_time(self, new_time: int):
         self._generation_time = new_time

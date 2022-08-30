@@ -30,7 +30,7 @@ from dyci2.prospector import Dyci2Prospector
 from merge.main.candidate import Candidate
 from merge.main.corpus import Corpus
 from merge.main.corpus_event import CorpusEvent
-from merge.main.exceptions import TimepointError, QueryError
+from merge.main.exceptions import TimepointError, QueryError, StateError
 from merge.main.generation_scheduler import GenerationScheduler
 from merge.main.jury import Jury
 from merge.main.query import Query
@@ -125,6 +125,11 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
                     QueryError if the query is invalid
                     StateError if the internal state of the system is invalid for querying (no corpus loaded, ...)
         """
+        if self.generator.prospector.corpus is None:
+            raise StateError("No Corpus has been loaded yet")
+        elif len(self.generator.prospector.corpus) == 0:
+            raise StateError("No event has been learned yet")
+
         self.logger.debug("\n--------------------")
         self.logger.debug(f"current_performance_time: {self._performance_time}")
         self.logger.debug(f"current_generation_time: {self.generation_process.generation_time}")

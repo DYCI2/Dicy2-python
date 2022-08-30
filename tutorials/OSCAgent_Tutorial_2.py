@@ -19,7 +19,7 @@ from dyci2.agent import *
 
 print("\nCreation of a OSC agent \nModel type = Factor Oracle.\n Empty (Empty sequence, empty labels)")
 
-agent = OSCAgent()
+agent = OscAgent()
 agent.start()
 
 print("\n --- MODEL CREATED AND OSC SERVER LAUNCHED, LOAD A MEMORY, SET PARAMETERS, AND SEND YOUR QUERIES !  --- ")

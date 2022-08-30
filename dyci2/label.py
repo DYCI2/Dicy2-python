@@ -45,7 +45,7 @@ class Dyci2Label(Label, ABC):
 
     @classmethod
     def type_from_string(cls, s: str) -> Type['Dyci2Label']:
-        """ raises: TypeError if string doesn't match a type"""
+        """ raises: LabelError if string doesn't match a type"""
         if s.lower() == "listlabel":
             return ListLabel
         elif s.lower() == "chordlabel":

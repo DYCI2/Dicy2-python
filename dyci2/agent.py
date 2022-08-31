@@ -314,7 +314,7 @@ class OscAgent(AsyncOscMPCWithStatus):
             value: Any = parameter.get()
             self.send(path, value, address=OscSendProtocol.CONTROL_PARAMETER)
 
-    def set_delta_transformations(self, delta: int) -> None:
+    def set_delta_transformation(self, delta: int) -> None:
         if delta < 0:
             self.logger.error("Value must be greater than or equal to 0. No transformations were set")
             return

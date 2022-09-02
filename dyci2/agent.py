@@ -15,148 +15,142 @@ Class defining an OSC server embedding an instance of class :class:`~Generator.G
 See the different tutorials accompanied with Max patches.
 
 """
-import asyncio
 import logging
 import multiprocessing
+import time
+from collections.abc import Iterable
 from typing import Optional, Any, Union, List, Tuple, Type
+
+from maxosc.caller import Caller
+from maxosc.exceptions import MaxOscError
+from maxosc.maxformatter import MaxFormatter
 
 from dyci2.corpus_event import Dyci2CorpusEvent
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
 from dyci2.generation_scheduler import Dyci2GenerationScheduler
 from dyci2.label import Dyci2Label, ListLabel
-from dyci2.osc_protocol import OscSendProtocol
+from dyci2.osc_protocol import SendProtocol
 from dyci2.parameter import Parameter
 from dyci2.prospector import Dyci2Prospector, FactorOracleProspector
 from dyci2.signals import Signal
 from dyci2.utils import FormattingUtils, GenerationTraceFormatter
-from merge.io.async_osc import AsyncOscMPCWithStatus
+from merge.io.async_osc import AsyncOsc
+from merge.io.osc_sender import OscSender, OscLogForwarder
 from merge.main.candidate import Candidate
 from merge.main.corpus import GenericCorpus, Corpus
 from merge.main.exceptions import StateError, LabelError, QueryError, TimepointError
 from merge.main.influence import Influence
 from merge.main.query import Query, TriggerQuery, InfluenceQuery
+from merge.stubs.rendering import Renderable
 
 
-# class Server(Process, Caller):
-#     DEFAULT_IP = "127.0.0.1"
-#     SERVER_ADDRESS = "/server"
-#     DEFAULT_INPORT = 4567
-#     DEFAULT_OUTPORT = 1234
-#     DEBUG = True
-#
-#     def __init__(self,
-#                  inport: int = DEFAULT_INPORT,
-#                  outport: int = DEFAULT_OUTPORT,
-#                  osc_log_address: Optional[str] = None,
-#                  log_level: int = logging.DEBUG,
-#                  **kwargs):
-#         Process.__init__(self)
-#         Caller.__init__(self, parse_parenthesis_as_list=True, discard_duplicate_args=False)
-#
-#         self.logger = logging.getLogger(__name__)
-#         self._log_level: int = log_level
-#         logging.basicConfig(level=log_level, format='%(message)s')
-#         self.osc_log_address: Optional[str] = osc_log_address
-#
-#         self._inport: int = inport
-#         self._outport: int = outport
-#         self._server: Optional[BlockingOSCUDPServer] = None  # Initialized on `run` call
-#         self._client: OscSender = OscSender(ip=Server.DEFAULT_IP, port=self._outport)
-#
-#     @abstractmethod
-#     def _on_log_handler_added(self, handler: logging.Handler) -> None:
-#         pass
-#
-#     def run(self) -> None:
-#         """ raises: OSError is server already is in use """
-#         self.logger = logging.getLogger(__name__)
-#         logging.basicConfig(level=self._log_level, format='%(message)s')
-#         if self.osc_log_address is not None:
-#             osc_log_handler = OscLogForwarder(self._client, self.osc_log_address)
-#             self.logger.addHandler(osc_log_handler)
-#             self._on_log_handler_added(osc_log_handler)
-#
-#         osc_dispatcher: Dispatcher = Dispatcher()
-#         osc_dispatcher.map(self.SERVER_ADDRESS, self.__process_osc)
-#         osc_dispatcher.set_default_handler(self.__unmatched_osc)
-#         self._server: BlockingOSCUDPServer = BlockingOSCUDPServer((Server.DEFAULT_IP, self._inport), osc_dispatcher)
-#         self._server.serve_forever()
-#
-#     def stop_server(self):
-#         self._server.shutdown()
-#
-#     def __process_osc(self, _address, *args) -> None:
-#         """
-#          raises:
-#             MaxOscError: Raised if input in any way is incorrectly formatted, if function doesn't exist
-#                      or has invalid argument names/values.
-#             Exception: Any uncaught exception by the function called will be raised here.
-#         """
-#         args_str: str = MaxFormatter.format_as_string(*args)
-#         try:
-#             self.call(args_str)
-#         except MaxOscError as e:
-#             self.logger.error(f"Incorrectly formatted input: {str(e)}")
-#             return
-#         except Exception as e:
-#             self.logger.error(e)
-#             if self.DEBUG:
-#                 raise
-#
-#     def __unmatched_osc(self, address: str, *_args, **_kwargs) -> None:
-#         self.logger.error(f"OSC address {address} is not registered. Use {self.SERVER_ADDRESS} for communication")
-
-
-class OscAgent(AsyncOscMPCWithStatus):
+class Agent(Caller, multiprocessing.Process):
     PATH_SEPARATOR = "::"
-    DEFAULT_ADDRESS = "/server"
-    STATUS_INTERVAL = 1.0
+    STATUS_INTERVAL_MS = 1000
+    POLL_INTERVAL_MS = 1
 
     def __init__(self,
-                 recv_port: int,
+                 osc_address: str,
                  send_port: int,
                  ip: str,
                  server_control_queue: multiprocessing.Queue,
                  label_type: Type[Dyci2Label] = ListLabel,
-                 **kwargs):
-        super().__init__(recv_port=recv_port,
-                         send_port=send_port,
-                         ip=ip,
-                         default_address=self.DEFAULT_ADDRESS,
-                         status_interval_s=1.0,
-                         log_to_osc=True,
-                         osc_log_address="/logging",
-                         prepend_address_on_osc_call=False,
-                         **kwargs)
+                 log_to_osc: bool = True,
+                 reraise_exceptions: bool = False):
+        Caller.__init__(self, parse_parenthesis_as_list=False, discard_duplicate_args=False)
+        multiprocessing.Process.__init__(self)
+        self.osc_address: str = osc_address
+        self.send_port: int = send_port
+        self.ip: str = ip
+        self.reraise_exceptions: bool = reraise_exceptions
+        self.log_to_osc: bool = log_to_osc
+
+        # Not initialized here to avoid pickling issues on Process.start()
+        self.osc_log_handler: Optional[OscLogForwarder] = None
+
+        self._sender: OscSender = OscSender(ip=ip, port=send_port)
 
         self.logger = logging.getLogger(__name__)
-        self.server_control_queue: multiprocessing.Queue = server_control_queue
+        self.server_queue: multiprocessing.Queue = server_control_queue
 
         corpus: GenericCorpus = GenericCorpus([], label_types=[label_type])
         prospector: Dyci2Prospector = FactorOracleProspector(corpus=corpus, label_type=label_type)
         self.generation_scheduler: Dyci2GenerationScheduler = Dyci2GenerationScheduler(prospector=prospector)
 
+        self.running: bool = False
+
     ################################################################################################################
     # PROCESS CONTROL (DO NOT CALL OVER OSC)
     ################################################################################################################
 
-    async def _main_loop(self):
-        self.default_log_config()
+    def run(self) -> None:
+        self._main_loop()
+
+    def _main_loop(self):
+        AsyncOsc.default_log_config()
         self.set_log_level(logging.DEBUG)
+
+        if self.log_to_osc is not None:
+            self.osc_log_handler = OscLogForwarder(self._sender, self.osc_address)
+            self._add_handler(self.osc_log_handler)
+
         self.generation_scheduler.start()
 
+        self.running = True
+
+        i: int = 0
         while self.running:
-            while not self.server_control_queue.empty():
-                signal: Signal = self.server_control_queue.get()
-                if signal == Signal.TERMINATE:
-                    self.stop()
+            while not self.server_queue.empty():
+                message: Signal = self.server_queue.get()
+                if isinstance(message, Signal):
+                    self._process_signal(message)
+                elif isinstance(message, Iterable):  # OSC messages should always be iterable, even at length 1
+                    self._process_osc_message(*message)
                 else:
-                    self.logger.debug(f"Invalid internal signal: {Signal}")
+                    self.logger.error(f"Invalid message: {message}")
 
-            self.send("bang", address=OscSendProtocol.STATUS)
-            await asyncio.sleep(self.STATUS_INTERVAL)
+            # Send status every `STATUS_INTERVAL_MS` message
+            if i == 0:
+                self.send(SendProtocol.STATUS, "bang")
+            i = (i + 1) % self.STATUS_INTERVAL_MS
 
-        self.send("bang", address=OscSendProtocol.TERMINATED)
+            time.sleep(0.001 * self.POLL_INTERVAL_MS)
+
+        self.send(SendProtocol.TERMINATED, "bang")
+
+    def _process_signal(self, signal: Signal) -> None:
+        if signal == Signal.TERMINATE:
+            self.stop()
+        else:
+            self.logger.debug(f"Invalid internal signal: {Signal}")
+
+    def _process_osc_message(self, *args):
+        # TODO: Code duplication from AsyncOsc
+        args_str: str = MaxFormatter.format_as_string(*args)
+        try:
+            self.call(args_str)
+
+        # Called with wrong number of arguments, with duplicate arguments or calling function that doesn't exist
+        except MaxOscError as e:
+            self.logger.error(e)
+            self.logger.debug(repr(e))
+
+        # Any other exception
+        except Exception as e:
+            self.logger.error(e)
+            self.logger.debug(repr(e))
+            if self.reraise_exceptions:
+                raise
+
+    def stop(self) -> None:
+        self.running = False
+
+    def send(self, *args, address: Optional[str] = None) -> None:
+        address = address if address is not None else self.osc_address
+        if len(args) == 1 and isinstance(args[0], Renderable):
+            self._sender.send_renderable(address, args[0])
+        else:
+            self._sender.send(address, *args)
 
     ################################################################################################################
     # MAIN RUNTIME CONTROL (OSC)
@@ -201,7 +195,7 @@ class OscAgent(AsyncOscMPCWithStatus):
             self.logger.error(f"Invalid query format. Query was ignored")
             return
 
-        self.send(str(name), address=OscSendProtocol.SERVER_RECEIVED_QUERY)
+        self.send(SendProtocol.SERVER_RECEIVED_QUERY, str(name))
 
         try:
             self.generation_scheduler.process_query(query=query)
@@ -220,13 +214,13 @@ class OscAgent(AsyncOscMPCWithStatus):
         message: List[Any] = [str(name), abs_start_date, "absolute", query_scope,
                               FormattingUtils.output_without_transforms(output_sequence, use_max_format=True)]
 
-        self.send(*message, address=OscSendProtocol.QUERY_RESULT)
+        self.send(SendProtocol.QUERY_RESULT, *message)
 
     def set_performance_time(self, new_time: int) -> None:
         if (isinstance(new_time, int) or isinstance(new_time, float)) and new_time >= 0:
             timepoint = Dyci2Timepoint(start_date=int(new_time))
             self.generation_scheduler.update_performance_time(time=timepoint)
-            self.send(self.generation_scheduler.performance_time, address=OscSendProtocol.PERFORMANCE_TIME)
+            self.send(SendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
         else:
             self.logger.error(f"set_performance_time can only handle integers larger than or equal to 0")
             return
@@ -237,7 +231,7 @@ class OscAgent(AsyncOscMPCWithStatus):
             return
 
         self.generation_scheduler.increment_performance_time(increment=increment)
-        self.send(self.generation_scheduler.performance_time, address=OscSendProtocol.PERFORMANCE_TIME)
+        self.send(SendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
 
     ################################################################################################################
     # MODIFY STATE (OSC)
@@ -258,7 +252,7 @@ class OscAgent(AsyncOscMPCWithStatus):
 
         self.generation_scheduler.read_memory(corpus, override=True)
 
-        self.send(label_type.__name__, address=OscSendProtocol.RESET_MEMORY)
+        self.send(SendProtocol.RESET_MEMORY, label_type.__name__)
         self.send_init_control_parameters()
 
     def learn_event(self, label_type_str: str, label_value: Any, content_value: str) -> None:
@@ -291,7 +285,7 @@ class OscAgent(AsyncOscMPCWithStatus):
         self.logger.debug(f"associated label = {label} ({label.__class__.__name__})")
         self.logger.debug(f"associated event = {event.renderer_info()} ({event.__class__.__name__})")
 
-        self.send("bang", address=OscSendProtocol.EVENT_LEARNED)
+        self.send(SendProtocol.EVENT_LEARNED, "bang")
         self.logger.info(f"Learned event '{event.renderer_info()}'")
 
     ################################################################################################################
@@ -312,7 +306,7 @@ class OscAgent(AsyncOscMPCWithStatus):
         for parameter_path, parameter in parameters:
             path: str = self.PATH_SEPARATOR.join(parameter_path)
             value: Any = parameter.get()
-            self.send(path, value, address=OscSendProtocol.CONTROL_PARAMETER)
+            self.send(SendProtocol.CONTROL_PARAMETER, path, value)
 
     def set_delta_transformation(self, delta: int) -> None:
         if delta < 0:
@@ -327,22 +321,10 @@ class OscAgent(AsyncOscMPCWithStatus):
             transforms_str: str = ', '.join([str(t) for t in self.generation_scheduler.authorized_transforms])
             self.logger.debug(f"Transforms {transforms_str} enabled")
 
-    # TODO: Temp solution to handle logging over OSC
-    def set_log_level(self, log_level: int) -> None:
-        self.logger.setLevel(log_level)
-        self.generation_scheduler.logger.setLevel(log_level)
-        self.generation_scheduler.generation_process.logger.setLevel(log_level)
-        self.generation_scheduler.generator.logger.setLevel(log_level)
-        self.generation_scheduler.generator.prospector.logger.setLevel(log_level)
-        self.generation_scheduler.generator.prospector.navigator.logger.setLevel(log_level)
-        self.generation_scheduler.generator.prospector.model.logger.setLevel(log_level)
-        self._log_level = log_level
-        self.logger.debug(f"log level set to {logging.getLevelName(log_level)}")
-
     def clear(self) -> None:
         self.generation_scheduler.clear()
-        self.send("bang", address=OscSendProtocol.CLEAR)
-        self.send(self.generation_scheduler.performance_time, address=OscSendProtocol.PERFORMANCE_TIME)
+        self.send(SendProtocol.CLEAR, "bang")
+        self.send(SendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
 
     ################################################################################################################
     # QUERY STATE
@@ -356,7 +338,7 @@ class OscAgent(AsyncOscMPCWithStatus):
 
         try:
             msg: List[Any] = GenerationTraceFormatter.query(keyword, generation_trace, start=start, end=end)
-            self.send(*msg, address=OscSendProtocol.QUERY_GENERATION_TRACE)
+            self.send(SendProtocol.QUERY_GENERATION_TRACE, *msg)
         except QueryError as e:
             self.logger.error(str(e))
             return
@@ -365,7 +347,7 @@ class OscAgent(AsyncOscMPCWithStatus):
     # PRIVATE
     ################################################################################################################
 
-    def _on_log_handler_added(self, handler: logging.Handler) -> None:
+    def _add_handler(self, handler: logging.Handler) -> None:
         # TODO: Temporary, ugly solution for logging all messages to OSC
         self.generation_scheduler.logger.addHandler(handler)
         self.generation_scheduler.generation_process.logger.addHandler(handler)
@@ -373,3 +355,14 @@ class OscAgent(AsyncOscMPCWithStatus):
         self.generation_scheduler.generator.prospector.logger.addHandler(handler)
         self.generation_scheduler.generator.prospector.navigator.logger.addHandler(handler)
         self.generation_scheduler.generator.prospector.model.logger.addHandler(handler)
+
+    # TODO: Temp solution to handle logging over OSC
+    def set_log_level(self, log_level: int) -> None:
+        self.logger.setLevel(log_level)
+        self.generation_scheduler.logger.setLevel(log_level)
+        self.generation_scheduler.generation_process.logger.setLevel(log_level)
+        self.generation_scheduler.generator.logger.setLevel(log_level)
+        self.generation_scheduler.generator.prospector.logger.setLevel(log_level)
+        self.generation_scheduler.generator.prospector.navigator.logger.setLevel(log_level)
+        self.generation_scheduler.generator.prospector.model.logger.setLevel(log_level)
+        self.logger.debug(f"log level set to {logging.getLevelName(log_level)}")

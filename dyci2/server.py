@@ -4,11 +4,11 @@ import logging
 import multiprocessing
 from typing import Dict, Optional, Type, Tuple
 
-from dyci2.agent import OscAgent
+from dyci2.agent import Agent
 from dyci2.label import Dyci2Label, ListLabel
-from dyci2.osc_protocol import OscSendProtocol
+from dyci2.osc_protocol import SendProtocol
 from dyci2.signals import Signal
-from merge.io.async_osc import AsyncOscWithStatus, AsyncOsc
+from merge.io.async_osc import AsyncOsc
 from merge.main.exceptions import LabelError
 
 
@@ -24,31 +24,50 @@ class Dyci2Server(AsyncOsc):
                          ip=ip,
                          default_address=self.DEFAULT_ADDRESS,
                          log_to_osc=True,
-                         osc_log_address="/logging",
+                         osc_log_address=self.DEFAULT_ADDRESS,
                          prepend_address_on_osc_call=False)
-        self.agents: Dict[int, Tuple[OscAgent, multiprocessing.Queue]] = {}
+        # Key: osc_address for that particular agent
+        self.agents: Dict[str, Tuple[Agent, multiprocessing.Queue]] = {}
 
-    def exit(self) -> None:
-        for agent, queue in self.agents.values():
-            queue.put(Signal.TERMINATE)
-            agent.join()
-        self.stop()
+    ################################################################################################################
+    # PROCESS CONTROL (DO NOT CALL OVER OSC)
+    ################################################################################################################
 
-    async def _main_loop(self):
+    async def _main_loop(self) -> None:
         self.default_log_config()
         self.logger.info("DYCI2 server started")
         while self.running:
-            self.send("bang", address=OscSendProtocol.STATUS)
+            self.send(SendProtocol.STATUS, "bang")
             await asyncio.sleep(self.STATUS_INTERVAL)
 
         self.logger.info("DYCI2 server terminated")
-        self.send("bang", address=OscSendProtocol.TERMINATED)
+        self.send(SendProtocol.TERMINATED, "bang")
+
+    def _unmatched_osc(self, address: str, *args) -> None:
+        if address in self.agents:
+                queue: multiprocessing.Queue = self.agents[address][1]
+                queue.put(args)
+        else:
+            self.logger.error(f"Unknown OSC address {address}. Message was ignored")
+
+    # def _process_osc(self, address: str, *args) -> None:
+    #     if address == self.DEFAULT_ADDRESS:
+    #         super()._process_osc(address, *args)
+    #     elif address in self.agents:
+    #         queue: multiprocessing.Queue = self.agents[address][1]
+    #         queue.put(args)
+    #     else:
+    #         self.logger.error(f"Unknown OSC address {address}. Message was ignored")
+
+
+
+    ################################################################################################################
+    # OSC MESSAGES
+    ################################################################################################################
 
     def create_agent(self,
-                     recv_port: int,
-                     send_port: int,
+                     agent_osc_address: str,
                      label_type_str: Optional[str] = None,
-                     identifier: Optional[int] = None,
                      override: bool = False) -> None:
 
         if label_type_str is None:
@@ -60,69 +79,66 @@ class Dyci2Server(AsyncOsc):
                 self.logger.error(f"{str(e)}. No agent was created")
                 return
 
-        if identifier is None:
-            identifier = 1 if len(self.agents) == 0 else max(self.agents.keys()) + 1
-
-        elif not isinstance(identifier, int):
-            self.logger.error(f"The identifier must be an integer. No agent was created")
+        if not AsyncOsc.is_valid_osc_address(agent_osc_address):
+            self.logger.error(f"Invalid OSC address ({agent_osc_address}). No agent was created")
             return
-        # else: identifier is valid
 
-        if identifier in self.agents:
+        if agent_osc_address in self.agents:
             if override:
-                self._delete_agent(identifier)
+                self._delete_agent(agent_osc_address)
             else:
-                self.logger.error(f"An agent with the identifier {identifier} already exists. "
+                self.logger.error(f"An agent with the address {agent_osc_address} already exists. "
                                   f"Use override=True to override")
                 return
 
-        if self._port_in_use(send_port):
-            self.logger.error(f"Port {send_port} is already in use by an agent. No agent was created")
-            return
-
-        if self._port_in_use(recv_port):
-            self.logger.error(f"Port {recv_port} is already in use by an agent. No agent was created")
-            return
-
         queue: multiprocessing.Queue = multiprocessing.Queue()
-        agent: OscAgent = OscAgent(recv_port=recv_port,
-                                   send_port=send_port,
-                                   ip=self.ip,
-                                   label_type=label_type,
-                                   server_control_queue=queue)
+        agent: Agent = Agent(osc_address=agent_osc_address,
+                             send_port=self.send_port,
+                             ip=self.ip,
+                             server_control_queue=queue,
+                             label_type=label_type)
 
         agent.start()
 
-        self.agents[identifier] = agent, queue
-        self.logger.info(f"Created agent {identifier} with inport {recv_port} and outport {send_port}")
-        self.send(identifier, recv_port, send_port, address=OscSendProtocol.CREATE_AGENT)
+        self.agents[agent_osc_address] = agent, queue
+        self.logger.info(f"Created new agent at '{agent_osc_address}'")
+        self.send(SendProtocol.CREATE_AGENT, agent_osc_address)
 
-    def delete_agent(self, identifier: int) -> None:
+    def delete_agent(self, agent_osc_address: str) -> None:
         try:
-            self.logger.info(f"Deleting agent {identifier}...")
-            self._delete_agent(identifier)
-            self.logger.info(f"Agent {identifier} was deleted")
-            self.send(identifier, address=OscSendProtocol.DELETE_AGENT)
+            self.logger.info(f"Attempting to deleting agent {agent_osc_address}...")
+            self._delete_agent(agent_osc_address)
+            self.logger.info(f"Agent {agent_osc_address} was deleted")
+            self.send(SendProtocol.DELETE_AGENT, agent_osc_address)
         except KeyError:
-            self.logger.error(f"No agent with identifier {identifier} exists: Could not delete agent")
+            self.logger.error(f"No agent with address {agent_osc_address} exists. Could not delete agent")
             return
 
     def query_agents(self):
         if len(self.agents) == 0:
-            self.send("None", address=OscSendProtocol.QUERY_AGENTS)
-        for identifier, (agent, _) in self.agents.items():
-            self.send(identifier, agent.recv_port, agent.send_port, address=OscSendProtocol.QUERY_AGENTS)
+            self.send(SendProtocol.QUERY_AGENTS, "None")
+            self.send(SendProtocol.QUERY_AGENTS, *[agent_osc_address for agent_osc_address in self.agents.keys()])
 
-    def _delete_agent(self, identifier: int):
+    def exit(self) -> None:
+        for agent, queue in self.agents.values():
+            queue.put(Signal.TERMINATE)
+            agent.join()
+        self.stop()
+
+    ################################################################################################################
+    # PRIVATE
+    ################################################################################################################
+
+    def _delete_agent(self, agent_osc_address: str) -> None:
         """ raises: KeyError if no agent exists for identifier """
-        agent, queue = self.agents[identifier]
+        agent, queue = self.agents[agent_osc_address]
         queue.put(Signal.TERMINATE)
         agent.join(timeout=5)
-        del self.agents[identifier]
+        del self.agents[agent_osc_address]
 
-    def _port_in_use(self, port: int) -> bool:
-        return (port in [agent.recv_port for agent, _ in self.agents.values()] or
-                port in [agent.send_port for agent, _ in self.agents.values()])
+    # def _port_in_use(self, port: int) -> bool:
+    #     return (port in [agent.recv_port for agent, _ in self.agents.values()] or
+    #             port in [agent.send_port for agent, _ in self.agents.values()])
 
 
 if __name__ == '__main__':
@@ -137,8 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('--ip', metavar='IP', type=AsyncOsc.parse_ip, default="127.0.0.1",
                         help='ip address of the max client')
 
-    args = parser.parse_args()
+    parser_args = parser.parse_args()
 
-    server: Dyci2Server = Dyci2Server(args.recvport, args.sendport, args.ip)
+    server: Dyci2Server = Dyci2Server(parser_args.recvport, parser_args.sendport, parser_args.ip)
     server.start()
-

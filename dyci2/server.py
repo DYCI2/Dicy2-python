@@ -115,6 +115,7 @@ class Dyci2Server(AsyncOsc):
     def query_agents(self):
         if len(self.agents) == 0:
             self.send(SendProtocol.QUERY_AGENTS, "None")
+        else:
             self.send(SendProtocol.QUERY_AGENTS, *[agent_osc_address for agent_osc_address in self.agents.keys()])
 
     def exit(self) -> None:

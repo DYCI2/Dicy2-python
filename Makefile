@@ -23,4 +23,11 @@ pyinstaller:
 
 dmg:
 	hdiutil create "$(DMG_PATH)" -fs HFS+ -srcfolder "$(APP_PATH)" -ov
-	
+
+
+clean:
+	rm -rf build
+
+
+clean-all:
+	rm -rf build dist

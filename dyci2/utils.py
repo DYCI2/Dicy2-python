@@ -47,7 +47,7 @@ class GenerationTraceFormatter:
                 raise QueryError(f"Invalid start index ({start}) for keyword '{keyword}': expected integer or 'None'")
             if end is not None and not isinstance(start, int):
                 raise QueryError(f"Invalid end index ({start}) for keyword '{keyword}': expected integer or 'None'")
-            return [keyword, FormattingUtils.output_without_transforms(generation_trace[start:end])]
+            return [keyword, FormattingUtils.output_without_transforms(generation_trace[start:end]).split(" ")]
 
         elif keyword.lower() == "mth":
             if start is None:

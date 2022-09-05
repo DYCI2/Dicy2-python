@@ -24,7 +24,7 @@ generator = GenerationHandlerNew(sequence=sequence, labels=labels, label_type = 
 generator.memory.print_model()
 
 # SETTINGS PARAMETERS OF THE GENERATION MODEL : HERE FACTOR ORACLE AUTOMATON
-generator.memory.no_empty_event = True
+generator.memory.force_output = True
 generator.memory.max_continuity = 2
 
 
@@ -62,7 +62,7 @@ generator = GenerationHandlerNew(sequence = sequence, labels = labels, label_typ
 
 #generator.memory.avoid_repetitions_mode = 1 
 generator.memory.max_continuity = 3
-generator.memory.no_empty_event = False
+generator.memory.force_output = False
 
 
 list_for_scenario = ["g m7", "g m7", "c 7", "c 7", "f maj7", "f maj7"]

@@ -5,6 +5,7 @@ class SendProtocol:
 
     STATUS = "status"
     TERMINATED = "terminated"
+    INITIALIZED = "initialized"
 
     SERVER_RECEIVED_QUERY = "server_received_query"
     QUERY_RESULT = "query_result"

@@ -59,7 +59,7 @@ class GenerationHandlerOld(GenerationHandlerNew):
     >>> generation_handler = GenerationHandlerOld(sequence = sequence, labels = labels, model_type = "FactorOracleNavigator", authorized_tranformations = authorized_intervals, sequence_to_interval_fun = chord_labels_sequence_to_interval)
     >>> generation_handler.memory.avoid_repetitions_mode = 1
     >>> generation_handler.memory.max_continuity = 3
-    >>> generation_handler.memory.no_empty_event = False
+    >>> generation_handler.memory.force_output = False
     >>> generation_handler.start()
 
     """
@@ -183,7 +183,7 @@ class GenerationHandlerOld(GenerationHandlerNew):
         >>> generation_handler = GenerationHandlerOld(sequence = sequence, labels = labels, model_type = "FactorOracleNavigator", authorized_tranformations = authorized_intervals, sequence_to_interval_fun = chord_labels_sequence_to_interval)
         >>> generation_handler.memory.avoid_repetitions_mode = 1
         >>> generation_handler.memory.max_continuity = 3
-        >>> generation_handler.memory.no_empty_event = False
+        >>> generation_handler.memory.force_output = False
         >>> generation_handler.start()
         >>>
         >>> scenario = make_sequence_of_chord_labels(["g m7", "g m7", "c 7", "c 7", "f maj7", "f maj7"])

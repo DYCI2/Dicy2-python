@@ -67,7 +67,7 @@ print("\n\nSIMPLY GUIDED GENERATION")
 print("""\n1 - USING THE SUBCLASSES OF "LABEL" """)
 guide = from_list_to_labels(['C','A','B','B','C','C','D'], Label)
 print("\nSimply guided generation of a sequence using the FO\nGuide: {}\n(avoid_repetitions_mode = {}, max continuity = {}, min. length forward context = {}).\nDetails of the generation steps:".format(guide, FON.avoid_repetitions_mode, FON.max_continuity, forward_context_length_min))
-FON.no_empty_event = True
+FON.force_output = True
 generated_sequence = FON.simply_guided_generation(guide, forward_context_length_min = forward_context_length_min, init = True, print_info = True)
 print("Generated sequence: {}".format(generated_sequence))
 
@@ -77,6 +77,6 @@ FON = FactorOracleGenerator(sequence, labels)#, label_type = Label)
 guide = from_list_to_labels(['C','A','B','B','C','C','D'], Label)
 guide = ['C','A','B','B','C','C','D']
 print("\nSimply guided generation of a sequence using the FO\nGuide: {}\n(avoid_repetitions_mode = {}, max continuity = {}, min. length forward context = {}).\nDetails of the generation steps:".format(guide, FON.avoid_repetitions_mode, FON.max_continuity, forward_context_length_min))
-FON.no_empty_event = True
+FON.force_output = True
 generated_sequence = FON.simply_guided_generation(guide, forward_context_length_min = forward_context_length_min, init = True, print_info = True)
 print("Generated sequence: {}".format(generated_sequence))

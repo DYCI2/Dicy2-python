@@ -19,7 +19,7 @@ import logging
 import multiprocessing
 import time
 from collections.abc import Iterable
-from typing import Optional, Any, Union, List, Tuple, Type
+from typing import Optional, Any, Union, List, Tuple, Type, Dict
 
 from maxosc.caller import Caller
 from maxosc.exceptions import MaxOscError
@@ -59,6 +59,8 @@ class Agent(Caller, multiprocessing.Process):
                  reraise_exceptions: bool = False):
         Caller.__init__(self, parse_parenthesis_as_list=False, discard_duplicate_args=False)
         multiprocessing.Process.__init__(self)
+        self.logger = logging.getLogger(__name__)
+
         self.osc_address: str = osc_address
         self.send_port: int = send_port
         self.ip: str = ip
@@ -70,7 +72,6 @@ class Agent(Caller, multiprocessing.Process):
 
         self._sender: OscSender = OscSender(ip=ip, port=send_port)
 
-        self.logger = logging.getLogger(__name__)
         self.server_queue: multiprocessing.Queue = server_control_queue
 
         corpus: GenericCorpus = GenericCorpus([], label_types=[label_type])
@@ -95,7 +96,7 @@ class Agent(Caller, multiprocessing.Process):
             self._add_handler(self.osc_log_handler)
 
         self.generation_scheduler.start()
-
+        self.send(SendProtocol.INITIALIZED)
         self.running = True
 
         i: int = 0
@@ -225,6 +226,9 @@ class Agent(Caller, multiprocessing.Process):
             self.logger.error(f"set_performance_time can only handle integers larger than or equal to 0")
             return
 
+    def get_performance_time(self) -> None:
+        self.send(SendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
+
     def increment_performance_time(self, increment: int = 1) -> None:
         if not isinstance(increment, int):
             self.logger.error(f"increment_performance_time can only handle integers")
@@ -285,7 +289,7 @@ class Agent(Caller, multiprocessing.Process):
         self.logger.debug(f"associated label = {label} ({label.__class__.__name__})")
         self.logger.debug(f"associated event = {event.renderer_info()} ({event.__class__.__name__})")
 
-        self.send(SendProtocol.EVENT_LEARNED, "bang")
+        self.send(SendProtocol.EVENT_LEARNED, event.renderer_info())
         self.logger.info(f"Learned event '{event.renderer_info()}'")
 
     ################################################################################################################
@@ -299,6 +303,21 @@ class Agent(Caller, multiprocessing.Process):
             self.logger.debug(f"parameter '{parameter_path_str}' set to {param.value}")
         except (ValueError, KeyError) as e:
             self.logger.error(f"Could not set control parameter: {str(e)}")
+            return
+
+    def get_control_parameters(self) -> None:
+        for parameter_path, parameter in self.generation_scheduler.get_parameters():
+            self.send(SendProtocol.CONTROL_PARAMETER, self.PATH_SEPARATOR.join(parameter_path), parameter.value)
+
+    def get_control_parameter(self, parameter_path_str: str) -> None:
+        try:
+            parameter_dict: Dict[str, Parameter] = {self.PATH_SEPARATOR.join(param_path): param
+                                                    for param_path, param in self.generation_scheduler.get_parameters()}
+
+            self.send(SendProtocol.CONTROL_PARAMETER, parameter_path_str, parameter_dict[parameter_path_str].value)
+
+        except KeyError:
+            self.logger.error(f"Could not find control parameter '{parameter_path_str}'")
             return
 
     def send_init_control_parameters(self) -> None:
@@ -349,6 +368,7 @@ class Agent(Caller, multiprocessing.Process):
 
     def _add_handler(self, handler: logging.Handler) -> None:
         # TODO: Temporary, ugly solution for logging all messages to OSC
+        self.logger.addHandler(handler)
         self.generation_scheduler.logger.addHandler(handler)
         self.generation_scheduler.generation_process.logger.addHandler(handler)
         self.generation_scheduler.generator.logger.addHandler(handler)

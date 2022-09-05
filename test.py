@@ -17,7 +17,7 @@ generator = GenerationScheduler(sequence=sequence, labels=labels, label_type = D
 #generator.memory.print_model()
 
 # SETTINGS PARAMETERS OF THE GENERATION MODEL
-generator.prospector.no_empty_event = True
+generator.prospector.force_output = True
 generator.prospector.max_continuity = 4
 
 #query_1 = new_temporal_query_sequence_of_events(handle = ['C','C','C','E','E', 'E'], label_type = Label)

@@ -36,6 +36,7 @@ class Dyci2Server(AsyncOsc):
     async def _main_loop(self) -> None:
         self.default_log_config()
         self.logger.info("DYCI2 server started")
+        self.send(SendProtocol.INITIALIZED)
         while self.running:
             self.send(SendProtocol.STATUS, "bang")
             await asyncio.sleep(self.STATUS_INTERVAL)
@@ -45,10 +46,10 @@ class Dyci2Server(AsyncOsc):
 
     def _unmatched_osc(self, address: str, *args) -> None:
         if address in self.agents:
-                queue: multiprocessing.Queue = self.agents[address][1]
-                queue.put(args)
+            queue: multiprocessing.Queue = self.agents[address][1]
+            queue.put(args)
         else:
-            self.logger.error(f"Unknown OSC address {address}. Message was ignored")
+            self.logger.error(f"Unknown OSC address {address}. (Did you initialize the agent?)")
 
     # def _process_osc(self, address: str, *args) -> None:
     #     if address == self.DEFAULT_ADDRESS:
@@ -58,8 +59,6 @@ class Dyci2Server(AsyncOsc):
     #         queue.put(args)
     #     else:
     #         self.logger.error(f"Unknown OSC address {address}. Message was ignored")
-
-
 
     ################################################################################################################
     # OSC MESSAGES
@@ -87,8 +86,7 @@ class Dyci2Server(AsyncOsc):
             if override:
                 self._delete_agent(agent_osc_address)
             else:
-                self.logger.error(f"An agent with the address {agent_osc_address} already exists. "
-                                  f"Use override=True to override")
+                self.logger.error(f"An agent with the address {agent_osc_address} already exists.")
                 return
 
         queue: multiprocessing.Queue = multiprocessing.Queue()

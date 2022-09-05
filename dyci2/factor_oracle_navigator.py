@@ -77,7 +77,7 @@ class FactorOracleNavigator(Navigator[T]):
         self.max_continuity: Parameter[int] = Parameter(max_continuity, OrdinalRange(0, None))
         self.avoid_repetitions_mode: Parameter[int] = Parameter(0)
         # TODO: DOCUMENTATION ON CONTINUITY_WITH_FUTURE DATA FORMAT / BEHAVIOUR
-        self.continuity_with_future: Parameter[Tuple[float, float]] = Parameter(continuity_with_future)
+        self.continuity_with_future: Tuple[float, float] = continuity_with_future
 
         # Format: {time_index: {parameter_name: value_at_given_time_index}}
         self.execution_trace: Dict[int: Dict[str, Any]] = {}
@@ -220,7 +220,7 @@ class FactorOracleNavigator(Navigator[T]):
             index_delta_prefixes, _ = intervals.filtered_prefix_indexing_intervals(
                 sequence=memory_labels,
                 pattern=labels_to_match,
-                length_interval=self.continuity_with_future.value,
+                length_interval=self.continuity_with_future,
                 authorized_indexes=authorized_indices,
                 authorized_intervals=authorized_transformations,
                 sequence_to_interval_fun=sequence_to_interval_fun,
@@ -232,7 +232,7 @@ class FactorOracleNavigator(Navigator[T]):
             index_delta_prefixes, _ = PrefixIndexing.filtered_prefix_indexing(
                 sequence=memory_labels,
                 pattern=labels_to_match,
-                length_interval=self.continuity_with_future.value,
+                length_interval=self.continuity_with_future,
                 authorized_indexes=authorized_indices,
                 equiv=self.equiv.eq,
                 print_info=False

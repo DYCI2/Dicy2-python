@@ -7,7 +7,7 @@ from merge.main.candidate import Candidate
 from merge.main.exceptions import StateError
 
 
-class GenerationProcess:
+class GenerationHistory:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self._generation_trace: List[Optional[Candidate]] = []

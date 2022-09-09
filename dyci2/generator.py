@@ -11,7 +11,7 @@ from merge.main.corpus import Corpus
 from merge.main.corpus_event import CorpusEvent
 from merge.main.generator import Generator
 from merge.main.influence import NoInfluence, Influence
-from merge.main.jury import Jury
+from merge.main.candidateselector import CandidateSelector
 from merge.main.query import Query
 from merge.main.query import TriggerQuery, InfluenceQuery
 
@@ -19,7 +19,7 @@ from merge.main.query import TriggerQuery, InfluenceQuery
 class Dyci2Generator(Generator, Parametric):
     def __init__(self,
                  prospector: Dyci2Prospector,
-                 jury_type: Type[Jury] = TempCandidateSelector,
+                 jury_type: Type[CandidateSelector] = TempCandidateSelector,
                  authorized_transforms: List[int] = (0,),
                  force_output: bool = True):
         self.logger = logging.getLogger(__name__)
@@ -34,8 +34,8 @@ class Dyci2Generator(Generator, Parametric):
 
         self.force_output: Parameter = Parameter(force_output, NominalRange([False, True]))
 
-        self._jury: Jury = jury_type()
-        self._fallback_jury: Jury = DefaultFallbackSelector()
+        self._jury: CandidateSelector = jury_type()
+        self._fallback_jury: CandidateSelector = DefaultFallbackSelector()
 
     ################################################################################################################
     # PUBLIC: INHERITED METHODS
@@ -44,6 +44,7 @@ class Dyci2Generator(Generator, Parametric):
     def process_query(self, query: Query, print_info: bool = False, **kwargs) -> List[Optional[Candidate]]:
         """ raises: RuntimeError if the query is invalid
                     StateError if the internal state of the system is invalid for querying (no corpus loaded, ...)
+                    RecursionError if the memory is extremely long (generally 100k+ events)
         """
         self.logger.debug(f"****************************\nPROCESS QUERY: QUERY = \n**************************\n{query}")
         self.logger.debug(f"****************************\nGENERATION MATCHING QUERY: QUERY = \n**************\n{query}")

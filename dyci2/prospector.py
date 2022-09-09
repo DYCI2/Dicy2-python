@@ -467,8 +467,6 @@ class FactorOracleProspector(Dyci2Prospector):
             return selected_indices
 
         # Case 3: Filtered, _unreachable_ candidates
-        # TODO: I have no idea why `last` is excluded here
-        # TODO 2: using range(0, N-1) instead of (1, N) or (1, N-1) WILL crash the system if 0 is selected as output.
         additional_indices: List[int] = list(range(self.model.get_internal_index_last_state()))
         additional_indices = self.navigator.filter_using_history_and_taboos(additional_indices)
 

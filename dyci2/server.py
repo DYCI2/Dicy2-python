@@ -6,8 +6,7 @@ from typing import Dict, Optional, Type, Tuple
 
 from dyci2.agent import Agent
 from dyci2.label import Dyci2Label, ListLabel
-from dyci2.osc_protocol import SendProtocol
-from dyci2.signals import Signal
+from dyci2.protocol import OscSendProtocol, Signal
 from merge.io.async_osc import AsyncOsc
 from merge.main.exceptions import LabelError
 
@@ -36,13 +35,13 @@ class Dyci2Server(AsyncOsc):
     async def _main_loop(self) -> None:
         self.default_log_config()
         self.logger.info("DYCI2 server started")
-        self.send(SendProtocol.INITIALIZED)
+        self.send(OscSendProtocol.INITIALIZED)
         while self.running:
-            self.send(SendProtocol.STATUS, "bang")
+            self.send(OscSendProtocol.STATUS, "bang")
             await asyncio.sleep(self.STATUS_INTERVAL)
 
         self.logger.info("DYCI2 server terminated")
-        self.send(SendProtocol.TERMINATED, "bang")
+        self.send(OscSendProtocol.TERMINATED, "bang")
 
     def _unmatched_osc(self, address: str, *args) -> None:
         if address in self.agents:
@@ -100,23 +99,23 @@ class Dyci2Server(AsyncOsc):
 
         self.agents[agent_osc_address] = agent, queue
         self.logger.info(f"Created new agent at '{agent_osc_address}'")
-        self.send(SendProtocol.CREATE_AGENT, agent_osc_address)
+        self.send(OscSendProtocol.CREATE_AGENT, agent_osc_address)
 
     def delete_agent(self, agent_osc_address: str) -> None:
         try:
             self.logger.info(f"Attempting to deleting agent {agent_osc_address}...")
             self._delete_agent(agent_osc_address)
             self.logger.info(f"Agent {agent_osc_address} was deleted")
-            self.send(SendProtocol.DELETE_AGENT, agent_osc_address)
+            self.send(OscSendProtocol.DELETE_AGENT, agent_osc_address)
         except KeyError:
             self.logger.error(f"No agent with address {agent_osc_address} exists. Could not delete agent")
             return
 
     def query_agents(self):
         if len(self.agents) == 0:
-            self.send(SendProtocol.QUERY_AGENTS, "None")
+            self.send(OscSendProtocol.QUERY_AGENTS, "None")
         else:
-            self.send(SendProtocol.QUERY_AGENTS, *[agent_osc_address for agent_osc_address in self.agents.keys()])
+            self.send(OscSendProtocol.QUERY_AGENTS, *[agent_osc_address for agent_osc_address in self.agents.keys()])
 
     def exit(self) -> None:
         for agent, queue in self.agents.values():

@@ -7,15 +7,15 @@ from typing import List, Optional
 from merge.main.candidate import Candidate
 from merge.main.candidates import Candidates
 from merge.main.corpus_event import CorpusEvent
-from merge.main.jury import Jury
+from merge.main.candidateselector import CandidateSelector
 from dyci2.parameter import Parametric
 
 
-class CandidateSelector(Jury, Parametric, ABC):
+class Dyci2CandidateSelector(CandidateSelector, Parametric, ABC):
         pass
 
 
-class TempCandidateSelector(CandidateSelector):
+class TempCandidateSelector(Dyci2CandidateSelector):
     def decide(self, candidates: Candidates) -> Optional[Candidate]:
         if candidates.size() == 0:
             return None
@@ -29,7 +29,7 @@ class TempCandidateSelector(CandidateSelector):
         pass
 
 
-class DefaultFallbackSelector(CandidateSelector):
+class DefaultFallbackSelector(Dyci2CandidateSelector):
     def __init__(self):
         # TODO: Need to handle execution/generation trace properly here
         self.logger = logging.getLogger(__name__)

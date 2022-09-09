@@ -3,8 +3,8 @@ import logging
 import random
 from typing import List, Optional, Callable, Dict, Tuple, TypeVar, Any, Type
 
-from dyci2 import intervals
 from dyci2.equiv import BasicEquiv, Equiv
+from dyci2.intervals import Intervals
 from dyci2.label import Dyci2Label
 from dyci2.navigator import Navigator
 from dyci2.parameter import Parameter, OrdinalRange
@@ -217,7 +217,7 @@ class FactorOracleNavigator(Navigator[T]):
 
         index_delta_prefixes: Dict[int, List[List[int]]]
         if use_intervals:
-            index_delta_prefixes, _ = intervals.filtered_prefix_indexing_intervals(
+            index_delta_prefixes, _ = Intervals.filtered_prefix_indexing_intervals(
                 sequence=memory_labels,
                 pattern=labels_to_match,
                 length_interval=self.continuity_with_future,

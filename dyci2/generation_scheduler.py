@@ -23,7 +23,7 @@ from typing import Optional, Type, List
 from dyci2.candidate_selector import TempCandidateSelector
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
 from dyci2.equiv import Equiv
-from dyci2.generation_process import GenerationProcess
+from dyci2.generation_history import GenerationHistory
 from dyci2.generator import Dyci2Generator
 from dyci2.parameter import Parametric
 from dyci2.prospector import Dyci2Prospector
@@ -32,7 +32,7 @@ from merge.main.corpus import Corpus
 from merge.main.corpus_event import CorpusEvent
 from merge.main.exceptions import TimepointError, QueryError, StateError
 from merge.main.generation_scheduler import GenerationScheduler
-from merge.main.jury import Jury
+from merge.main.candidateselector import CandidateSelector
 from merge.main.query import Query
 
 
@@ -106,7 +106,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
 
     def __init__(self,
                  prospector: Dyci2Prospector,
-                 jury_type: Type[Jury] = TempCandidateSelector,
+                 jury_type: Type[CandidateSelector] = TempCandidateSelector,
                  authorized_tranformations=(0,)):
         self.generator: Dyci2Generator = Dyci2Generator(prospector=prospector,
                                                         jury_type=jury_type,
@@ -114,7 +114,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         self.logger = logging.getLogger(__name__)
         self._performance_time: int = 0
         self._running: bool = False
-        self.generation_process: GenerationProcess = GenerationProcess()
+        self.generation_process: GenerationHistory = GenerationHistory()
 
     ################################################################################################################
     # PUBLIC: INHERITED METHODS
@@ -124,6 +124,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         """ raises: TimepointError if the timepoint of the query is invalid
                     QueryError if the query is invalid
                     StateError if the internal state of the system is invalid for querying (no corpus loaded, ...)
+                    RecursionError if the memory is extremely long (generally 100k+ events)
         """
         if self.generator.prospector.corpus is None:
             raise StateError("No Corpus has been loaded yet")

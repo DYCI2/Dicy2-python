@@ -29,10 +29,9 @@ from dyci2.corpus_event import Dyci2CorpusEvent
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
 from dyci2.generation_scheduler import Dyci2GenerationScheduler
 from dyci2.label import Dyci2Label, ListLabel
-from dyci2.osc_protocol import SendProtocol
+from dyci2.protocol import OscSendProtocol, Signal
 from dyci2.parameter import Parameter
 from dyci2.prospector import Dyci2Prospector, FactorOracleProspector
-from dyci2.signals import Signal
 from dyci2.utils import FormattingUtils, GenerationTraceFormatter
 from merge.io.async_osc import AsyncOsc
 from merge.io.osc_sender import OscSender, OscLogForwarder
@@ -56,7 +55,7 @@ class Agent(Caller, multiprocessing.Process):
                  server_control_queue: multiprocessing.Queue,
                  label_type: Type[Dyci2Label] = ListLabel,
                  log_to_osc: bool = True,
-                 reraise_exceptions: bool = False):
+                 reraise_exceptions: bool = True):
         Caller.__init__(self, parse_parenthesis_as_list=False, discard_duplicate_args=False)
         multiprocessing.Process.__init__(self)
         self.logger = logging.getLogger(__name__)
@@ -96,7 +95,7 @@ class Agent(Caller, multiprocessing.Process):
             self._add_handler(self.osc_log_handler)
 
         self.generation_scheduler.start()
-        self.send(SendProtocol.INITIALIZED)
+        self.send(OscSendProtocol.INITIALIZED)
         self.running = True
 
         i: int = 0
@@ -112,12 +111,12 @@ class Agent(Caller, multiprocessing.Process):
 
             # Send status every `STATUS_INTERVAL_MS` message
             if i == 0:
-                self.send(SendProtocol.STATUS, "bang")
+                self.send(OscSendProtocol.STATUS, "bang")
             i = (i + 1) % self.STATUS_INTERVAL_MS
 
             time.sleep(0.001 * self.POLL_INTERVAL_MS)
 
-        self.send(SendProtocol.TERMINATED, "bang")
+        self.send(OscSendProtocol.TERMINATED, "bang")
 
     def _process_signal(self, signal: Signal) -> None:
         if signal == Signal.TERMINATE:
@@ -199,12 +198,15 @@ class Agent(Caller, multiprocessing.Process):
             self.logger.error(f"Invalid query format. Query was ignored")
             return
 
-        self.send(SendProtocol.SERVER_RECEIVED_QUERY, str(name))
+        self.send(OscSendProtocol.SERVER_RECEIVED_QUERY, str(name))
 
         try:
             self.generation_scheduler.process_query(query=query)
         except (QueryError, StateError, TimepointError) as e:
             self.logger.error(f"{str(e)}. Query was ignored")
+            return
+        except RecursionError:
+            self.logger.error(f"Could not process query: memory is too long")
             return
 
         abs_start_date: int = self.generation_scheduler.generation_index()
@@ -218,19 +220,19 @@ class Agent(Caller, multiprocessing.Process):
         message: List[Any] = [str(name), abs_start_date, "absolute", len(output_sequence),
                               FormattingUtils.output_without_transforms(output_sequence, use_max_format=True)]
 
-        self.send(SendProtocol.QUERY_RESULT, *message)
+        self.send(OscSendProtocol.QUERY_RESULT, *message)
 
     def set_performance_time(self, new_time: int) -> None:
         if (isinstance(new_time, int) or isinstance(new_time, float)) and new_time >= 0:
             timepoint = Dyci2Timepoint(start_date=int(new_time))
             self.generation_scheduler.update_performance_time(time=timepoint)
-            self.send(SendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
+            self.send(OscSendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
         else:
             self.logger.error(f"set_performance_time can only handle integers larger than or equal to 0")
             return
 
     def get_performance_time(self) -> None:
-        self.send(SendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
+        self.send(OscSendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
 
     def increment_performance_time(self, increment: int = 1) -> None:
         if not isinstance(increment, int):
@@ -238,15 +240,15 @@ class Agent(Caller, multiprocessing.Process):
             return
 
         self.generation_scheduler.increment_performance_time(increment=increment)
-        self.send(SendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
+        self.send(OscSendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
 
     ################################################################################################################
     # MODIFY STATE (OSC)
     ################################################################################################################
 
-    def reset_memory(self,
-                     label_type: str = ListLabel.__name__,
-                     content_type: str = Dyci2CorpusEvent.__name__) -> None:
+    def clear(self,
+              label_type: str = ListLabel.__name__,
+              content_type: str = Dyci2CorpusEvent.__name__) -> None:
         # TODO: content_type is unused and only added as a placeholder for now
 
         try:
@@ -259,7 +261,7 @@ class Agent(Caller, multiprocessing.Process):
 
         self.generation_scheduler.read_memory(corpus, override=True)
 
-        self.send(SendProtocol.RESET_MEMORY, label_type.__name__)
+        self.send(OscSendProtocol.CLEAR, label_type.__name__)
         self.send_init_control_parameters()
 
     def learn_event(self, label_type_str: str, label_value: Any, content_value: str) -> None:
@@ -292,7 +294,7 @@ class Agent(Caller, multiprocessing.Process):
         self.logger.debug(f"associated label = {label} ({label.__class__.__name__})")
         self.logger.debug(f"associated event = {event.renderer_info()} ({event.__class__.__name__})")
 
-        self.send(SendProtocol.EVENT_LEARNED, event.renderer_info())
+        self.send(OscSendProtocol.EVENT_LEARNED, event.renderer_info())
         self.logger.info(f"Learned event '{event.renderer_info()}'")
 
     ################################################################################################################
@@ -310,14 +312,14 @@ class Agent(Caller, multiprocessing.Process):
 
     def get_control_parameters(self) -> None:
         for parameter_path, parameter in self.generation_scheduler.get_parameters():
-            self.send(SendProtocol.CONTROL_PARAMETER, self.PATH_SEPARATOR.join(parameter_path), parameter.value)
+            self.send(OscSendProtocol.CONTROL_PARAMETER, self.PATH_SEPARATOR.join(parameter_path), parameter.value)
 
     def get_control_parameter(self, parameter_path_str: str) -> None:
         try:
             parameter_dict: Dict[str, Parameter] = {self.PATH_SEPARATOR.join(param_path): param
                                                     for param_path, param in self.generation_scheduler.get_parameters()}
 
-            self.send(SendProtocol.CONTROL_PARAMETER, parameter_path_str, parameter_dict[parameter_path_str].value)
+            self.send(OscSendProtocol.CONTROL_PARAMETER, parameter_path_str, parameter_dict[parameter_path_str].value)
 
         except KeyError:
             self.logger.error(f"Could not find control parameter '{parameter_path_str}'")
@@ -328,7 +330,7 @@ class Agent(Caller, multiprocessing.Process):
         for parameter_path, parameter in parameters:
             path: str = self.PATH_SEPARATOR.join(parameter_path)
             value: Any = parameter.get()
-            self.send(SendProtocol.CONTROL_PARAMETER, path, value)
+            self.send(OscSendProtocol.CONTROL_PARAMETER, path, value)
 
     def set_delta_transformation(self, delta: int) -> None:
         if delta < 0:
@@ -343,10 +345,10 @@ class Agent(Caller, multiprocessing.Process):
             transforms_str: str = ', '.join([str(t) for t in self.generation_scheduler.authorized_transforms])
             self.logger.debug(f"Transforms {transforms_str} enabled")
 
-    def clear(self) -> None:
+    def reset_state(self) -> None:
         self.generation_scheduler.clear()
-        self.send(SendProtocol.CLEAR, "bang")
-        self.send(SendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
+        self.send(OscSendProtocol.RESET_STATE, "bang")
+        self.send(OscSendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
 
     ################################################################################################################
     # QUERY STATE
@@ -360,7 +362,7 @@ class Agent(Caller, multiprocessing.Process):
 
         try:
             msg: List[Any] = GenerationTraceFormatter.query(keyword, generation_trace, start=start, end=end)
-            self.send(SendProtocol.QUERY_GENERATION_TRACE, *msg)
+            self.send(OscSendProtocol.QUERY_GENERATION_TRACE, *msg)
         except QueryError as e:
             self.logger.error(str(e))
             return

@@ -16,10 +16,9 @@ See the tutorial :file:`CorpusBuilder_tutorial`
 
 
 import argparse     #for command line parser
-import sys
 import logging      #for printing managing
 import traceback    #for exception handling
-from dyci2.corpus_builder import *
+from dyci2.temp_excludes.corpus_builder import *
 
 #LOGGER
 log = logging.getLogger("DYCI2")

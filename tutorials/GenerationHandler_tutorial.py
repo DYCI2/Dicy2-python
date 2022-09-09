@@ -25,7 +25,7 @@ from dyci2.generation_scheduler import GenerationScheduler
 from dyci2.label import ChordLabel
 from dyci2.utils import from_list_to_labels
 from dyci2.memory import Memory, LabelEvent
-from dyci2.query import Query, FreeQuery, TimeMode, LabelQuery
+from dyci2.temp_excludes.query import Query, FreeQuery, TimeMode, LabelQuery
 
 
 def chord_format(lst: List[Tuple[LabelEvent, int]]):

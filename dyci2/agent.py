@@ -161,9 +161,10 @@ class Agent(Caller, multiprocessing.Process):
               name: str,
               start_date: int,
               start_type: str,
-              query_scope: int,
+              query_scope: Optional[int] = None,
               label_type_str: Optional[str] = None,
               labels_data: Optional[List[str]] = None):
+        """ Note: query can be called EITHER with a query_scope (free query) OR with label_type_str and labels_data """
         query_as_list: List[Union[str, int]] = [name, start_date, start_type, query_scope, label_type_str, labels_data]
         self.logger.debug(f"query_as_list = {query_as_list}")
         for i, v in enumerate(query_as_list):
@@ -181,10 +182,12 @@ class Agent(Caller, multiprocessing.Process):
 
         timepoint: Dyci2Timepoint = Dyci2Timepoint(start_date=int(start_date), time_mode=time_mode)
 
+        # Free query
         if label_type_str is None and labels_data is None and isinstance(query_scope, int) and query_scope > 0:
             query: Query = TriggerQuery(content=query_scope, time=timepoint)
 
-        elif label_type_str is not None and labels_data is not None and query_scope == len(labels_data):
+        # Guided query
+        elif label_type_str is not None and labels_data is not None and query_scope is None:
             try:
                 label_type: Type[Dyci2Label] = Dyci2Label.type_from_string(label_type_str)
                 labels: List[Dyci2Label] = [label_type.parse(s) for s in labels_data]
@@ -212,7 +215,7 @@ class Agent(Caller, multiprocessing.Process):
                           f"'{FormattingUtils.output_without_transforms(output_sequence, use_max_format=False)}'")
 
         # TODO: Add support for transforms
-        message: List[Any] = [str(name), abs_start_date, "absolute", query_scope,
+        message: List[Any] = [str(name), abs_start_date, "absolute", len(output_sequence),
                               FormattingUtils.output_without_transforms(output_sequence, use_max_format=True)]
 
         self.send(SendProtocol.QUERY_RESULT, *message)

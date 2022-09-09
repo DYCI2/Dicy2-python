@@ -391,6 +391,10 @@ class FactorOracleNavigator(Navigator[T]):
                               f"{self.execution_trace[index_in_navigation]}")
             history_after_generating_prev: Dict[str, Any] = self.execution_trace[index_in_navigation]
             for name_slot, value_slot in history_after_generating_prev.items():  # type: str, Any
+                # If a new event has been learned since the given execution trace, adjust it to the new memory length
+                if name_slot == 'history_and_taboos' and len(value_slot) != len(self.history_and_taboos):
+                    value_slot.extend(list(range(len(self.history_and_taboos) - len(value_slot))))
+
                 self.__dict__[name_slot] = value_slot
 
         else:

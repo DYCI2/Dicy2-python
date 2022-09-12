@@ -19,6 +19,7 @@ class OscSendProtocol:
     RESET_STATE = "reset_state"
 
     QUERY_GENERATION_TRACE = "query_generation_trace"
+    QUERY_MEMORY = "query_memory"
 
     # LOGGING: keywords are "critical", "error", "info", "warning" and "debug"
 

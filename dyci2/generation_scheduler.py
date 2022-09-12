@@ -138,7 +138,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         if not isinstance(query.time, Dyci2Timepoint):
             raise TimepointError(f"Can only handle queries with time format '{Dyci2Timepoint.__name__}'")
 
-        # TODO[Jerome]: Is this really a good strategy / relevant?
+        # TODO: Is this really a good strategy / relevant?
         if self.generator.initialized and not self._running and query.time.time_mode == TimeMode.RELATIVE:
             raise QueryError("Cannot handle a relative query as the first query")
 

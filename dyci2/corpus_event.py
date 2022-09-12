@@ -1,4 +1,5 @@
-from typing import TypeVar
+from collections.abc import Iterable
+from typing import TypeVar, Any
 
 from merge.main.corpus_event import GenericCorpusEvent
 from merge.main.label import Label
@@ -13,5 +14,10 @@ class Dyci2CorpusEvent(GenericCorpusEvent[T]):
     def __str__(self):
         return f"{self.__class__.__name__}({str(self.data)})"
 
-    def renderer_info(self) -> str:
-        return str(self.data)
+    def renderer_info(self) -> Any:
+        if isinstance(self.data, str):  # Only needed to make sure that string isn't treated as Iterable
+            return self.data
+        elif isinstance(self.data, Iterable):
+            return " ".join([str(e) for e in self.data])
+        else:
+            return self.data

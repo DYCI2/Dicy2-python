@@ -29,10 +29,10 @@ from dyci2.corpus_event import Dyci2CorpusEvent
 from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
 from dyci2.generation_scheduler import Dyci2GenerationScheduler
 from dyci2.label import Dyci2Label, ListLabel
-from dyci2.protocol import OscSendProtocol, Signal
 from dyci2.parameter import Parameter
 from dyci2.prospector import Dyci2Prospector, FactorOracleProspector
-from dyci2.utils import FormattingUtils, GenerationTraceFormatter
+from dyci2.protocol import OscSendProtocol, Signal
+from dyci2.utils import FormattingUtils, GenerationTraceFormatter, MemoryFormatter
 from merge.io.async_osc import AsyncOsc
 from merge.io.osc_sender import OscSender, OscLogForwarder
 from merge.main.candidate import Candidate
@@ -73,6 +73,7 @@ class Agent(Caller, multiprocessing.Process):
 
         self.server_queue: multiprocessing.Queue = server_control_queue
 
+        self._label_type: Type[Dyci2Label] = label_type
         corpus: GenericCorpus = GenericCorpus([], label_types=[label_type])
         prospector: Dyci2Prospector = FactorOracleProspector(corpus=corpus, label_type=label_type)
         self.generation_scheduler: Dyci2GenerationScheduler = Dyci2GenerationScheduler(prospector=prospector)
@@ -213,12 +214,14 @@ class Agent(Caller, multiprocessing.Process):
 
         output_sequence: List[Optional[Candidate]] = self.generation_scheduler.generation_process.last_sequence()
 
-        self.logger.debug(f"Output of the run of {name}: "
-                          f"'{FormattingUtils.output_without_transforms(output_sequence, use_max_format=False)}'")
+        output_transforms: bool = FormattingUtils.uses_transforms(self._label_type)
+
+        print_info = FormattingUtils.format_output(output_sequence, output_transforms=output_transforms)
+        self.logger.debug(f"Output of the run of {name}: {print_info}")
 
         # TODO: Add support for transforms
         message: List[Any] = [str(name), abs_start_date, "absolute", len(output_sequence),
-                              FormattingUtils.output_without_transforms(output_sequence, use_max_format=True)]
+                              FormattingUtils.format_output(output_sequence, output_transforms=output_transforms)]
 
         self.send(OscSendProtocol.QUERY_RESULT, *message)
 
@@ -250,6 +253,7 @@ class Agent(Caller, multiprocessing.Process):
               label_type: str = ListLabel.__name__,
               content_type: str = Dyci2CorpusEvent.__name__) -> None:
         # TODO: content_type is unused and only added as a placeholder for now
+        # TODO: Handle label type (should probably update Prospector + self._label_type)
 
         try:
             label_type: Type[Dyci2Label] = Dyci2Label.type_from_string(str(label_type))
@@ -337,12 +341,12 @@ class Agent(Caller, multiprocessing.Process):
             self.logger.error("Value must be greater than or equal to 0. No transformations were set")
             return
 
-        self.generation_scheduler.authorized_transforms = list(range(-delta, delta))
+        self.generation_scheduler.generator.authorized_transforms = list(range(-delta, delta))
 
         if delta == 0:
             self.logger.debug(f"Transforms disabled")
         else:
-            transforms_str: str = ', '.join([str(t) for t in self.generation_scheduler.authorized_transforms])
+            transforms_str: str = ', '.join([str(t) for t in self.generation_scheduler.generator.authorized_transforms])
             self.logger.debug(f"Transforms {transforms_str} enabled")
 
     def reset_state(self) -> None:
@@ -354,16 +358,38 @@ class Agent(Caller, multiprocessing.Process):
     # QUERY STATE
     ################################################################################################################
 
-    def query_generation_trace(self, keyword: str = "", start: Optional[int] = None, end: Optional[int] = None):
+    def query_generation_trace(self, keyword: str = "", start: Optional[int] = None, end: Optional[int] = None) -> None:
+        output_transforms: bool = FormattingUtils.uses_transforms(self._label_type)
         generation_trace: List[Optional[Candidate]] = self.generation_scheduler.generation_process.generation_trace
         if len(generation_trace) == 0:
             self.logger.error("No generation trace exists yet")
             return
 
         try:
-            msg: List[Any] = GenerationTraceFormatter.query(keyword, generation_trace, start=start, end=end)
+            msg: List[Any] = GenerationTraceFormatter.query(keyword,
+                                                            generation_trace,
+                                                            output_transforms=output_transforms,
+                                                            start=start,
+                                                            end=end)
             self.send(OscSendProtocol.QUERY_GENERATION_TRACE, *msg)
         except QueryError as e:
+            self.send(OscSendProtocol.QUERY_GENERATION_TRACE, -1)
+            self.logger.error(str(e))
+            return
+
+    def query_memory(self, keyword: str = "", start: Optional[int] = None, end: Optional[int] = None) -> None:
+        corpus: Optional[Corpus] = self.generation_scheduler.generator.prospector.corpus
+        if corpus is None or len(corpus) == 0:
+            self.send(OscSendProtocol.QUERY_MEMORY, -1)
+            self.logger.error(f"Memory is empty")
+            return
+
+        # TODO: Lazy code duplication
+        try:
+            msg: List[Any] = MemoryFormatter.query(keyword, corpus, start=start, end=end)
+            self.send(OscSendProtocol.QUERY_MEMORY, *msg)
+        except QueryError as e:
+            self.send(OscSendProtocol.QUERY_MEMORY, -1)
             self.logger.error(str(e))
             return
 

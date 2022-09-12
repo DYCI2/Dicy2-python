@@ -60,26 +60,16 @@ class GenerationHistory:
     def generation_trace(self) -> List[Optional[Candidate]]:
         return self._generation_trace
 
-    def formatted_output_couple_content_transfo(self):
-        """ raises: StateError if GenerationProcess has an event of an invalid type """
-        output: List[Tuple[str, int]] = []
-        for candidate in self.last_sequence():
-            if candidate is not None:
-                # TODO: Migrate this behaviour to Renderable interface
-                if isinstance(candidate.event, Dyci2CorpusEvent):
-                    output.append((candidate.event.renderer_info(), candidate.transform.renderer_info()))
-                else:
-                    raise StateError(f"Invalid event of type {type(candidate.event)} encountered")
-            else:
-                output.append(("None", 0))
-        return output
-
-    # TODO: Remove
-    # def formatted_output_string(self):
-    #     # TODO: Update
-    #     return utils.format_list_as_list_of_strings(self.last_sequence())
-
-    # TODO: Remove
-    # def formatted_generation_trace_string(self):
-    #     # TODO: Update
-    #     return utils.format_list_as_list_of_strings(self.generation_trace)
+    # def formatted_output_couple_content_transfo(self):
+    #     """ raises: StateError if GenerationProcess has an event of an invalid type """
+    #     output: List[Tuple[str, int]] = []
+    #     for candidate in self.last_sequence():
+    #         if candidate is not None:
+    #             # TODO: Migrate this behaviour to Renderable interface
+    #             if isinstance(candidate.event, Dyci2CorpusEvent):
+    #                 output.append((candidate.event.renderer_info(), candidate.transform.renderer_info()))
+    #             else:
+    #                 raise StateError(f"Invalid event of type {type(candidate.event)} encountered")
+    #         else:
+    #             output.append(("None", 0))
+    #     return output

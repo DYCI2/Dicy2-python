@@ -18,6 +18,8 @@ class OscSendProtocol:
     CONTROL_PARAMETER = "control_parameter"
     RESET_STATE = "reset_state"
 
+    TRANSFORMS = "delta_transformations"
+
     QUERY_GENERATION_TRACE = "query_generation_trace"
     QUERY_MEMORY = "query_memory"
 

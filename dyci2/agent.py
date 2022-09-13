@@ -347,6 +347,7 @@ class Agent(Caller, multiprocessing.Process):
             self.logger.debug(f"Transforms disabled")
         else:
             transforms_str: str = ', '.join([str(t) for t in self.generation_scheduler.generator.authorized_transforms])
+            self.send(OscSendProtocol.TRANSFORMS, delta)
             self.logger.debug(f"Transforms {transforms_str} enabled")
 
     def reset_state(self) -> None:

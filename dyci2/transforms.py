@@ -21,8 +21,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
-from dyci2.label import ChordLabel, Dyci2Label
-
+from dyci2.label import ChordLabel, Dyci2Label, IntervallicIntegerLabel
 
 # from numpy import roll
 from merge.main.candidate import Candidate
@@ -124,6 +123,11 @@ class TransposeTransform(Transform):
             new_label.interval_within_sequence = thing.interval_within_sequence
             new_label.transpose_root(+self.semitone)
             return new_label
+
+        elif isinstance(thing, IntervallicIntegerLabel):
+            new_label = IntervallicIntegerLabel(thing.label + self.semitone)
+            return new_label
+
         # if type(thing) is MelodicLabel:
         #     new_label = deepcopy(thing)
         #     new_label.label+=self.semitone # pas precis : rajouter les bornes et les accords
@@ -156,7 +160,7 @@ class TransposeTransform(Transform):
             thing.label = self.decode(thing.event.label())
             return thing
 
-        if type(thing) is ChordLabel:
+        elif type(thing) is ChordLabel:
             # new_label = deepcopy(thing)
             # new_label.transpose_root(+self.semitone)# pas precis : rajouter les bornes et les accords
             # new_label = Label.ChordLabel()
@@ -166,6 +170,10 @@ class TransposeTransform(Transform):
             new_label.chordtype = thing.chordtype
             new_label.interval_within_sequence = thing.interval_within_sequence
             new_label.transpose_root(-self.semitone)
+            return new_label
+
+        elif isinstance(thing, IntervallicIntegerLabel):
+            new_label = IntervallicIntegerLabel(thing.label - self.semitone)
             return new_label
         # if type(thing) is MelodicLabel:
         #     new_label = deepcopy(thing)

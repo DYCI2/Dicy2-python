@@ -46,10 +46,12 @@ class Dyci2Label(Label, ABC):
     @classmethod
     def type_from_string(cls, s: str) -> Type['Dyci2Label']:
         """ raises: LabelError if string doesn't match a type"""
-        if s.lower() == "listlabel":
+        if s.lower() == "listlabel" or s.lower() == "list":
             return ListLabel
-        elif s.lower() == "chordlabel":
+        elif s.lower() == "chordlabel" or s.lower() == "chord":
             return ChordLabel
+        elif s.lower() == "integerlabel" or s.lower() == "integer":
+            return IntervallicIntegerLabel
         else:
             raise LabelError(f"No label '{s}' exists")
 
@@ -68,8 +70,55 @@ class IntervallicLabel(Dyci2Label, ABC):
 
     @classmethod
     @abstractmethod
-    def make_sequence_of_intervals_from_sequence_of_labels(cls, list_of_labels, **kwargs):
+    def make_sequence_of_intervals_from_sequence_of_labels(cls,
+                                                           list_of_labels: List[Optional['ChordLabel']],
+                                                           **kwargs) -> List[Any]:
         """"""
+
+
+class IntervallicIntegerLabel(IntervallicLabel):
+    """ Note! This class is not well integrated into the rest of the code (PrefixIndexing, etc.),
+        which was designed solely for ChordLabels and their internal format.
+        This is a hacky solution to integrate integer labels into the existing architecture"""
+    def __init__(self, label: int):
+        super().__init__(label=label)
+
+    @classmethod
+    def equiv_mod_interval(cls, x: List[Any], y: List[Any]) -> bool:
+        return x == y
+
+    def delta(self, other: 'IntervallicLabel') -> Optional[int]:
+        if not isinstance(other, IntervallicLabel):
+            return None
+
+        return other.label - self.label
+
+    @classmethod
+    def make_sequence_of_intervals_from_sequence_of_labels(cls,
+                                                           list_of_labels: List[Optional['IntervallicIntegerLabel']],
+                                                           **kwargs) -> List[Any]:
+        interval_sequence = []
+        for label in list_of_labels:
+            if label is not None:
+                interval_sequence.append([None, "1"])  # hack to separate None from valid intervallic label
+            else:
+                interval_sequence.append([None, None])
+        return interval_sequence
+
+    def __eq__(self, a):
+        return isinstance(a, IntervallicIntegerLabel) and a.label == self.label
+
+    @classmethod
+    def sequence_from_list(cls, init_list: List[str], **kwargs) -> List['Dyci2Label']:
+        raise LabelError(f"This method is not supported for class {cls.__name__}")
+
+    @classmethod
+    def parse(cls, raw_data: Any) -> 'Dyci2Label':
+        if isinstance(raw_data, int):
+            return cls(raw_data)
+        else:
+            raise LabelError(f"class {cls.__name__} can only handle integer labels "
+                             f"(actual: {raw_data.__class__.__name__})")
 
 
 class ChordLabel(IntervallicLabel):
@@ -130,7 +179,9 @@ class ChordLabel(IntervallicLabel):
         return sequence
 
     @classmethod
-    def make_sequence_of_intervals_from_sequence_of_labels(cls, list_of_labels, *args, **kwargs):
+    def make_sequence_of_intervals_from_sequence_of_labels(cls,
+                                                           list_of_labels: List[Optional['ChordLabel']],
+                                                           **kwargs) -> List[Any]:
         interval_sequence = []
         for label_str in list_of_labels:
             if label_str is not None:

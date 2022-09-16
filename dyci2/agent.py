@@ -91,7 +91,7 @@ class Agent(Caller, multiprocessing.Process):
         AsyncOsc.default_log_config()
         self.set_log_level(logging.DEBUG)
 
-        if self.log_to_osc is not None:
+        if self.log_to_osc:
             self.osc_log_handler = OscLogForwarder(self._sender, self.osc_address)
             self._add_handler(self.osc_log_handler)
 

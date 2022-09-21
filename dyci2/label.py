@@ -288,7 +288,7 @@ class ListLabel(Dyci2Label):
         self.depth: int = len(self.label) if depth is None else min(depth, len(self.label))
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(label={self.label},depth={self.depth}"
+        return f"{self.__class__.__name__}(label={self.label},depth={self.depth})"
 
     def __str__(self):
         s = "List label: " + str(self.label)
@@ -319,6 +319,9 @@ class ListLabel(Dyci2Label):
             return result
         else:
             raise LabelError(f"Failed comparing {self.__class__.__name__} with label of type {a.__class__.__name__}")
+
+    def is_none(self) -> bool:
+        return self.label == [None]
 
     @classmethod
     def parse(cls, raw_data: Any) -> 'ListLabel':

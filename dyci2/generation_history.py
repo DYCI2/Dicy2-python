@@ -29,11 +29,10 @@ class GenerationHistory:
                 self._generation_trace.append(None)
 
         for i in range(generated_output_length):
-            output_cloned: Optional[Candidate] = copy.deepcopy(generation_output[i])
             if i + generation_index < len(self.generation_trace):
-                self.generation_trace[generation_index + i] = output_cloned
+                self.generation_trace[generation_index + i] = generation_output[i]
             else:
-                self.generation_trace.append(output_cloned)
+                self.generation_trace.append(generation_output[i])
 
         self._generation_time = generation_index + generated_output_length
         self._last_sequence = generation_index, generation_index + len(generation_output)

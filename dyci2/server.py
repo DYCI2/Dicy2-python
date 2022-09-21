@@ -44,6 +44,7 @@ class Dyci2Server(AsyncOsc):
         self.send(OscSendProtocol.TERMINATED, "bang")
 
     def _unmatched_osc(self, address: str, *args) -> None:
+        """ Note: Any OSC message not matching /server will be received in this call """
         if address in self.agents:
             queue: multiprocessing.Queue = self.agents[address][1]
             queue.put(args)

@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Callable, List, Type, TypeVar, Generic, Tuple
+from typing import Optional, List, Type, TypeVar, Tuple
 
 from dyci2.equiv import Equiv, BasicEquiv
 from dyci2.label import Dyci2Label
@@ -17,63 +17,12 @@ class FactorOracle(Model[T]):
     Convention: since the all the transitions arriving in a same state have the same label,
     the labels are not carried by the transitions but by the states.
 
-    #:param sequence: sequence learnt in the Factor Oracle automaton
-    :type sequence: list or str
-    #:param labels: sequence of labels chosen to describe the sequence
-    :type labels: list or str
-    #:param direct_transitions: direct transitions in the automaton (key = index state 1, value = tuple: label, index state 2)
-    :type direct_transitions: dict
-    #:param factor_links: factor links in the automaton (key = index state 1, value = list of tuples: (label, index state 2)
-    :type factor_links: dict
-    #:param suffix_links: suffix links in the automaton (key = index state 1, value = index state 2)
-    :type suffix_links: dict
-    #:param reverse_suffix_links: reverse suffix links in the automaton (key = index state 1, value = list of index state 2)
-    :type reverse_suffix_links: dict
-    :param equiv: compararison function given as a lambda function, default: (lambda x,y : x == y).
-    :type equiv: function
-
-    :!: **equiv** has to be consistent with the type of the elements in labels.
-
-    :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
-
-    (When there is no need to distinguish the sequence and its labels : FactorOracle(sequence,sequence).)
-
-    :Example:
-
-    >>> sequence = ['A','B','B','C','A','B','C','D','A','B','C']
-    #>>> FO = FactorOracle(sequence, sequence)
-    >>>
-    >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-    >>> #labels = [s[0] for s in sequence]
-    >>> #FO_2 = FactorOracle(sequence, labels)
-    >>>
-    >>> #equiv_AC_BD = (lambda x,y: set([x,y]).issubset(set(['A','C'])) or set([x,y]).issubset(set(['B','D'])))
-    >>> #FO_3 = FactorOracle(sequence, labels, equiv_AC_BD)
-
-
+    (When there is no need to distinguish the sequence and its labels use `FactorOracle(sequence,sequence)`.)
     """
 
     def __init__(self,
                  label_type: Type[Dyci2Label] = Dyci2Label,
                  equiv: Equiv = BasicEquiv()):
-        """ Constructor for the class FactorOracle.
-        :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-        When there is no need to distinguish the sequence and its labels : FactorOracle(sequence,sequence)
-
-        :Example:
-
-        >>> sequence = ['A','B','B','C','A','B','C','D','A','B','C']
-        #>>> FO = FactorOracle(sequence, sequence)
-        >>>
-        >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-        >>> #labels = [s[0] for s in sequence]
-        >>> #FO_2 = FactorOracle(sequence, labels)
-        >>>
-        >>> #equiv_AC_BD = (lambda x,y: set([x,y]).issubset(set(['A','C'])) or set([x,y]).issubset(set(['B','D'])))
-        >>> #FO = FactorOracle(sequence, labels, equiv_AC_BD)
-        """
 
         self.logger = logging.getLogger(__name__)
         self.sequence: List[Optional[T]] = []
@@ -98,15 +47,6 @@ class FactorOracle(Model[T]):
         """
         Learns (appends) a new sequence in the model.
 
-        # :param sequence: sequence learnt in the Factor Oracle automaton
-        # :type sequence: list or str
-        # :param labels: sequence of labels chosen to describe the sequence
-        # :type labels: list or str
-        # :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-        # :type equiv: function
-
-        # :!: **equiv** has to be consistent with the type of the elements in labels.
-
         """
         if equiv is None:
             equiv = self.equiv
@@ -120,12 +60,6 @@ class FactorOracle(Model[T]):
                     equiv: Optional[Equiv] = None) -> None:
         """
         Learns (appends) a new state in the Factor Oracle automaton.
-
-        # :param event:
-        # :param equiv: Comparison function given as a lambda function, default if no parameter is given: self.equiv.
-        # :type equiv: function
-
-        # :!: **equiv** has to be consistent with the type of label.
 
         """
 
@@ -158,15 +92,19 @@ class FactorOracle(Model[T]):
         pass  # No action on runtime navigation feedback
 
     def encode_with_transform(self, transform: Transform) -> None:
+        """ Encodes the current sequence of labels with the given transform, altering the internal state """
         self.labels = [None] + transform.encode_sequence(self.labels[1::])
 
     def decode_with_transform(self, transform: Transform) -> None:
+        """ Decodes the current sequence of labels with the given transform, altering the internal state """
         self.labels = [None] + transform.decode_sequence(self.labels[1::])
 
     def clear(self) -> None:
-        pass    # does not alter runtime state
+        pass  # does not alter runtime state
 
     def reset_memory(self, label_type: Type[Dyci2Label] = Dyci2Label) -> None:
+        """ Resets the FactorOracle to its initial state with no memory learned """
+
         self.sequence: List[Optional[T]] = []
         self.labels: List[Optional[Dyci2Label]] = []
         self.label_type: Type[Dyci2Label] = label_type
@@ -181,16 +119,19 @@ class FactorOracle(Model[T]):
     ################################################################################################################
 
     def get_internal_corpus_model(self) -> Tuple[List[Optional[T]], List[Optional[Dyci2Label]]]:
+        """ Returns the sequence and the labels as defined by the FactorOracle (in this case: with an initial None) """
         return self.sequence, self.labels
 
     def get_internal_sequence_length(self) -> int:
+        """ Returns the length of the sequence as defined by the FactorOracle (in this case: with an initial None) """
         return len(self.sequence)
 
     def get_event_by_internal_index(self, index: int) -> Optional[T]:
+        """ Returns an event in the sequence its internal index (in this case: with an initial None) """
         return self.sequence[index]
 
     def get_internal_index_last_state(self) -> int:
-        """ Index of the last state in the model."""
+        """ Returns the index of the last state in the model."""
         return len(self.labels) - 1
 
     def print_model(self):
@@ -226,12 +167,6 @@ class FactorOracle(Model[T]):
         """
         Suffix path from a given index.
 
-        # :param index_state: start index
-        # :type index_state: int
-        # :return: Indexes in the automaton of the states that can be reached from the state at index index_state
-        # following suffix links.
-        # :rtype: list (int)
-
         """
 
         index_pointed_by_suffix_link = self.suffix_links.get(index_state)
@@ -250,12 +185,6 @@ class FactorOracle(Model[T]):
     def follow_reverse_suffix_links_from(self, index_state: int) -> List[int]:
         """
         Reverse suffix paths from a given index.
-
-        :param index_state: start index
-        :type index_state: int
-        :return: Indexes in the automaton of the states that can be reached from the state at index index_state
-        following reverse suffix links.
-        :rtype: list (int)
 
         """
         # print(" ****** PROCESS {} : BEGIN".format(index_state))
@@ -294,12 +223,6 @@ class FactorOracle(Model[T]):
         States that can be reached using suffix links from the state at index index_state, and then the reverse suffix
         links leaving these states.
 
-        :param index_state: start index
-        :type index_state: int
-        :return: Indexes in the automaton of the states that can be reached using suffix links from the state at index
-                 index_state, and then the reverse suffix links leaving these states.
-        :rtype: list (int)
-
         """
         # print("\nMODEL.PY : PROCESS {} : follow_..._then_... at index {}".format(index_state,index_state))
         suffix_path = self.follow_suffix_links_from(index_state, include_init_state=False)
@@ -325,25 +248,6 @@ class FactorOracle(Model[T]):
         """
         Some states sharing a common (backward) context with the state at index index_state in the automaton.
 
-        :param index_state: start index
-        :type index_state: int
-        :return: Indexes in the automaton of the states sharing a common (backward) context with the state at index
-        index_state in the automaton.
-        :rtype: list (int)
-        :see also: https://hal.archives-ouvertes.fr/hal-01161388
-        :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
-
-        :Example:
-
-        >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-        >>> #labels = [s[0] for s in sequence]
-        >>> #FON = FactorOracleNavigator(sequence, labels)
-        >>>
-        >>> index = 6
-        >>> #similar_backward_context = FON._similar_backward_context(index)
-        >>> #print("Some states with backward context similar to that of state at index {}: {}".format(index, similar_backward_context))
-
-
         """
         # print("\n\n\n$$$$$$$$$$$$\nSIMILAR BACKWARD {}".format(index_state))
         result = list(set(
@@ -361,31 +265,6 @@ class FactorOracle(Model[T]):
         index_state in the automaton.
         The lengths of the common backward contexts are given by the Factor Oracle automaton, the forward context is
         imposed by a parameter.
-
-        :param index_state: start index
-        :type index_state: int
-        :param forward_context_length_min: minimum length of the forward common context
-        :type forward_context_length_min: int
-        :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        :type equiv: function
-        :return: Indexes of the states in the automaton sharing a common backward context and a common forward context
-                 with the state at index index_state in the automaton.
-        :rtype: list (int)
-        :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        :Example:
-
-        >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-        >>> #labels = [s[0] for s in sequence]
-        >>> #FON = FactorOracleNavigator(sequence, labels)
-        >>>
-        >>> index = 6
-        >>> forward_context_length_min = 1
-        >>> #similar_contexts = FON._similar_contexts(index, forward_context_length_min)
-        >>> #print("Some states with similar contexts (with minimum forward context length = {}) to that of state at index"
-        >>> #      "{}: {}".format(forward_context_length_min, index, similar_contexts))
 
         """
 
@@ -418,34 +297,6 @@ class FactorOracle(Model[T]):
         The lengths of the common backward contexts are given by the Factor Oracle automaton, the forward context is
         imposed by a parameter.
 
-        :param index_state: start index
-        :type index_state: int
-        :param forward_context_length_min: minimum length of the forward common context
-        :type forward_context_length_min: int
-        :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        :type equiv: function
-        :param authorize_direct_transition: include direct transitions ?
-        :type authorize_direct_transition: bool
-        :return: Indexes in the automaton of the possible continuations from the state at index index_state in the
-        automaton.
-        :rtype: list (int)
-        :see also: **Tutorial in** :file:`_Tutorials_/FactorOracleAutomaton_tutorial.py`.
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        :Example:
-
-        >>> sequence = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-        >>> #labels = [s[0] for s in sequence]
-        >>> #FON = FactorOracleNavigator(sequence, labels)
-        >>>
-        >>> index = 6
-        >>> #forward_context_length_min = 1
-        >>> #continuations = FON._continuations(index, forward_context_length_min)
-        >>> #print("Possible continuations from state at index {} (with minimum forward context length = {}): {}"
-        >>> #      .format(index, forward_context_length_min, continuations))
-
-
         """
         if equiv is None:
             equiv = self.equiv
@@ -466,28 +317,7 @@ class FactorOracle(Model[T]):
                                  forward_context_length_min: int = 1,
                                  equiv: Optional[Equiv] = None,
                                  authorize_direct_transition: bool = True) -> List[int]:
-
-        """ Possible continuations labeled by required_label from the state at index index_state in the automaton.
-
-        # :param index_state: start index
-        # :type index_state: int
-        # :param required_label: label to read
-        # :param forward_context_length_min: minimum length of the forward common context
-        # :type forward_context_length_min: int
-        # :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        # :type equiv: function
-        # :param authorize_direct_transition: include direct transitions?
-        # :type authorize_direct_transition: bool
-        # :return: Indexes in the automaton of the possible continuations labeled by required_label from the state at
-        # index index_state in the automaton.
-        # :rtype: list (int)
-        # :see also: method from_state_read_label (class FactorOracle) used in the construction algorithm. Difference :
-        #            only uses the direct transition and the suffix link leaving the state.
-        #
-        # :!: **equiv** has to be consistent with the type of the elements in labels.
-
-
-        """
+        """ Possible continuations labeled by required_label from the state at index index_state in the automaton. """
         if equiv is None:
             equiv = self.equiv
 
@@ -501,18 +331,7 @@ class FactorOracle(Model[T]):
                                       index_state2: int,
                                       equiv: Optional[Equiv] = None) -> int:
 
-        """ Length of the forward context shared by two states in the sequence.
-
-        :type index_state1: int
-        :type index_state2: int
-        :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        :type equiv: function
-        :return: Length of the longest equivalent sequences of labels after these states.
-        :rtype: int
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        """
+        """ Length of the forward context shared by two states in the sequence. """
 
         if equiv is None:
             equiv = self.equiv
@@ -534,18 +353,7 @@ class FactorOracle(Model[T]):
                                        index_state2: int,
                                        equiv: Optional[Equiv] = None) -> int:
 
-        """ Length of the backward context shared by two states in the sequence.
-
-        :type index_state1: int
-        :type index_state2: int
-        :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        :type equiv: function
-        :return: Length of the longest equivalent sequences of labels before these states.
-        :rtype: int
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        """
+        """ Length of the backward context shared by two states in the sequence. """
         if equiv is None:
             equiv = self.equiv
 
@@ -637,16 +445,6 @@ class FactorOracle(Model[T]):
         # factor link labelled with the letter)
         """ Reads label 'label' from state at index 'index_state'.
         First looks for a direct transition, then for a factor link (if authorized).
-
-        :param index_state: Initial state in the Factor Oracle automaton.
-        :type index_state: int
-        :param label: Label to read.
-        :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-        :type equiv: function
-        :param authorize_factor_links: Only look for a direct transition (False) or also for a factor link (True).
-        :type authorize_factor_links: bool
-        :return: Index where the transition leads (when it exists).
-        :rtype: int
 
         """
         if equiv is None:

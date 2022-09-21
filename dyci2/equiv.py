@@ -2,6 +2,14 @@ from abc import ABC, abstractmethod
 
 from dyci2.label import Dyci2Label
 
+""" 
+EQUIV
+===================
+
+Method of overriding the default equivalence function as defined in :class:`~ListLabel`. 
+This can be used for creating custom rules of equivalence to use in the :class:`~PrefixIndexing` algorithm
+
+"""
 
 class Equiv(ABC):
 

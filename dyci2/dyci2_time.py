@@ -2,6 +2,14 @@ from enum import Enum
 
 from merge.stubs.timepoint import Timepoint
 
+""" 
+DYCI2 Time
+===================
+
+Module for handling time in Dyci2 when using the :class:`~GenerationScheduler` class
+
+"""
+
 
 class TimeMode(Enum):
     RELATIVE = "relative"

@@ -531,14 +531,14 @@ if __name__ == '__main__':
 
     start = timer()
     output = []
-    n_queries = 100
+    n_queries = 1
     for i in range(n_queries):
         gs.process_query(query)
         output.append(gs.generation_process.last_sequence())
 
     end = timer()
     print(output)
-    print(f"time: {end - start:.2f} seconds (per query: {(end - start)/n_queries:.2f} seconds)")
+    print(f"time: {end - start:.2f} seconds (per query: {(end - start)/n_queries * 1000:.2f} milliseconds)")
 
 
 

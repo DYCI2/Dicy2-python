@@ -8,6 +8,8 @@ T = TypeVar('T')
 
 
 class Dyci2CorpusEvent(GenericCorpusEvent[T]):
+    """ Extension of the :class:`~merge.GenericCorpusEvent` intended as the memory of the :class:`~merge.Corpus`,
+    with the addition of a function for rendering its data over OSC """
     def __init__(self, data: T, index: int, label: Label):
         super().__init__(data=data, index=index, descriptors=None, labels={type(label): label})
 

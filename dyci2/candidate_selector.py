@@ -10,6 +10,15 @@ from merge.main.corpus_event import CorpusEvent
 from merge.main.candidateselector import CandidateSelector
 from dyci2.parameter import Parametric
 
+""" 
+Dyci2CandidateSelector
+===================
+
+These classes were designed to implement different strategies for selecting the output at each step in the generation. 
+At the moment, this class is just a stub which will select the first possible event, as the length of `candidates` 
+will always be 1 at most. 
+
+"""
 
 class Dyci2CandidateSelector(CandidateSelector, Parametric, ABC):
         pass

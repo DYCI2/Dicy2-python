@@ -17,51 +17,12 @@ T = TypeVar('T')
 
 class FactorOracleNavigator(Navigator[T]):
     """
-    TODO: Update docstring
     The class :class:`~Navigator.Navigator` implements **parameters and methods that are used to navigate through a
     model of sequence**.
     These parameters and methods are **model-independent**.
-    This class defines in particular the naive versions of the methods :meth:`Navigator.simply_guided_navigation`
-    and :meth:`Navigator.free_navigation` handling the navigation through a sequence when it is respectively guided by
-    target labels and free.
-    These methods are overloaded by model-dependant versions (and other model-dependent parameters or methods can be
-    added) when creating a **model navigator** class (cf. :mod:`ModelNavigator`).
     This class is not supposed to be used alone, only in association with a model within a model navigator. Therefore
     its attributes are only "flags" that can be used when defining a model navigator.
 
-    # # :param sequence: sequence learnt in the model.
-    # :type sequence: list or str
-    # :param labels: sequence of labels chosen to describe the sequence.
-    # :type labels: list or str
-    # :param equiv: comparison function given as a lambda function, default if no parameter is given: self.equiv.
-    # :type equiv: function
-
-    # :param current_navigation_index: current length of the navigation
-    # :type current_navigation_index: int
-
-    # :param current_position_in_sequence: current position of the readhead in the model. ** When this attribute receives
-    # a new value, :meth:`Navigator.record_execution_trace` is called to update :attr:`self.execution_trace`, and
-    # :meth:`Navigator.update_history_and_taboos` is called to update :attr:`self.history_and_taboos`.**
-    # :type current_position_in_sequence: int
-    # :param current_continuity: current number of consecutive elements retrieved in the sequence at the current step of
-    # generation
-    # :type current_continuity: int
-    # :param max_continuity: limitation of the length of the sub-sequences that can be retrieved from the sequence.
-    # :type max_continuity: int
-    # :param no_empty_event: authorize or not to output empty events.
-    # :type no_empty_event: bool
-    # :param avoid_repetitions_mode: 0: authorize repetitions; 1: favor less previously retrieved events;
-    # 2: forbid repetitions.
-    # :type avoid_repetitions_mode: int
-    # :param control_parameters: list of the slots of the class that are considered as "control parameters" i.e. that can
-    # be used by a user to author / monitor the generation processes.
-    # :type control_parameters: list(str)
-    # :param execution_trace_parameters: list of the slots of the class that are stored in the execution trace used in
-    # :meth:`Generator.go_to_anterior_state_using_execution_trace`.
-    # :type control_parameters: list(str)
-    # #:param execution_trace: History of the previous runs of the generation model. The list of the parameters of the
-    # model whose values are stored in the execution trace is defined in :attr:`self.execution_trace_parameters`.
-    # :type execution_trace: dict
     """
 
     def __init__(self,
@@ -116,20 +77,7 @@ class FactorOracleNavigator(Navigator[T]):
                        sequence: List[Optional[T]],
                        labels: List[Optional[Dyci2Label]],
                        equiv: Optional[Equiv] = None) -> None:
-        """
-        TODO: Update docstring
-        Learns (appends) a new sequence in the model.
-
-        # :param sequence: sequence learnt in the Factor Oracle automaton
-        # :type sequence: list or str
-        # :param labels: sequence of labels chosen to describe the sequence
-        # :type labels: list or str
-        # :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-        # :type equiv: function
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-        """
+        """ Learns (appends) a new sequence in the model. """
         if equiv is None:
             equiv = self.equiv
 
@@ -140,6 +88,7 @@ class FactorOracleNavigator(Navigator[T]):
                     event: Optional[T],
                     label: Optional[Dyci2Label],
                     equiv: Optional[Equiv] = None) -> None:
+        """ Learns (appends) a single event in the model. """
         self.sequence.append(event)
         self.labels.append(label)
         current_last_idx = len(self.history_and_taboos) - 1
@@ -147,6 +96,7 @@ class FactorOracleNavigator(Navigator[T]):
         self.history_and_taboos.append(0)
 
     def set_time(self, time: int) -> None:
+        """ Updates the internal time of the Navigator """
         self.current_navigation_index = time
 
     def rewind_generation(self, time_index: int) -> None:
@@ -154,18 +104,22 @@ class FactorOracleNavigator(Navigator[T]):
 
     def clear(self):
         """ (Re)initializes the navigation parameters (current navigation index, history of retrieved indexes,
-        current continuity,...). """
+            current continuity,...). """
         self.history_and_taboos = [None] + [0] * (len(self.sequence) - 1)
         self.current_continuity = 0
         self.current_position_in_sequence = -1
         self.current_navigation_index = -1
 
     def reset_memory(self, label_type: Type[Dyci2Label] = Dyci2Label) -> None:
+        """ Resets the memory and the internal state of the FactorOracleNavigator """
         self.sequence: List[Optional[T]] = [None]  # initial state
         self.labels: List[Optional[Dyci2Label]] = [None]  # initial state
         self.clear()
 
     def feedback(self, output_event: Optional[Candidate]) -> None:
+        """ Updates the current temporal position (it's execution trace) of the FactorOracleNavigator
+            based on the last generated event.
+        """
         self.increment_generation_index()
         if output_event is not None:
             self.set_position_in_sequence(output_event.event.index + 1)  # To account for Model's initial None
@@ -177,6 +131,7 @@ class FactorOracleNavigator(Navigator[T]):
     ################################################################################################################
 
     def set_position_in_sequence(self, new_position: Optional[int]) -> None:
+        """ Updates the position in the sequence and records an execution trace for this particular time"""
         self.current_position_in_sequence = new_position
         if new_position is None or new_position <= -1:
             self.logger.debug("INVALID POSITION IN SEQUENCE")
@@ -199,6 +154,7 @@ class FactorOracleNavigator(Navigator[T]):
         self.logger.debug("LEN EXECUTION TRACE: {}".format(len(self.execution_trace)))
 
     def increment_generation_index(self) -> None:
+        """ Increments generation index by 1 """
         self.current_navigation_index += 1
         self.logger.debug("\nNEW NAVIGATION INDEX: {}".format(self.current_navigation_index))
 
@@ -214,6 +170,7 @@ class FactorOracleNavigator(Navigator[T]):
                                          authorized_transformations: List[int],
                                          sequence_to_interval_fun: Optional[Callable],
                                          equiv_interval: Optional[Callable]) -> Dict[int, List[List[int]]]:
+        """ Returns a dictionary of prefix lengths """
 
         index_delta_prefixes: Dict[int, List[List[int]]]
         if use_intervals:

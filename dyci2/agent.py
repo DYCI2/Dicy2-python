@@ -11,8 +11,12 @@
 """
 OSC AGENT
 ===================
-Class defining an OSC server embedding an instance of class :class:`~Generator.GenerationHandler`.
+Class defining an OSC server embedding an instance of class :class:`~Dyci2GenerationScheduler`.
 See the different tutorials accompanied with Max patches.
+
+This class can be used at the root of the code when only a single agent communicating over OSC is needed,
+but :class:`~Server` is a better entry point for OSC-based communication with Max and :class:`GenerationScheduler` is
+better for pure python usage.
 
 """
 import logging
@@ -55,7 +59,8 @@ class Agent(Caller, multiprocessing.Process):
                  server_control_queue: multiprocessing.Queue,
                  label_type: Type[Dyci2Label] = ListLabel,
                  log_to_osc: bool = True,
-                 reraise_exceptions: bool = False):
+                 reraise_exceptions: bool = False,
+                 defer_queries: bool = False):
         Caller.__init__(self, parse_parenthesis_as_list=False, discard_duplicate_args=False)
         multiprocessing.Process.__init__(self)
         self.logger = logging.getLogger(__name__)
@@ -65,6 +70,7 @@ class Agent(Caller, multiprocessing.Process):
         self.ip: str = ip
         self.reraise_exceptions: bool = reraise_exceptions
         self.log_to_osc: bool = log_to_osc
+        self.defer_queries: bool = defer_queries
 
         # Not initialized here to avoid pickling issues on Process.start()
         self.osc_log_handler: Optional[OscLogForwarder] = None
@@ -101,14 +107,17 @@ class Agent(Caller, multiprocessing.Process):
 
         i: int = 0
         while self.running:
+            osc_messages: List[List[Any]] = []
             while not self.server_queue.empty():
-                message: Signal = self.server_queue.get()
+                message: Any = self.server_queue.get()
                 if isinstance(message, Signal):
                     self._process_signal(message)
                 elif isinstance(message, Iterable):  # OSC messages should always be iterable, even at length 1
-                    self._process_osc_message(*message)
+                    osc_messages.append(list(message))
                 else:
                     self.logger.error(f"Invalid message: {message}")
+
+            self._process_osc_messages(osc_messages)
 
             # Send status every `STATUS_INTERVAL_MS` message
             if i == 0:
@@ -124,6 +133,26 @@ class Agent(Caller, multiprocessing.Process):
             self.stop()
         else:
             self.logger.debug(f"Invalid internal signal: {Signal}")
+
+    def _process_osc_messages(self, messages: List[List[Any]]) -> None:
+        if not self.defer_queries:
+            # Process all messages linearly
+            for message in messages:
+                self._process_osc_message(*message)
+
+        else:
+            # If deferred, only process last query
+            queries: List[List[Any]] = []
+            for message in messages:
+                if len(message) > 0 and message[0] == 'query':
+                    queries.append(message)
+                else:
+                    self._process_osc_message(*message)
+
+            if len(queries) > 0:
+                self._process_osc_message(*queries[-1])
+            if len(queries) > 1:
+                self.logger.debug(f"Deferred {len(queries) - 1} queries")
 
     def _process_osc_message(self, *args):
         # TODO: Code duplication from AsyncOsc
@@ -355,6 +384,14 @@ class Agent(Caller, multiprocessing.Process):
         self.send(OscSendProtocol.RESET_STATE, "bang")
         self.send(OscSendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
 
+    def set_defer_queries(self, defer: bool) -> None:
+        if not isinstance(defer, bool):
+            self.logger.error(f"Defer must be a boolean (actual: {type(defer)}")
+            return
+
+        self.defer_queries = defer
+        self.logger.info(f"Defer set to {self.defer_queries}")
+
     ################################################################################################################
     # QUERY STATE
     ################################################################################################################
@@ -408,8 +445,8 @@ class Agent(Caller, multiprocessing.Process):
         self.generation_scheduler.generator.prospector.navigator.logger.addHandler(handler)
         self.generation_scheduler.generator.prospector.model.logger.addHandler(handler)
 
-    # TODO: Temp solution to handle logging over OSC
     def set_log_level(self, log_level: int) -> None:
+        # TODO: Temp solution to handle logging over OSC
         self.logger.setLevel(log_level)
         self.generation_scheduler.logger.setLevel(log_level)
         self.generation_scheduler.generation_process.logger.setLevel(log_level)
@@ -417,4 +454,6 @@ class Agent(Caller, multiprocessing.Process):
         self.generation_scheduler.generator.prospector.logger.setLevel(log_level)
         self.generation_scheduler.generator.prospector.navigator.logger.setLevel(log_level)
         self.generation_scheduler.generator.prospector.model.logger.setLevel(log_level)
+        if self.osc_log_handler is not None:
+            self.osc_log_handler.set_log_level(log_level)
         self.logger.debug(f"log level set to {logging.getLevelName(log_level)}")

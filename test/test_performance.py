@@ -531,7 +531,7 @@ if __name__ == '__main__':
 
     start = timer()
     output = []
-    n_queries = 1
+    n_queries = 1000
     for i in range(n_queries):
         gs.process_query(query)
         output.append(gs.generation_process.last_sequence())

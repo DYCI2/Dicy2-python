@@ -20,6 +20,7 @@ in Entertainment, Special issue on Musical metacreation Part I, 2017** (https://
 
 
 """
+from dyci2.label import ListLabel
 
 
 class PrefixIndexing:
@@ -49,7 +50,7 @@ class PrefixIndexing:
         failure_function_pattern[0] = -1
 
         while p < len(pattern):
-            while i > -1 and not equiv(pattern[p], pattern[i]):  # TODO : TRY
+            while i > -1 and (not equiv(pattern[p], pattern[i]) or (isinstance(pattern[i], ListLabel) and pattern[i].is_none()) or (isinstance(pattern[i], ListLabel) and pattern[p].is_none())):
                 i = failure_function_pattern[i]
             p += 1
             i += 1
@@ -90,7 +91,7 @@ class PrefixIndexing:
         lengths_internal_prefixes_right_pos_in_pattern[0] = [1]
 
         while p < len(pattern):
-            while i > -1 and not equiv(pattern[p], pattern[i]):  # TODO : TRY
+            while i > -1 and (not equiv(pattern[p], pattern[i]) or (isinstance(pattern[i], ListLabel) and pattern[i].is_none()) or (isinstance(pattern[p], ListLabel) and pattern[p].is_none())):
                 i = failure_function_pattern[i]
             p += 1
             i += 1

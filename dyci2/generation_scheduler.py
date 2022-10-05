@@ -15,8 +15,8 @@ This module defines agents generating new sequences from a "memory" (model of se
 Main classes: :class:`~Generator.Generator` (oriented towards offline generation), :class:`~Generator.GenerationHandler`
 (oriented towards interactivity).
 
-
 """
+
 import logging
 from typing import Optional, Type, List
 
@@ -28,11 +28,11 @@ from dyci2.generator import Dyci2Generator
 from dyci2.parameter import Parametric
 from dyci2.prospector import Dyci2Prospector
 from merge.main.candidate import Candidate
+from merge.main.candidateselector import CandidateSelector
 from merge.main.corpus import Corpus
 from merge.main.corpus_event import CorpusEvent
 from merge.main.exceptions import TimepointError, QueryError, StateError
 from merge.main.generation_scheduler import GenerationScheduler
-from merge.main.candidateselector import CandidateSelector
 from merge.main.query import Query
 
 
@@ -40,67 +40,23 @@ from merge.main.query import Query
 
 
 class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
-    """ The class **Generator** embeds a **model navigator** as "memory" (cf. metaclass
-    :class:`~MetaModelNavigator.MetaModelNavigator`) and processes **queries** (class :class:`~Query.Query`) to
-    generate new sequences. This class uses pattern matching techniques (cf. :mod:`PrefixIndexing`) to enrich the
-    navigation and generation methods offered by the chosen model with ("ImproteK-like") anticipative behaviour.
-    More information on "scenario-based generation": see **Nika, "Guiding Human-Computer Music Improvisation:
-    introducing Authoring and Control with Temporal Scenarios", PhD Thesis, UPMC Paris 6, Ircam, 2016**
-    (https://tel.archives-ouvertes.fr/tel-01361835)
-    and
-    **Nika, Chemillier, Assayag, "ImproteK: introducing scenarios into human-computer music improvisation",
-    ACM Computers in Entertainment, Special issue on Musical metacreation Part I, 2017**
-    (https://hal.archives-ouvertes.fr/hal-01380163).
+    """
 
-    The key differences between :class:`~Generator.Generator` and :class:`~Generator.GenerationHandler` are:
-        * :meth:`Generator.receive_query` / :meth:`GenerationHandler.receive_query`
-        * :meth:`Generator.process_query` / :meth:`GenerationHandler.process_query`
+    The class **GenerationHandler** introduces time management and planning for interactive applications
+    to the class :class:`~Generator.Generator`.
 
-    # :param model_navigator:
-    # :type model_navigator: str
+    More details in **Nika, Bouche, Bresson, Chemillier, Assayag,
+    "Guided improvisation as dynamic calls to an offline model",
+    in Proceedings of Sound and Music Computing conference 2015**
+    (https://hal.archives-ouvertes.fr/hal-01184642/document),
+    describing the first prototype of "improvisation handler".
 
-    # :param memory: "Model navigator" inheriting from (a subclass of) :class:`~Model.Model` and (a subclass of)
-    # :class:`~Navigator.Navigator`.
-    # :type prospector: cf. :mod:`ModelNavigator` and :mod:`MetaModelNavigator`
+    It can be seen as a  wrapper around the :class:`~generator.Dyci2Generator` class with additional responsibility of
+    managing temporality: through recording the output of each :class:`~query.Query«` using the
+    :class:`~generation_history.GenerationHistory` and through moving forward (or backward) along the timeline of
+    content that has been generated.
 
-    # :param initial_query:
-    # :type initial_query: bool
-    # :param current_generation_query:
-    # :type current_generation_query: :class:`~Query.Query`
-
-    # :param current_generation_output:
-    # :type current_generation_output: list
-    # :param transfo_current_generation_output:
-    # :type transfo_current_generation_output: list
-
-    # :param continuity_with_future:
-    # :type continuity_with_future: list
-    #
-    # :param current_transformation_memory:
-    # :type active_transform: cf. :mod:`Transforms`
-    # :param authorized_tranformations:
-    # :type authorized_tranformations: list(int)
-    # :param sequence_to_interval_fun:
-    # :type sequence_to_interval_fun: function
-    # :param equiv_mod_interval:
-    # :type equiv_mod_interval: function
-
-
-    :see also: :mod:`GeneratorBuilder`, automatic instanciation of Generator objects and GenerationHandler objects from
-    annotation files.
-    :see also: **Tutorial in** :file:`_Tutorials_/Generator_tutorial.py`.
-
-
-    :Example:
-
-    >>> #sequence_1 = ['A1','B1','B2','C1','A2','B3','C2','D1','A3','B4','C3']
-    >>> #labels_1 = [s[0] for s in sequence_1]
-    >>> #generator_1 = GenerationHandlerNew(sequence=sequence_1, labels=labels_1, model_navigator = "FactorOracleNavigator")
-    >>> #
-    >>> #sequence_2 = make_sequence_of_chord_labels(["d m7(1)", "d m7(2)", "g 7(3)", "g 7(4)", "c maj7(5)","c maj7(6)","c# maj7(7)","c# maj7(8)", "d# m7(9)", "d# m7(10)", "g# 7(11)", "g# 7(12)", "c# maj7(13)", "c# maj7(14)"])
-    >>> #labels_2 = make_sequence_of_chord_labels(["d m7", "d m7", "g 7", "g 7", "c maj7","c maj7","c# maj7","c# maj7", "d# m7", "d# m7", "g# 7", "g# 7", "c# maj7", "c# maj7"])
-    >>> #authorized_intervals = list(range(-2,6))
-    >>> #generator_2 = GenerationHandlerNew(sequence = sequence_2, labels = labels_2, model_navigator = "FactorOracleNavigator", authorized_tranformations = authorized_intervals, sequence_to_interval_fun = chord_labels_sequence_to_interval)
+    :see also: **Tutorial in** :file:`tutorials/generator_tutorial.py`.
 
     """
 
@@ -121,10 +77,15 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
     ################################################################################################################
 
     def process_query(self, query: Query, **kwargs) -> None:
-        """ raises: TimepointError if the timepoint of the query is invalid
-                    QueryError if the query is invalid
-                    StateError if the internal state of the system is invalid for querying (no corpus loaded, ...)
-                    RecursionError if the memory is extremely long (generally 100k+ events)
+        """
+        Processes incoming queries by navigating to the correct position in time that the query is intended for and
+        rewinds (or forwards) the internal state of all components to the state at that temporal position, then
+        processes the query through the :class:`~generator.Dyci2Generator` and records the output of the query.
+
+        raises: TimepointError if the timepoint of the query is invalid
+                QueryError if the query is invalid
+                StateError if the internal state of the system is invalid for querying (no corpus loaded, ...)
+                RecursionError if the memory is extremely long (generally 100k+ events)
         """
         if self.generator.prospector.corpus is None:
             raise StateError("No Corpus has been loaded yet")
@@ -170,6 +131,10 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         # return generation_index
 
     def update_performance_time(self, time: Dyci2Timepoint) -> None:
+        """
+        Set the current performance time, i.e. the time that is currently being performed / rendered
+
+        """
         if not self._running:
             return
 
@@ -186,18 +151,24 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
             self.logger.debug(f"CHANGED PERF TIME = {old} --> {self.generation_process.generation_time}")
 
     def read_memory(self, corpus: Corpus, **kwargs) -> None:
+        """
+        Learn (model) all the events of a given memory / corpus.
+        """
         self.clear()
         self.generator.read_memory(corpus, **kwargs)
 
     def learn_event(self, event: CorpusEvent, **kwargs) -> None:
         """
-            raises: TypeError if event is incompatible with current memory
-            StateError if no `Corpus` has been loaded
-            LabelError if attempting to learn an event with a label type that doesn't exist in the Corpus
+        Learn (model) a single event and append it to the current corpus
+
+        raises: TypeError if event is incompatible with current memory
+                StateError if no `Corpus` has been loaded
+                LabelError if attempting to learn an event with a label type that doesn't exist in the Corpus
         """
         self.generator.learn_event(event, **kwargs)
 
     def clear(self) -> None:
+        """ Clear all data associated with an ongoing generation without removing the recorded corpus """
         self._performance_time = 0
         self.generation_process.clear()
         self.generator.clear()

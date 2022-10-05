@@ -100,6 +100,7 @@ class FactorOracleNavigator(Navigator[T]):
         self.current_navigation_index = time
 
     def rewind_generation(self, time_index: int) -> None:
+        """ Reset the internal temporal position of the Navigator to an earlier state """
         self._go_to_anterior_state_using_execution_trace(index_in_navigation=time_index)
 
     def clear(self):
@@ -208,11 +209,6 @@ class FactorOracleNavigator(Navigator[T]):
         In the method simply_guided_generation, this method is called with authorized_indexes = possible continuations
         **matching the required label** filtered to satisfy the constraints of taboos and repetitions.
 
-        # :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
-        # :type authorized_indexes: list(int)
-        :return: index of the state
-        :rtype: int
-
         """
 
         direct_transition: Optional[Tuple[Dyci2Label, int]] = direct_transitions.get(self.current_position_in_sequence)
@@ -234,11 +230,6 @@ class FactorOracleNavigator(Navigator[T]):
         to satisfy the constraints of taboos and repetitions.
         In the method simply_guided_generation, this method is called with authorized_indexes = possible continuations
         **matching the required label** filtered to satisfy the constraints of taboos and repetitions.
-
-        # :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
-        # :type authorized_indexes: list(int)
-        :return: indexes of the states
-        :rtype: list(int)
 
         """
         direct_transition: Optional[Tuple[Dyci2Label, int]] = direct_transitions.get(self.current_position_in_sequence)
@@ -272,11 +263,6 @@ class FactorOracleNavigator(Navigator[T]):
         In the method simply_guided_generation, this method is called with authorized_indexes = possible continuations
         **matching the required label** filtered to satisfy the constraints of taboos and repetitions.
 
-        # :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
-        # :type authorized_indexes: list(int)
-        :return: index of the state
-        :rtype: int
-
         """
         authorized_indices = self.continuations_with_jump(authorized_indices, direct_transitions)
         if len(authorized_indices) > 0:
@@ -292,17 +278,6 @@ class FactorOracleNavigator(Navigator[T]):
 
         """
         Random state in the sequence matching required_label if self.no_empty_event is True (else None).
-
-        # :param required_label: label to read
-        # :param authorized_indexes: list of authorized indexes to filter taboos, repetitions, and label when needed.
-        # :type authorized_indexes: list(int)
-        # :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        # :type equiv: function
-        # :return: index of the state
-        # :rtype: int
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
         """
         if equiv is None:
             equiv = self.equiv
@@ -333,9 +308,6 @@ class FactorOracleNavigator(Navigator[T]):
         This method is called when the run of a new query rewrites previously generated anticipations.
         It uses :attr:`self.execution_trace` to go back at the state where the navigator was at the "tiling time".
 
-        :param index_in_navigation: "tiling index" in the generated sequence
-        :type index_in_navigation: int
-
         :see also: The list of the parameters of the model whose values are stored in the execution trace is defined in
         :attr:`self.execution_trace_parameters`.
 
@@ -364,9 +336,6 @@ class FactorOracleNavigator(Navigator[T]):
         Stores in :attr:`self.execution_trace` the values of different parameters of the model when generating thefu
         event in the sequence at the index given in argument.
 
-        :param index_in_navigation:
-        :type index_in_navigation: int
-
         :see also: The list of the parameters of the model whose values are stored in the execution trace is defined
         in :attr:`self.execution_trace_parameters`.
 
@@ -382,10 +351,6 @@ class FactorOracleNavigator(Navigator[T]):
         """
         Increases the value associated to the index given in argument in :attr:`self.history_and_taboos`.
         Handles the taboos linked to :attr:`self.max_continuity`.
-
-        :param index_in_sequence:
-        :type index_in_sequence: int
-
 
         """
         if not self.history_and_taboos[index_in_sequence] is None:
@@ -418,9 +383,6 @@ class FactorOracleNavigator(Navigator[T]):
         """
         Introduces "taboos" (events that cannot be retrieved) in the navigation mechanisms.
 
-        :param indexes: indexes of forbidden indexes (/!\ depending on the model the first event can be at index 0 or 1).
-        :type indexes: list(int)
-
         """
         for i in indexes:
             self.history_and_taboos[i] = None
@@ -431,19 +393,14 @@ class FactorOracleNavigator(Navigator[T]):
         Delete the "taboos" (events that cannot be retrieved) in the navigation mechanisms for the states listed in
         the parameter indexes.
 
-        :param indexes: indexes of authorized indexes (/!\ depending on the model the first event can be at index 0 or 1).
-        :type indexes: list(int)
-
         """
         for i in indexes:
             self.history_and_taboos[i] = 0
 
     def _is_taboo(self, index: int) -> bool:
-
         return self.history_and_taboos[index] is None
 
     def _delete_taboos(self) -> None:
-
         """
         Delete all the "taboos" (events that cannot be retrieved) in the navigation mechanisms.
         """

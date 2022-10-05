@@ -17,13 +17,26 @@ from merge.main.query import TriggerQuery, InfluenceQuery
 
 
 class Dyci2Generator(Generator, Parametric):
+    """
+    The class :class:`~generator.Dyci2Generator` embeds a :class:`~prospector.Prospector` as "memory" (cf. class
+    :class:`~prospector.FactorOracleProspector`) and processes **queries** (class :class:`~query.Query`) to
+    generate new sequences. This class uses pattern matching techniques (cf. :class:`prefix_indexing.PrefixIndexing`)
+    to enrich the navigation and generation methods offered by the chosen model with ("ImproteK-like") anticipative
+    behaviour. More information on "scenario-based generation": see **Nika, "Guiding Human-Computer Music Improvisation:
+    introducing Authoring and Control with Temporal Scenarios", PhD Thesis, UPMC Paris 6, Ircam, 2016**
+    (https://tel.archives-ouvertes.fr/tel-01361835)
+    and
+    **Nika, Chemillier, Assayag, "ImproteK: introducing scenarios into human-computer music improvisation",
+    ACM Computers in Entertainment, Special issue on Musical metacreation Part I, 2017**
+    (https://hal.archives-ouvertes.fr/hal-01380163).
+
+    """
     def __init__(self,
                  prospector: Dyci2Prospector,
                  jury_type: Type[CandidateSelector] = TempCandidateSelector,
                  authorized_transforms: List[int] = (0,),
                  force_output: bool = True):
         self.logger = logging.getLogger(__name__)
-        # self._post_filters: List[PostFilter] = post_filters  # TODO: Implement
 
         self.prospector: Dyci2Prospector = prospector
 
@@ -42,9 +55,19 @@ class Dyci2Generator(Generator, Parametric):
     ################################################################################################################
 
     def process_query(self, query: Query, print_info: bool = False, **kwargs) -> List[Optional[Candidate]]:
-        """ raises: RuntimeError if the query is invalid
-                    StateError if the internal state of the system is invalid for querying (no corpus loaded, ...)
-                    RecursionError if the memory is extremely long (generally 100k+ events)
+        """
+        Processes a :class:`~query.Query` in three different ways depending on the type of query:
+
+        * If the query is a **TriggerQuery**, generate through the
+                :meth:`~generator.Generator.free_generation` method
+        * If the query is an **InfluenceQuery** of length 1, generate through the
+                :meth:`~generator.Generator._simply_guided_generation` method
+        * If the query is an **InfluenceQuery** of length >1, generate through the
+                :meth:`~generator.Generator._scenario_based_generation` method
+
+        raises: RuntimeError if the query is invalid
+                StateError if the internal state of the system is invalid for querying (no corpus loaded, ...)
+                RecursionError if the memory is extremely long (generally 100k+ events)
         """
         self.logger.debug(f"****************************\nPROCESS QUERY: QUERY = \n**************************\n{query}")
         self.logger.debug(f"****************************\nGENERATION MATCHING QUERY: QUERY = \n**************\n{query}")
@@ -76,26 +99,39 @@ class Dyci2Generator(Generator, Parametric):
         return output
 
     def read_memory(self, corpus: Corpus, **kwargs) -> None:
-        # TODO: Handle multicorpus case: learning a corpus in only a particular Prospector => PathSpec argument
+        """
+        Learn (model) all the events of a given memory / corpus.
+
+        """
         self.clear()
         self.prospector.read_memory(corpus, **kwargs)
 
     def learn_event(self, event: CorpusEvent, **kwargs) -> None:
         """
-            raises: TypeError if event is incompatible with current memory
-            StateError if no `Corpus` has been loaded
-            LabelError if attempting to learn an event with a label type that doesn't exist in the Corpus
+        Learn (model) a single event and append it to the current corpus
+
+        raises: TypeError if event is incompatible with current memory
+                StateError if no `Corpus` has been loaded
+                LabelError if attempting to learn an event with a label type that doesn't exist in the Corpus
         """
         # TODO: Handle multicorpus case: learning a corpus in only a particular Prospector => PathSpec argument
         self.prospector.learn_event(event, **kwargs)
 
     def clear(self) -> None:
+        """
+        Reset the state of the generator to its initial state without removing the recorded corpus
+
+        """
         self.active_transform: Transform = NoTransform()
         self._jury.clear()
         self._fallback_jury.clear()
         self.prospector.clear()
 
     def feedback(self, event: Optional[Candidate], **kwargs) -> None:
+        """
+        Update the internal state for relevant components based on what was generated in the previous iteration
+
+        """
         self._jury.feedback(event, **kwargs)
         self._fallback_jury.feedback(event, **kwargs)
         self.prospector.feedback(event, **kwargs)
@@ -130,30 +166,9 @@ class Dyci2Generator(Generator, Parametric):
 
     def _free_generation(self, num_events: int, forward_context_length_min: int = 0, init: bool = False,
                          print_info: bool = False) -> List[Optional[Candidate]]:
-        """ Free navigation through the sequence.
-        Naive version of the method handling the free navigation in a sequence (random).
-        This method has to be overloaded by a model-dependant version when creating a **model navigator** class
-        (cf. :mod:`ModelNavigator`).
+        """
+        Free navigation through the sequence.
 
-        # :param num_events: length of the generated sequence
-        # :type num_events: int
-        # # :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
-        # # :type new_max_continuity: int
-        # :param forward_context_length_min: minimum length of the forward common context
-        # :type forward_context_length_min: int
-        # :param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
-        # :type init: bool
-        # :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        # :type equiv: function
-        # :param print_info: print the details of the navigation steps
-        # :type print_info: bool
-        # :return: generated sequence
-        # :rtype: list
-        # :see also: Example of overloaded method: :meth:`FactorOracleNavigator.free_navigation`.
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-        :!: The result **strongly depends** on the tuning of the parameters self.max_continuity,
-            self.avoid_repetitions_mode, self.no_empty_event.
         """
 
         self.prospector.prepare_navigation([], init=init)
@@ -182,31 +197,9 @@ class Dyci2Generator(Generator, Parametric):
                                   print_info: bool = False,
                                   shift_index: int = 0,
                                   break_when_none: bool = False) -> List[Optional[Candidate]]:
-        """ Navigation in the sequence, simply guided step by step by an input sequence of label.
-        Naive version of the method handling the navigation in a sequence when it is guided by target labels.
-        This method has to be overloaded by a model-dependant version when creating a **model navigator** class
-        (cf. :mod:`ModelNavigator`).
+        """
+        Navigation in the sequence, simply guided step by step by an input sequence of label.
 
-
-        # :param required_labels: guiding sequence of labels
-        # :type required_labels: list
-        # # :param new_max_continuity: new value for self.max_continuity (not changed id no parameter is given)
-        # # :type new_max_continuity: int
-        # :param forward_context_length_min: minimum length of the forward common context
-        # :type forward_context_length_min: int
-        # :param init: reinitialise the navigation parameters ?, default : False. (True when starting a new generation)
-        # :type init: bool
-        # :param equiv: Compararison function given as a lambda function, default: self.equiv.
-        # :type equiv: function
-        # :param print_info: print the details of the navigation steps
-        # :type print_info: bool
-        # :return: generated sequence
-        # :rtype: list
-        # :see also: Example of overloaded method: :meth:`FactorOracleNavigator.free_navigation`.
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-        :!: The result **strongly depends** on the tuning of the parameters self.max_continuity,
-        self.avoid_repetitions_mode, self.no_empty_event.
         """
 
         self.logger.debug("HANDLE GENERATION MATCHING LABEL...")
@@ -237,14 +230,9 @@ class Dyci2Generator(Generator, Parametric):
     def _scenario_based_generation(self, list_of_labels: List[Influence]) -> List[Optional[Candidate]]:
         """
         Generates a sequence matching a "scenario" (a list of labels). The generation process takes advantage of the
-        scenario to introduce anticatory behaviour, that is, continuity with the future of the scenario.
+        scenario to introduce anticipatory behaviour, that is, continuity with the future of the scenario.
         The generation process is divided in successive "generation phases", cf.
-        :meth:`~Generator.Generator.handle_scenario_based_generation_one_phase`.
-
-        # :param list_of_labels: "scenario", required labels
-        # :type list_of_labels: list or str
-        # :return: generated sequence
-        # :rtype: list
+        :meth:`~generator.Generator._handle_scenario_based_generation_one_phase`.
 
         """
         generated_sequence: List[Optional[Candidate]] = []
@@ -265,14 +253,13 @@ class Dyci2Generator(Generator, Parametric):
                                                     original_query_length: int,
                                                     shift_index: int = 0) -> List[Optional[Candidate]]:
         """
-        # :param list_of_labels: "current scenario", suffix of the scenario given in argument to
-        # :meth:`Generator.Generator.handle_scenario_based_generation`.
-        # :type list_of_labels: list or str
 
         A "scenario-based" generation phase:
             1. Anticipation step: looking for an event in the memory sharing a common future with the current scenario.
             2. Navigation step: starting from the starting point found in the first step, navigation in the memory using
-            :meth:`~Navigator.Navigator.simply_guided_generation` until launching a new phase is necessary.
+            :meth:`~prospector.Prospector.process` (which given the arguments provided in this function will
+            call the :meth:`~prospector.Dyci2Prospector._simply_guided_navigation` in each step),
+            until launching a new phase is necessary.
 
         """
         self.logger.debug("SCENARIO ONE PHASE 0")

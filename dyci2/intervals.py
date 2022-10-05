@@ -11,8 +11,9 @@
 """ 
 Using Intervals
 ================
-Some subclasses of :class:`~Label.Label` enable to define a notion of interval. The tools defined in this module handle such possibilities.
-**Tutorial in** :file:`_Tutorials_/Label_and_intervals_tutorial.py`.
+Some subclasses of :class:`~label.Label` enable to define a notion of interval.
+The tools defined in this module handle such possibilities.
+
 """
 
 from dyci2.prefix_indexing import *
@@ -21,29 +22,8 @@ from dyci2.prefix_indexing import *
 class Intervals:
     @staticmethod
     def prefix_indexing_intervals(sequence, pattern, sequence_to_interval_fun=None, **args):
-        """ Index the prefixes of a pattern in a sequence. TODO DIRE QU'IL FAUT DES SEQUENCES DE LABELS AVEC METHODE DELTA DEFINI
-        LISTE DES PARAMETRES A TODOIFIER AUSSI
-        FAUX NE DOIT NECESSAIREMENT ETRE DES LISTES DE LABELS !!! MAIS SEQUENCE ET PATTERN DOIVENT REPRESENTER DES INTERVALLES --> A CORRIGER.
-        SPECIFIER QUELLE DOIT ETRE LA FORME D'UN LABEL D'INTERVAL
+        """ Index the prefixes of a pattern in a sequence.
 
-        :param sequence:
-        :type sequence: list(label)
-        :param pattern:
-        :type pattern: list(label)
-        :param equiv: [args] compararison function given as a lambda function, default: TODO IL FAUT METTRE LE NONE ET TOUT EN ARGUMENT
-        :type equiv: function
-        :param print_info: [args] print the details of the research?
-        :type print_info: int
-        :return: BIEN DIRE CE QU'EST LA LISTE DE LISTES prefixes of the pattern in the sequence (key = length, value = list of left positions of prefixes of the pattern of length 'length' in the sequence) **and** length of the longest prefix
-        :rtype: tuple ( dict (int -> list), int)
-        :seealso: **Tutorial in** :file:`_Tutorials_/Label_and_intervals_tutorial.py`
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-
-        :Example:
-
-        >>> "TODO"
         """
 
         interval_sequence = sequence
@@ -69,35 +49,9 @@ class Intervals:
 
     @staticmethod
     def filtered_prefix_indexing_intervals(sequence, pattern, sequence_to_interval_fun=None, **args):
-        """ Filtered index of the prefixes of a pattern in a sequence (filtered regarding lengths and positions). TODO DIRE QU'IL FAUT DES SEQUENCES DE LABELS AVEC METHODE DELTA DEFINI
-        LISTE DES PARAMETRES A TODOIFIER AUSSI
-        FAUX NE DOIT NECESSAIREMENT ETRE DES LISTES DE LABELS !!! MAIS SEQUENCE ET PATTERN DOIVENT REPRESENTER DES INTERVALLES --> A CORRIGER.
-        SPECIFIER QUELLE DOIT ETRE LA FORME D'UN LABEL D'INTERVAL
+        """
+        Filtered index of the prefixes of a pattern in a sequence (filtered regarding lengths and positions).
 
-        :param sequence:
-        :type sequence: list(label)
-        :param pattern:
-        :type pattern: list(label)
-        :param authorized_indexes: [args] list of authorized indexes to filter the results
-        :type authorized_indexes: list (int)
-        :param authorized_intervals: [args] list of authorized intervals to filter the results
-        :type authorized_intervals: list
-        :param length_interval: [args] interval of length to filter the results.
-        :type length_interval: tuple (int, int): absolute lengths** of the prefixes **or** tuple (float, float): fractions of the length of the longest prefix before filtering
-        :param equiv: [args] compararison function given as a lambda function, default: TODO
-        :type equiv: function
-        :param print_info: [args] print the details of the research?
-        :type print_info: int
-        :return: prefixes of the pattern in the sequence after filtering (key = length, value = list of left positions of prefixes of the pattern of length 'length' in the sequence) **and** length of the longest prefix
-        :rtype: tuple (dict (int -> list), int)
-        :seealso: **Tutorial in** :file:`_Tutorials_/Label_and_intervals_tutorial.py`
-
-        :!: **equiv** has to be consistent with the type of the elements in labels.
-
-
-        :Example:
-
-        >>> "TODO"
         """
 
         interval_sequence = sequence

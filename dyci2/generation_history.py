@@ -8,6 +8,14 @@ from merge.main.exceptions import StateError
 
 
 class GenerationHistory:
+    """
+    Class for continuously recording, retrieving and overwriting events as they are generated over time. The
+    class :class:`~generation_history.GenerationHistory` will contain a full trace of all events played since the
+    start of the generation and their corresponding positions in time.
+
+    The class :class:`~generation_history.GenerationHistory` is generally owned and managed by a
+    :class:`~generation_scheduler.Dyci2GenerationScheduler`.
+    """
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         self._generation_trace: List[Optional[Candidate]] = []
@@ -58,17 +66,3 @@ class GenerationHistory:
     @property
     def generation_trace(self) -> List[Optional[Candidate]]:
         return self._generation_trace
-
-    # def formatted_output_couple_content_transfo(self):
-    #     """ raises: StateError if GenerationProcess has an event of an invalid type """
-    #     output: List[Tuple[str, int]] = []
-    #     for candidate in self.last_sequence():
-    #         if candidate is not None:
-    #             # TODO: Migrate this behaviour to Renderable interface
-    #             if isinstance(candidate.event, Dyci2CorpusEvent):
-    #                 output.append((candidate.event.renderer_info(), candidate.transform.renderer_info()))
-    #             else:
-    #                 raise StateError(f"Invalid event of type {type(candidate.event)} encountered")
-    #         else:
-    #             output.append(("None", 0))
-    #     return output

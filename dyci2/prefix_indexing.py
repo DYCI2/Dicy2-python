@@ -16,8 +16,6 @@ and
 **Nika, Chemillier, Assayag, "ImproteK: introducing scenarios into human-computer music improvisation", ACM Computers
 in Entertainment, Special issue on Musical metacreation Part I, 2017** (https://hal.archives-ouvertes.fr/hal-01380163).
 
-**Tutorial in** :file:`PrefixIndexing_tutorial.py`.
-
 
 """
 from dyci2.label import ListLabel
@@ -35,7 +33,7 @@ class PrefixIndexing:
         :type equiv: function
         :return: failure function (key = index in the pattern (from 0), value = failure_function[index])
         :rtype: dict (int -> int)
-        :seealso: **Tutorial in** :file:`_Tutorials_/Generator_tutorial.py`
+
         :!: **equiv** has to be consistent with the type of the elements in labels.
 
         :Example:
@@ -71,7 +69,7 @@ class PrefixIndexing:
                  (key = index in the pattern (from 0), value = list: lengths of the prefixes of the pattern in itself
                  ending at the corresponding index).
         :rtype: tuple (dict(int -> int),dict(int -> list of int))
-        :seealso: **Tutorial in** :file:`_Tutorials_/Generator_tutorial.py`
+
         :!: **equiv** has to be consistent with the type of the elements in labels.
 
         :Example:
@@ -115,7 +113,6 @@ class PrefixIndexing:
         return **all the prefixes** of the pattern in the sequence at step i,j
         using the **previously computed internal prefixes in the pattern**
         (:func:`PrefixIndexing.failure_function_and_right_pos_prefixes`).
-
 
         :param longest_prefixes_pattern_left_pos_in_sequence: prefixes of the pattern found **so far** (only the longest
         in region [j-length_longest_prefix,j-1]) in the sequence at step i,j of the research in
@@ -331,7 +328,6 @@ class PrefixIndexing:
         :return: prefixes of the pattern in the sequence after filtering (key = length, value = list of left positions of
                  prefixes of the pattern of length 'length' in the sequence) **and** length of the longest prefix
         :rtype: tuple (dict (int -> list), int)
-        :seealso: Tutorial in PrefixIndexing_tutorial.py
 
         :!: **equiv** has to be consistent with the type of the elements in labels.
 

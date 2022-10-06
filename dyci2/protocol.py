@@ -2,6 +2,12 @@ from enum import Enum
 
 
 class OscSendProtocol:
+    """
+    Class defining the protocol (set of keywords associated with each piece of data) for messages sent __to__ Max
+    from the :class:`~agent.Agent` and :class:`~server.Dyci2Server` classes
+
+    """
+
     CREATE_AGENT = "create_agent"
     DELETE_AGENT = "delete_agent"
     QUERY_AGENTS = "query_agents"

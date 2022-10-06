@@ -1,3 +1,11 @@
+"""
+Utils
+===============
+
+A set of classes for formatting certain queries and generation output in a Max-compatible way.
+
+"""
+
 import typing
 from typing import List, Optional, Tuple, Any, Type
 

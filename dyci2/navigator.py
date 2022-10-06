@@ -7,8 +7,6 @@
 # copyleft 2016 - 2018
 ####################################################################################
 
-# TODO
-# ICI ET DANS LES MODEL NAVIGATORS : TESTER SI LE REQUIRED LABEL EST BIEN DU MEME TYPE QUE LES LABELS DANS LE MODEL
 
 """
 Navigator

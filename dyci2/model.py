@@ -7,8 +7,6 @@
 # copyleft 2016 - 2017
 #############################################################################
 
-# TODO : RAJOUTER DANS DOC LES ARGUMENTS LIES A "LABEL_TYPE" ET "CONTENT_TYPE"
-
 """
 Model
 ===================
@@ -34,35 +32,20 @@ T = TypeVar('T')
 
 
 class Model(Parametric, Generic[T], ABC):
-    """The class :class:`~Model.Model` is an **abstract class**.
-        Any new model of sequence must inherit from this class.
+    """
+    The class :class:`~Model.Model` is an abstract base class.
+    Any new model of sequence must inherit from this class.
 
-        # :param sequence: sequence learnt in the model.
-        # :type sequence: list or str
-        # :param labels: sequence of labels chosen to describe the sequence.
-        # :type labels: list or str
-        # :param equiv: compararison function given as a lambda function, default if no parameter is given: self.equiv.
-        # :type equiv: function
-
-        # :!: **equiv** has to be consistent with the type of the elements in labels.
-        # """
+    """
 
     @abstractmethod
     def learn_sequence(self,
                        sequence: List[Optional[T]],
                        labels: List[Optional[Dyci2Label]],
                        equiv: Optional[Equiv] = None) -> None:
-        """ TODO: Update Docstring
-        Learns (appends) a new sequence in the model.
+        """
+        Abstract method defining the behaviour when learning (appending) a sequence of events in the model
 
-        #:param sequence: sequence learnt in the Factor Oracle automaton
-        #:type sequence: list or str
-        # :param labels: sequence of labels chosen to describe the sequence
-        # :type labels: list or str
-        #:param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-        #:type equiv: function
-
-        #:!: **equiv** has to be consistent with the type of the elements in labels.
         """
 
     @abstractmethod
@@ -70,34 +53,52 @@ class Model(Parametric, Generic[T], ABC):
                     event: Optional[T],
                     label: Optional[Dyci2Label],
                     equiv: Optional[Equiv] = None) -> None:
-        """ TODO: Docstring (can be copied/moved from FactorOracle, probably)
-        Learns (appends) a new state in the model.
-
-        # :param event:
-        # :param label:
-        # :param equiv: Compararison function given as a lambda function, default if no parameter is given: self.equiv.
-        # :type equiv: function
-        #
-        # :!: **equiv** has to be consistent with the type of label.
+        """
+        Abstract method defining the behaviour when learning (appending) a single events in the model
 
         """
 
     @abstractmethod
     def feedback(self, output_event: Optional[Candidate]) -> None:
-        """ TODO: Docstring """
+        """
+        Abstract method defining the behaviour of the model when the :class:`~generator.Dyci2Generator` generates
+        output from an incoming :class:`~query.Query`.
+
+        In most cases, the model will be stateless in relation to  the ongoing generation; in this case,
+        simply leave the method blank (pass).
+
+        """
 
     @abstractmethod
     def encode_with_transform(self, transform: Transform) -> None:
-        """ TODO: Docstring """
+        """
+        Abstract method defining the behaviour when encoding (applying) the learned sequence of the model
+        with a given transform
+
+        """
 
     @abstractmethod
     def decode_with_transform(self, transform: Transform) -> None:
-        """ TODO: Docstring """
+        """
+        Abstract method defining the behaviour when decoding (inverting) the learned sequence of the model
+        with a given transform
+
+        """
 
     @abstractmethod
     def clear(self) -> None:
-        """ TODO: Docstring """
+        """
+        Abstract method defining how to reset any data associated with an ongoing generation
+        without removing the sequence itself.
+
+        In most cases, the model will be stateless in relation to  the ongoing generation; in this case,
+        simply leave the method blank (pass).
+
+        """
 
     @abstractmethod
     def reset_memory(self, label_type: Type[Dyci2Label] = Dyci2Label) -> None:
-        """ TODO: Docstring """
+        """
+        Abstract method defining how to reset the sequence of events learned
+
+        """

@@ -6,17 +6,13 @@
 # copyleft 2016 - 2017
 #############################################################################
 
-#############################################################################
-# /!\ WORK IN PROGRESS /!\
-#############################################################################
-
 """ 
 Transforms
 ==================
 Class defining transformations on labels and contents.
 
 """
-# TODO : TUTO
+
 from abc import ABC, abstractmethod
 from typing import Any
 

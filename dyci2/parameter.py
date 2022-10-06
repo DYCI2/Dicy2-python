@@ -1,3 +1,30 @@
+"""
+Parameter
+===================
+
+This module defines a number of utility classes for dynamically addressing components in a hierarchy, more specifically
+for getting and setting parameter values. The classes are:
+
+* :class:`~parameter.Parametric`: Parent class containing zero or more :class:`~parameter.Parameter` fields and/or
+                                  zero or more :class:`~parameter.Parametric` fields.
+
+* :class:`~parameter.Parameter`: Class defining a value that can be addressed in the architecture
+
+* :class:`~parameter.Range`: A set of classes defining range checking for parameters when addressing them dynamically.
+
+
+When calling :meth:`~parameter.Parametric.set_parameter`, the :class:`parameter.Parametric` will recursively search
+all of its internal fields for :class:`~parameter.Parameter` instance and :class:`~parameter.Parametric` until a
+parameter with the given name exists, or if not found, raise a `KeyError`.
+
+An example usage can be found in :meth:`~agent.Agent.set_control_parameter`. This method uses a Max-native syntax for
+addressing the parameters, for example:
+
+>>> set_control_parameter("generator::prospector::_navigator::avoid_repetitions_mode", 1)
+
+
+"""
+
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, Optional, Callable, List, TypeVar, Generic, Type, Tuple
 

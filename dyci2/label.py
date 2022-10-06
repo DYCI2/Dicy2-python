@@ -11,6 +11,15 @@ Label
 =========
 Definition of alphabets of labels to build sequences and use them in creative applications.
 
+Currently three label types exist:
+
+* :class:`~label.ListLabel`:                Default class for labels. Can handle lists of any length (including
+                                            lists of length 1) but does not support any :class:`~transforms.Transform`
+
+* :class:`~label.IntervallicIntegerLabel`:  Default class for integral labels that should support transforms
+
+* :class:`~label.ChordLabel`:               Class for handling chord labels with support for transforms
+
 """
 
 from abc import ABC, abstractmethod
@@ -22,6 +31,9 @@ from merge.main.label import Label
 
 
 class Dyci2Label(Label, ABC):
+    """
+    Abstract base class for the labels used in DYCI2. Can be extended to implement new behaviours
+    """
 
     def __repr__(self):
         return f"{self.__class__.__name__}({str(self.label)})"
@@ -31,21 +43,29 @@ class Dyci2Label(Label, ABC):
 
     @abstractmethod
     def __eq__(self, a):
-        """ """
+        """
+        Implementing the `__eq__` function is mandatory for the `LabelClass`. See for example
+        :class:`~label.ListLabel` for an example.
+        """
 
     @classmethod
     @abstractmethod
     def sequence_from_list(cls, init_list: List[str], **kwargs) -> List['Dyci2Label']:
-        """ """
+        """
+        Parse a list of strings into a list of :class:`~label.Dyci2Label`.
+        Implementing this function is mandatory
+        """
 
     @classmethod
     @abstractmethod
     def parse(cls, raw_data: Any) -> 'Dyci2Label':
-        """ """
+        """
+        Parse a single piece of data into a single :class:`~label.Dyci2Label`
+        """
 
     @classmethod
     def type_from_string(cls, s: str) -> Type['Dyci2Label']:
-        """ raises: LabelError if string doesn't match a type"""
+        """ raises: LabelError if string doesn't match a type """
         if s.lower() == "listlabel" or s.lower() == "list":
             return ListLabel
         elif s.lower() == "chordlabel" or s.lower() == "chord":
@@ -57,29 +77,43 @@ class Dyci2Label(Label, ABC):
 
 
 class IntervallicLabel(Dyci2Label, ABC):
-    """ Interface for Labels with intervallic/relative representations"""
+    """
+    Abstract base class for labels with intervallic/relative representations that should support transforms
+    """
 
     @classmethod
     @abstractmethod
     def equiv_mod_interval(cls, x: List[Any], y: List[Any]) -> bool:
-        """ """
+        """
+        In addition to implementing the method :meth:`~label.Dyci2Label.__eq__`,
+        intervallic labels must also implement this method in order to handle intervallic comparison
+        """
 
     @abstractmethod
     def delta(self, other: 'IntervallicLabel') -> Optional[int]:
-        """ """
+        """
+        Method required by the :class:`~intervals.Intervals` class
+        """
 
     @classmethod
     @abstractmethod
     def make_sequence_of_intervals_from_sequence_of_labels(cls,
                                                            list_of_labels: List[Optional['ChordLabel']],
                                                            **kwargs) -> List[Any]:
-        """"""
+        """
+        Method to convert a list of labels into  a list of data that supports intervallic comparison
+        """
 
 
 class IntervallicIntegerLabel(IntervallicLabel):
-    """ Note! This class is not well integrated into the rest of the code (PrefixIndexing, etc.),
-        which was designed solely for ChordLabels and their internal format.
-        This is a hacky solution to integrate integer labels into the existing architecture"""
+    """
+    Default class for integral labels that should support transforms
+
+    Note! This class is not well integrated into the rest of the code (PrefixIndexing, etc.),
+    which was designed mainly for ChordLabels and their internal format.
+    This is a hacky solution to integrate integer labels into the existing architecture
+    """
+
     def __init__(self, label: int):
         super().__init__(label=label)
 
@@ -122,6 +156,9 @@ class IntervallicIntegerLabel(IntervallicLabel):
 
 
 class ChordLabel(IntervallicLabel):
+    """
+    Class for handling chord labels with support for transforms
+    """
 
     def __init__(self, label=None, first_chord_label=None, previous_chord_label=None):
         if type(label) == list and len(label) == 2:
@@ -282,6 +319,16 @@ class ChordLabel(IntervallicLabel):
 
 
 class ListLabel(Dyci2Label):
+    """
+    Default class for handling labels that do not support transforms.
+
+    :Example:
+        >>> label1 = ListLabel(["A"])
+        >>> label2 = ListLabel([1])
+        >>> label3 = ListLabel([0, 0, 0, 1, 0])
+        >>> label4 = ListLabel(["blue", "C", "noun", 60, 127, 1])
+
+    """
 
     def __init__(self, label: Optional[List[Any]] = None, depth: Optional[int] = None):
         super().__init__(label=label if label is not None else [None])

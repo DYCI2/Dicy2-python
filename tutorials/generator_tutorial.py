@@ -1,3 +1,13 @@
+"""
+Minimal example illustrating how to use the `Dyci2Generator` class with a `FactorOracleProspector`
+
+If not run through an IDE, make sure to run it as a module! i.e.,
+
+* Navigate to the root folder (`cd Dyci2`)
+* Run with python3 -m tutorials.generator_tutorial
+
+"""
+
 import logging
 import typing
 from typing import List, Optional, Type
@@ -11,32 +21,29 @@ from merge.main.corpus import GenericCorpus
 from merge.main.influence import LabelInfluence
 from merge.main.query import InfluenceQuery, Query
 
-"""
-Minimal example illustrating how to use the `Dyci2Generator` class with a `FactorOracleProspector`
-
-"""
-
 if __name__ == '__main__':
-    # ### CONTROL PARAMETERS ###
+
+    # ======== CONTROL PARAMETERS ========
+
     verbose: bool = False  # If verbose, print information at each step in the algorithm
     max_continuity: int = 5  # longest continuous sequence of the original text that is allowed before a jump is forced
     force_output: bool = True  # if no matches are found: output the next event (if True) or output None (if False)
 
-    # ### QUERIES: Try each query a couple of times ###
+    # ============= QUERIES ==============
 
-    # (A) Try running the script several times: the output will be different each time:
+    # (A) Try running the script several times: the output will be different each time
     search_for = ["det", "name", "verb", "conj", "conj", "verb", "adj", "name"]
 
-    # (B) Initial sequence of data below: try reducing the max continuity to enforce jumps:
+    # (B) Alternative query: Initial sequence of data below - try reducing the max continuity to enforce jumps
     # search_for = ["conj", "name", "conj", "det", "name", "det", "name", "name"]
 
-    # (C) Searching for labels that doesn't exist in the data: try turning `force_output` on and off for different results:
+    # (C) Alt. query: Searching for labels that don't exist in the data - change `force_output` for different results:
     # search_for = ["123", "blue", "hello"]
 
-    # (D) Searching for `None` is equivalent to searching for any piece of data:
+    # (D) Alt. query: Searching for `None` is equivalent to searching for any piece of data:
     # search_for = ["det", "name", "pron", None, None, "verb"]
 
-    # ### CODE ###
+    # ============ MAIN CODE =============
 
     # Data to construct the Factor Oracle from where the first value is the label and the second one the associated data
     data = [("conj", "au"),

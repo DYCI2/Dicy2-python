@@ -23,7 +23,7 @@ pyinstaller:
 notarize:
 	hdiutil create "$(DMG_PATH)" -fs HFS+ -srcfolder "${APP_PATH}" -ov
 	xcrun notarytool submit "$(DMG_PATH)" --keychain-profile "repmus" --wait
-	@echo "\033[1mNOTE: You will still have to do the final step manually once notarization has been approved:\n      xcrun stapler staple dist/dyci2_server.app\033[0m"
+	xcrun stapler staple "$(APP_PATH)"
 
 
 dmg:

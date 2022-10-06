@@ -23,7 +23,6 @@ from typing import Any
 
 from dyci2.label import ChordLabel, Dyci2Label, IntervallicIntegerLabel
 
-# from numpy import roll
 from merge.main.candidate import Candidate
 
 

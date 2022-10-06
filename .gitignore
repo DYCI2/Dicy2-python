@@ -14,12 +14,6 @@ _My*
 .DS_Store
 before*
 *.command
-Max_library/external/catart
-Max_library/external/MuBu For Max 
-Max_library/_Tutorials_/Version-App
-Max_library/Dyci2App
-Max_library/external/externals_ISMM_Ircam
-Max_library/external/catart
 
 # Pycharm
 .idea/

@@ -1,10 +1,7 @@
+#!/usr/bin/env python3
+
 """
 Minimal example illustrating how to use the `Dyci2Generator` class with a `FactorOracleProspector`
-
-If not run through an IDE, make sure to run it as a module! i.e.,
-
-* Navigate to the root folder (`cd Dyci2`)
-* Run with python3 -m tutorials.generator_tutorial
 
 """
 

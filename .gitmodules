@@ -1,0 +1,3 @@
+[submodule "repmus-generative-agents"]
+	path = repmus-generative-agents
+	url = https://github.com/DYCI2/repmus-generative-agents

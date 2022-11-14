@@ -471,12 +471,12 @@ class FactorOracleProspector(Dyci2Prospector):
         additional_indices = self.navigator.filter_using_history_and_taboos(additional_indices)
 
         if required_label is not None:
-            # if no_empty_event:
-            # Case 3.1 (simply guided): Transition to any filtered _unreachable_ candidate matching the label
-            additional_indices = self.navigator.find_matching_label_without_continuation(required_label,
-                                                                                         additional_indices)
-            if len(additional_indices) > 0:
-                selected_indices = additional_indices
+            if no_empty_event:
+                # Case 3.1 (simply guided): Transition to any filtered _unreachable_ candidate matching the label
+                additional_indices = self.navigator.find_matching_label_without_continuation(required_label,
+                                                                                             additional_indices)
+                if len(additional_indices) > 0:
+                    selected_indices = additional_indices
         else:
             # Case 3.2: Transition to any filtered _unreachable_ candidate (if free navigation, i.e. no label)
             additional_indices = self.navigator.follow_continuation_with_jump(additional_indices,

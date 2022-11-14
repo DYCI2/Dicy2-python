@@ -53,7 +53,7 @@ The examples outlined under [Running the DYCI2 Python Library](#Running-the-DYCI
 * The `GenerationScheduler` class (`dyci2/generation_scheduler.py`) is a good starting point for generating content with time management in real-time 
 * The `Agent` (`dyci2/agent.py`) and `DYCI2Server` (`dyci2_server.py`) are good starting points for managing one or several `GenerationSchedulers` over the OSC protocol
 
-For a specification on the OSC protocol used in the DYCI2 Python Library, see `docs/osc_protocol.txt`. Its usage is also thoroughly documentented in the header of the `dyci2_server.py` file.
+For a specification on the OSC protocol used in the DYCI2 Python Library, see `docs/osc_protocol.md`. Its usage is also thoroughly documentented in the header of the `dyci2_server.py` file.
 
 ## Building the DYCI2 Server Application
 While this use case is unlikely to be relevant for most users, it is possible to build a standalone application of the `dyci2_server.py` from the Python code using [PyInstaller](https://pyinstaller.org/en/stable/). A pre-built application is already distributed in the release of the [DYCI2 Max Library](https://github.com/DYCI2/Dyci2Lib/releases). 

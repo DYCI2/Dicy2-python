@@ -16,7 +16,7 @@ usage: ./dyci2_server.py [-h] [--recvport RECV_PORT] [--sendport OUT_PORT] [--ip
     --ip IP               ip address of the max client
 
 
-The full protocol for communication can be found in `docs/osc_protocol.txt`, but the inbound protocol can
+The full protocol for communication can be found in `docs/osc_protocol.md`, but the inbound protocol can
 fairly easily be understood through reading this file directly. Any function can be called directly over
 OSC through the :class:`~merge.io.AsyncOsc` class. The OSC syntax for calling a function is
 

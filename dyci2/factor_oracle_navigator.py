@@ -27,7 +27,7 @@ class FactorOracleNavigator(Navigator[T]):
 
     def __init__(self,
                  equiv: Optional[Equiv] = BasicEquiv(),
-                 max_continuity: int = 20,
+                 max_continuity: int = 1000,
                  control_parameters=(),
                  execution_trace_parameters=(),
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0)):

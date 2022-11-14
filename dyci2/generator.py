@@ -35,7 +35,7 @@ class Dyci2Generator(Generator, Parametric):
                  prospector: Dyci2Prospector,
                  jury_type: Type[CandidateSelector] = TempCandidateSelector,
                  authorized_transforms: List[int] = (0,),
-                 force_output: bool = True):
+                 force_output: bool = False):
         self.logger = logging.getLogger(__name__)
 
         self.prospector: Dyci2Prospector = prospector
@@ -212,7 +212,7 @@ class Dyci2Generator(Generator, Parametric):
                                     forward_context_length_min=forward_context_length_min,
                                     print_info=print_info,
                                     index_in_generation_cycle=i + shift_index,
-                                    no_empty_event=self.force_output.value)
+                                    no_empty_event=True)
             candidates: Candidates = self.prospector.pop_candidates()
 
             if break_when_none and candidates.size() == 0:

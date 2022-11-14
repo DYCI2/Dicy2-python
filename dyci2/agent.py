@@ -60,7 +60,7 @@ class Agent(Caller, multiprocessing.Process):
                  label_type: Type[Dyci2Label] = ListLabel,
                  log_to_osc: bool = True,
                  reraise_exceptions: bool = False,
-                 defer_queries: bool = False):
+                 defer_queries: bool = True):
         Caller.__init__(self, parse_parenthesis_as_list=False, discard_duplicate_args=False)
         multiprocessing.Process.__init__(self)
         self.logger = logging.getLogger(__name__)

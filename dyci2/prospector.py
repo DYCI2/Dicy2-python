@@ -275,7 +275,7 @@ class FactorOracleProspector(Dyci2Prospector):
     def __init__(self,
                  corpus: Optional[Corpus],
                  label_type: Type[Dyci2Label],
-                 max_continuity=20,
+                 max_continuity: int=1000,
                  control_parameters=(),
                  history_parameters=(),
                  equiv: Equiv = BasicEquiv(),

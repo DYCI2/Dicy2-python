@@ -7,10 +7,10 @@ A set of classes for formatting certain queries and generation output in a Max-c
 """
 
 import typing
-from typing import List, Optional, Tuple, Any, Type
+from typing import List, Optional, Tuple, Any, Type, Union
 
 from dyci2.corpus_event import Dyci2CorpusEvent
-from dyci2.label import Dyci2Label, ListLabel
+from dyci2.label import Dyci2Label, ListLabel, IntervallicIntegerLabel, ChordLabel
 from gig.main.candidate import Candidate
 from gig.main.corpus import Corpus
 from gig.main.exceptions import StateError, QueryError
@@ -38,9 +38,6 @@ class FormattingUtils:
             raise ValueError(f"Cannot format class '{candidate.__class__.__name__}'")
 
         return output_str
-
-
-
 
     @staticmethod
     def _format_output(candidates: List[Optional[Candidate]]) -> List[Tuple[str, int]]:
@@ -137,8 +134,31 @@ class MemoryFormatter:
                 except IndexError:
                     raise QueryError(f"Index {start} is out of range (valid range is 0, {len(memory.events) - 1})")
 
+        elif keyword.lower() == "labels":
+            return [keyword, *MemoryFormatter._get_labels(memory)]
+
+        elif keyword.lower() == "availablelabels":
+            return [keyword, *sorted(list(set(MemoryFormatter._get_labels(memory))))]
+
         else:
             raise QueryError(f"Invalid keyword '{keyword}'. Valid keywords are: 'len', 'range', 'mth'")
+
+    @staticmethod
+    def _get_labels(memory: Corpus) -> List[Union[str, int]]:
+        labels: List[Union[str, int]] = []
+        for event in memory.events:  # type: Dyci2CorpusEvent
+            if len(event.labels) != 1:
+                raise QueryError("Cannot get label from multilabel corpus")
+
+            label: Dyci2Label = typing.cast(Dyci2Label, list(event.labels.values())[0])
+            if isinstance(label, IntervallicIntegerLabel):
+                labels.append(label.label)  # int
+            elif isinstance(label, ChordLabel):
+                labels.append(label.label)  # str
+            elif isinstance(label, ListLabel):
+                labels.append(" ".join([str(e) for e in label.label]))
+
+        return labels
 
 
 def none_is_infinite(value):

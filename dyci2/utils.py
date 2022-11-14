@@ -11,9 +11,9 @@ from typing import List, Optional, Tuple, Any, Type
 
 from dyci2.corpus_event import Dyci2CorpusEvent
 from dyci2.label import Dyci2Label, ListLabel
-from merge.main.candidate import Candidate
-from merge.main.corpus import Corpus
-from merge.main.exceptions import StateError, QueryError
+from gig.main.candidate import Candidate
+from gig.main.corpus import Corpus
+from gig.main.exceptions import StateError, QueryError
 
 
 class FormattingUtils:

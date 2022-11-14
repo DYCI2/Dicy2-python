@@ -5,7 +5,7 @@ from dyci2.equiv import Equiv, BasicEquiv
 from dyci2.label import Dyci2Label
 from dyci2.model import Model
 from dyci2.transforms import Transform
-from merge.main.candidate import Candidate
+from gig.main.candidate import Candidate
 
 T = TypeVar('T')
 

@@ -26,8 +26,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from typing import Type, List, Any, Optional, Dict, Tuple
 
-from merge.main.exceptions import LabelError
-from merge.main.label import Label
+from gig.main.exceptions import LabelError
+from gig.main.label import Label
 
 
 class Dyci2Label(Label, ABC):

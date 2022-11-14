@@ -1,14 +1,14 @@
 from collections.abc import Iterable
 from typing import TypeVar, Any
 
-from merge.main.corpus_event import GenericCorpusEvent
-from merge.main.label import Label
+from gig.main.corpus_event import GenericCorpusEvent
+from gig.main.label import Label
 
 T = TypeVar('T')
 
 
 class Dyci2CorpusEvent(GenericCorpusEvent[T]):
-    """ Extension of the :class:`~merge.GenericCorpusEvent` intended as the memory of the :class:`~merge.Corpus`,
+    """ Extension of the :class:`~gig.GenericCorpusEvent` intended as the memory of the :class:`~gig.Corpus`,
     with the addition of a function for rendering its data over OSC """
     def __init__(self, data: T, index: int, label: Label):
         super().__init__(data=data, index=index, descriptors=None, labels={type(label): label})

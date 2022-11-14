@@ -3,8 +3,8 @@ import logging
 from typing import List, Optional, Tuple
 
 from dyci2.corpus_event import Dyci2CorpusEvent
-from merge.main.candidate import Candidate
-from merge.main.exceptions import StateError
+from gig.main.candidate import Candidate
+from gig.main.exceptions import StateError
 
 
 class GenerationHistory:

@@ -13,10 +13,10 @@ from dyci2.corpus_event import Dyci2CorpusEvent
 from dyci2.generator import Dyci2Generator
 from dyci2.label import Dyci2Label, ListLabel
 from dyci2.prospector import FactorOracleProspector
-from merge.main.candidate import Candidate
-from merge.main.corpus import GenericCorpus
-from merge.main.influence import LabelInfluence
-from merge.main.query import InfluenceQuery, Query
+from gig.main.candidate import Candidate
+from gig.main.corpus import GenericCorpus
+from gig.main.influence import LabelInfluence
+from gig.main.query import InfluenceQuery, Query
 
 if __name__ == '__main__':
 

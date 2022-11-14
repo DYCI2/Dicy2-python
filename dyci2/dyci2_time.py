@@ -1,6 +1,6 @@
 from enum import Enum
 
-from merge.stubs.timepoint import Timepoint
+from gig.stubs.timepoint import Timepoint
 
 """ 
 DYCI2 Time

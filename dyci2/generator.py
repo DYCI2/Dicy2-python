@@ -5,15 +5,15 @@ from dyci2.candidate_selector import TempCandidateSelector, DefaultFallbackSelec
 from dyci2.parameter import Parametric, Parameter, NominalRange
 from dyci2.prospector import Dyci2Prospector
 from dyci2.transforms import Transform, NoTransform
-from merge.main.candidate import Candidate
-from merge.main.candidates import Candidates, ListCandidates
-from merge.main.corpus import Corpus
-from merge.main.corpus_event import CorpusEvent
-from merge.main.generator import Generator
-from merge.main.influence import NoInfluence, Influence
-from merge.main.candidateselector import CandidateSelector
-from merge.main.query import Query
-from merge.main.query import TriggerQuery, InfluenceQuery
+from gig.main.candidate import Candidate
+from gig.main.candidates import Candidates, ListCandidates
+from gig.main.corpus import Corpus
+from gig.main.corpus_event import CorpusEvent
+from gig.main.generator import Generator
+from gig.main.influence import NoInfluence, Influence
+from gig.main.candidateselector import CandidateSelector
+from gig.main.query import Query
+from gig.main.query import TriggerQuery, InfluenceQuery
 
 
 class Dyci2Generator(Generator, Parametric):

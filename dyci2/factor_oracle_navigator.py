@@ -10,7 +10,7 @@ from dyci2.navigator import Navigator
 from dyci2.parameter import Parameter, OrdinalRange
 from dyci2.prefix_indexing import PrefixIndexing
 from dyci2.utils import none_is_infinite
-from merge.main.candidate import Candidate
+from gig.main.candidate import Candidate
 
 T = TypeVar('T')
 

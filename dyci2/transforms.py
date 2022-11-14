@@ -19,7 +19,7 @@ from typing import Any
 
 from dyci2.label import ChordLabel, Dyci2Label, IntervallicIntegerLabel
 
-from merge.main.candidate import Candidate
+from gig.main.candidate import Candidate
 
 
 class Transform(ABC):

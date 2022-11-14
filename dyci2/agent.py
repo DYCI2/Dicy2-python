@@ -37,14 +37,14 @@ from dyci2.parameter import Parameter
 from dyci2.prospector import Dyci2Prospector, FactorOracleProspector
 from dyci2.protocol import OscSendProtocol, Signal
 from dyci2.utils import FormattingUtils, GenerationTraceFormatter, MemoryFormatter
-from merge.io.async_osc import AsyncOsc
-from merge.io.osc_sender import OscSender, OscLogForwarder
-from merge.main.candidate import Candidate
-from merge.main.corpus import GenericCorpus, Corpus
-from merge.main.exceptions import StateError, LabelError, QueryError, TimepointError
-from merge.main.influence import Influence
-from merge.main.query import Query, TriggerQuery, InfluenceQuery
-from merge.stubs.rendering import Renderable
+from gig.io.async_osc import AsyncOsc
+from gig.io.osc_sender import OscSender, OscLogForwarder
+from gig.main.candidate import Candidate
+from gig.main.corpus import GenericCorpus, Corpus
+from gig.main.exceptions import StateError, LabelError, QueryError, TimepointError
+from gig.main.influence import Influence
+from gig.main.query import Query, TriggerQuery, InfluenceQuery
+from gig.stubs.rendering import Renderable
 
 
 class Agent(Caller, multiprocessing.Process):

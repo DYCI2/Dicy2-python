@@ -31,14 +31,14 @@ from dyci2.model import Model
 from dyci2.navigator import Navigator
 from dyci2.parameter import Parametric
 from dyci2.transforms import Transform, TransposeTransform
-from merge.main.candidate import Candidate
-from merge.main.candidates import Candidates, ListCandidates
-from merge.main.corpus import Corpus
-from merge.main.corpus_event import CorpusEvent
-from merge.main.exceptions import QueryError, StateError
-from merge.main.influence import Influence, LabelInfluence, NoInfluence
-from merge.main.label import Label
-from merge.main.prospector import Prospector
+from gig.main.candidate import Candidate
+from gig.main.candidates import Candidates, ListCandidates
+from gig.main.corpus import Corpus
+from gig.main.corpus_event import CorpusEvent
+from gig.main.exceptions import QueryError, StateError
+from gig.main.influence import Influence, LabelInfluence, NoInfluence
+from gig.main.label import Label
+from gig.main.prospector import Prospector
 
 
 class Dyci2Prospector(Prospector, Parametric, ABC):
@@ -471,12 +471,12 @@ class FactorOracleProspector(Dyci2Prospector):
         additional_indices = self.navigator.filter_using_history_and_taboos(additional_indices)
 
         if required_label is not None:
-            if no_empty_event:
-                # Case 3.1 (simply guided): Transition to any filtered _unreachable_ candidate matching the label
-                additional_indices = self.navigator.find_matching_label_without_continuation(required_label,
-                                                                                             additional_indices)
-                if len(additional_indices) > 0:
-                    selected_indices = additional_indices
+            # if no_empty_event:
+            # Case 3.1 (simply guided): Transition to any filtered _unreachable_ candidate matching the label
+            additional_indices = self.navigator.find_matching_label_without_continuation(required_label,
+                                                                                         additional_indices)
+            if len(additional_indices) > 0:
+                selected_indices = additional_indices
         else:
             # Case 3.2: Transition to any filtered _unreachable_ candidate (if free navigation, i.e. no label)
             additional_indices = self.navigator.follow_continuation_with_jump(additional_indices,

@@ -5,9 +5,9 @@ from dyci2.dyci2_time import Dyci2Timepoint
 from dyci2.generation_scheduler import Dyci2GenerationScheduler
 from dyci2.label import ListLabel
 from dyci2.prospector import FactorOracleProspector
-from merge.main.corpus import GenericCorpus
-from merge.main.influence import Influence
-from merge.main.query import InfluenceQuery
+from gig.main.corpus import GenericCorpus
+from gig.main.influence import Influence
+from gig.main.query import InfluenceQuery
 
 if __name__ == '__main__':
 

@@ -27,13 +27,13 @@ from dyci2.generation_history import GenerationHistory
 from dyci2.generator import Dyci2Generator
 from dyci2.parameter import Parametric
 from dyci2.prospector import Dyci2Prospector
-from merge.main.candidate import Candidate
-from merge.main.candidateselector import CandidateSelector
-from merge.main.corpus import Corpus
-from merge.main.corpus_event import CorpusEvent
-from merge.main.exceptions import TimepointError, QueryError, StateError
-from merge.main.generation_scheduler import GenerationScheduler
-from merge.main.query import Query
+from gig.main.candidate import Candidate
+from gig.main.candidateselector import CandidateSelector
+from gig.main.corpus import Corpus
+from gig.main.corpus_event import CorpusEvent
+from gig.main.exceptions import TimepointError, QueryError, StateError
+from gig.main.generation_scheduler import GenerationScheduler
+from gig.main.query import Query
 
 
 # TODO : SUPPRIMER DANS LA DOC LES FONCTIONS "EQUIV-MOD..." "SEQUENCE TO INTERVAL..."

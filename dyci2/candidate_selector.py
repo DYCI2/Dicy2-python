@@ -4,10 +4,10 @@ import warnings
 from abc import ABC
 from typing import List, Optional
 
-from merge.main.candidate import Candidate
-from merge.main.candidates import Candidates
-from merge.main.corpus_event import CorpusEvent
-from merge.main.candidateselector import CandidateSelector
+from gig.main.candidate import Candidate
+from gig.main.candidates import Candidates
+from gig.main.corpus_event import CorpusEvent
+from gig.main.candidateselector import CandidateSelector
 from dyci2.parameter import Parametric
 
 """ 

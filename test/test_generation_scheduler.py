@@ -11,11 +11,11 @@ from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
 from dyci2.prospector import FactorOracleProspector
 from dyci2.generation_scheduler import Dyci2GenerationScheduler
 from dyci2.transforms import Transform
-from merge.main.candidate import Candidate
-from merge.main.corpus import GenericCorpus
-from merge.main.corpus_event import GenericCorpusEvent, CorpusEvent
-from merge.main.influence import LabelInfluence
-from merge.main.query import InfluenceQuery, TriggerQuery, Query
+from gig.main.candidate import Candidate
+from gig.main.corpus import GenericCorpus
+from gig.main.corpus_event import GenericCorpusEvent, CorpusEvent
+from gig.main.influence import LabelInfluence
+from gig.main.query import InfluenceQuery, TriggerQuery, Query
 
 
 def chord_format(lst: List[Tuple[Dyci2CorpusEvent, int]]):

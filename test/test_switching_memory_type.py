@@ -2,7 +2,7 @@ from dyci2.corpus_event import Dyci2CorpusEvent
 from dyci2.generation_scheduler import Dyci2GenerationScheduler
 from dyci2.label import ListLabel, ChordLabel
 from dyci2.prospector import Dyci2Prospector, FactorOracleProspector
-from merge.main.corpus import GenericCorpus
+from gig.main.corpus import GenericCorpus
 
 if __name__ == '__main__':
     corpus: GenericCorpus = GenericCorpus([Dyci2CorpusEvent(i + 100, i, label=ListLabel.parse(str(i))) for i in range(10)], label_types=[ListLabel])

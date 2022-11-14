@@ -18,7 +18,7 @@ usage: ./dyci2_server.py [-h] [--recvport RECV_PORT] [--sendport OUT_PORT] [--ip
 
 The full protocol for communication can be found in `docs/osc_protocol.md`, but the inbound protocol can
 fairly easily be understood through reading this file directly. Any function can be called directly over
-OSC through the :class:`~merge.io.AsyncOsc` class. The OSC syntax for calling a function is
+OSC through the :class:`~gig.io.AsyncOsc` class. The OSC syntax for calling a function is
 
 ```
 /server <function_name> [<positional_argname1>=] arg1 [<positional_argname2>=] arg2 <...> [<kwargname1>=] kwarg1 ..
@@ -75,8 +75,8 @@ from typing import Dict, Optional, Type, Tuple
 from dyci2.agent import Agent
 from dyci2.label import Dyci2Label, ListLabel
 from dyci2.protocol import OscSendProtocol, Signal
-from merge.io.async_osc import AsyncOsc
-from merge.main.exceptions import LabelError
+from gig.io.async_osc import AsyncOsc
+from gig.main.exceptions import LabelError
 
 
 class Dyci2Server(AsyncOsc):

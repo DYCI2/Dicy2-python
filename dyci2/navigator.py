@@ -23,7 +23,7 @@ from typing import List, Optional, Generic, TypeVar, Type
 from dyci2.equiv import Equiv
 from dyci2.label import Dyci2Label
 from dyci2.parameter import Parametric
-from merge.main.candidate import Candidate
+from gig.main.candidate import Candidate
 
 T = TypeVar('T')
 

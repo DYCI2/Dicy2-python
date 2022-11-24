@@ -18,6 +18,7 @@ class OscSendProtocol:
 
     SERVER_RECEIVED_QUERY = "server_received_query"
     QUERY_RESULT = "query_result"
+    QUERY_RESULT_ITERATIVE = "query_result_iterative"
     PERFORMANCE_TIME = "performance_time"
     CLEAR = "clear"
     EVENT_LEARNED = "new_event_learned"

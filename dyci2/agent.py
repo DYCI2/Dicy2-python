@@ -60,7 +60,8 @@ class Agent(Caller, multiprocessing.Process):
                  label_type: Type[Dyci2Label] = ListLabel,
                  log_to_osc: bool = True,
                  reraise_exceptions: bool = False,
-                 defer_queries: bool = True):
+                 defer_queries: bool = True,
+                 iterative_output: bool = True):
         Caller.__init__(self, parse_parenthesis_as_list=False, discard_duplicate_args=False)
         multiprocessing.Process.__init__(self)
         self.logger = logging.getLogger(__name__)
@@ -71,6 +72,7 @@ class Agent(Caller, multiprocessing.Process):
         self.reraise_exceptions: bool = reraise_exceptions
         self.log_to_osc: bool = log_to_osc
         self.defer_queries: bool = defer_queries
+        self.iterative_output: bool = iterative_output
 
         # Not initialized here to avoid pickling issues on Process.start()
         self.osc_log_handler: Optional[OscLogForwarder] = None
@@ -95,7 +97,7 @@ class Agent(Caller, multiprocessing.Process):
 
     def _main_loop(self):
         AsyncOsc.default_log_config()
-        self.set_log_level(logging.DEBUG)
+        self.set_log_level(logging.INFO)
 
         if self.log_to_osc:
             self.osc_log_handler = OscLogForwarder(self._sender, self.osc_address)
@@ -248,11 +250,19 @@ class Agent(Caller, multiprocessing.Process):
         print_info = FormattingUtils.format_output(output_sequence, output_transforms=output_transforms)
         self.logger.debug(f"Output of the run of {name}: {print_info}")
 
-        # TODO: Add support for transforms
-        message: List[Any] = [str(name), abs_start_date, "absolute", len(output_sequence),
-                              FormattingUtils.format_output(output_sequence, output_transforms=output_transforms)]
+        if self.iterative_output:
+            num_events: int = len(output_sequence)
+            for i, e in enumerate(FormattingUtils.format_output(output_sequence, output_transforms=output_transforms)):
+                self.send(OscSendProtocol.QUERY_RESULT_ITERATIVE, str(name), i + 1, num_events, e)
 
-        self.send(OscSendProtocol.QUERY_RESULT, *message)
+        else:
+            message: List[Any] = [str(name), abs_start_date, "absolute", len(output_sequence),
+                                  FormattingUtils.format_output(output_sequence, output_transforms=output_transforms)]
+
+            self.send(OscSendProtocol.QUERY_RESULT, *message)
+
+
+
 
     def set_performance_time(self, new_time: int) -> None:
         if (isinstance(new_time, int) or isinstance(new_time, float)) and new_time >= 0:
@@ -391,6 +401,14 @@ class Agent(Caller, multiprocessing.Process):
 
         self.defer_queries = defer
         self.logger.info(f"Defer set to {self.defer_queries}")
+
+    def set_iterative_output(self, iterative_output: bool) -> None:
+        if not isinstance(iterative_output, bool):
+            self.logger.error(f"iterative_output must be a boolean (actual: {type(iterative_output)})")
+            return
+
+        self.iterative_output = iterative_output
+        self.logger.info(f"Iterative output set to {self.iterative_output}")
 
     ################################################################################################################
     # QUERY STATE

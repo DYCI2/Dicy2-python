@@ -9,8 +9,8 @@ A set of classes for formatting certain queries and generation output in a Max-c
 import typing
 from typing import List, Optional, Tuple, Any, Type, Union
 
-from dyci2.corpus_event import Dyci2CorpusEvent
-from dyci2.label import Dyci2Label, ListLabel, IntervallicIntegerLabel, ChordLabel
+from dicy2.corpus_event import Dicy2CorpusEvent
+from dicy2.label import Dicy2Label, ListLabel, IntervallicIntegerLabel, ChordLabel
 from gig.main.candidate import Candidate
 from gig.main.corpus import Corpus
 from gig.main.exceptions import StateError, QueryError
@@ -30,7 +30,7 @@ class FormattingUtils:
             if output_transforms:
                 output_str = output_str + " " + "0"
 
-        elif isinstance(candidate.event, Dyci2CorpusEvent):
+        elif isinstance(candidate.event, Dicy2CorpusEvent):
             output_str = candidate.event.renderer_info()
             if output_transforms:
                 output_str = str(output_str) + " " + str(candidate.transform.renderer_info())
@@ -45,7 +45,7 @@ class FormattingUtils:
         for candidate in candidates:
             if candidate is not None:
                 # TODO: Migrate this behaviour to the Renderable interface
-                if isinstance(candidate.event, Dyci2CorpusEvent):
+                if isinstance(candidate.event, Dicy2CorpusEvent):
                     output.append((candidate.event.renderer_info(), candidate.transform.renderer_info()))
                 else:
                     raise StateError(f"Invalid event of type {type(candidate)} encountered")
@@ -55,7 +55,7 @@ class FormattingUtils:
         return output
 
     @staticmethod
-    def uses_transforms(label_type: Type[Dyci2Label]) -> bool:
+    def uses_transforms(label_type: Type[Dicy2Label]) -> bool:
         return not issubclass(label_type, ListLabel)
 
 
@@ -105,11 +105,11 @@ class MemoryFormatter:
               end: Optional[int]) -> List[Any]:
         """ raises: QueryError if query is invalid """
         # TODO: A lot of lazy code duplication from GenerationTraceFormatter
-        if not all(isinstance(event, Dyci2CorpusEvent) for event in memory.events):
+        if not all(isinstance(event, Dicy2CorpusEvent) for event in memory.events):
             raise QueryError("Memory contains invalid event")
 
         if not keyword or keyword.lower() == "bang":
-            return [typing.cast(Dyci2CorpusEvent, event).renderer_info() for event in memory.events]
+            return [typing.cast(Dicy2CorpusEvent, event).renderer_info() for event in memory.events]
 
         elif keyword.lower() == "len" or keyword.lower() == "length":
             return [keyword, len(memory)]
@@ -120,7 +120,7 @@ class MemoryFormatter:
                 raise QueryError(f"Invalid start index ({start}) for keyword '{keyword}': expected integer or 'None'")
             if end is not None and not isinstance(start, int):
                 raise QueryError(f"Invalid end index ({start}) for keyword '{keyword}': expected integer or 'None'")
-            return [keyword] + [typing.cast(Dyci2CorpusEvent, event).renderer_info()
+            return [keyword] + [typing.cast(Dicy2CorpusEvent, event).renderer_info()
                                 for event in memory.events[start:end]]
 
         elif keyword.lower() == "mth":
@@ -130,7 +130,7 @@ class MemoryFormatter:
                 raise QueryError(f"Invalid argument for keyword '{keyword}': expected integer (actual: {type(start)})")
             else:
                 try:
-                    return [keyword, typing.cast(Dyci2CorpusEvent, memory.events[start]).renderer_info()]
+                    return [keyword, typing.cast(Dicy2CorpusEvent, memory.events[start]).renderer_info()]
                 except IndexError:
                     raise QueryError(f"Index {start} is out of range (valid range is 0, {len(memory.events) - 1})")
 
@@ -146,11 +146,11 @@ class MemoryFormatter:
     @staticmethod
     def _get_labels(memory: Corpus) -> List[Union[str, int]]:
         labels: List[Union[str, int]] = []
-        for event in memory.events:  # type: Dyci2CorpusEvent
+        for event in memory.events:  # type: Dicy2CorpusEvent
             if len(event.labels) != 1:
                 raise QueryError("Cannot get label from multilabel corpus")
 
-            label: Dyci2Label = typing.cast(Dyci2Label, list(event.labels.values())[0])
+            label: Dicy2Label = typing.cast(Dicy2Label, list(event.labels.values())[0])
             if isinstance(label, IntervallicIntegerLabel):
                 labels.append(label.label)  # int
             elif isinstance(label, ChordLabel):

@@ -8,10 +8,10 @@ from gig.main.candidate import Candidate
 from gig.main.candidates import Candidates
 from gig.main.corpus_event import CorpusEvent
 from gig.main.candidateselector import CandidateSelector
-from dyci2.parameter import Parametric
+from dicy2.parameter import Parametric
 
 """ 
-Dyci2CandidateSelector
+Dicy2CandidateSelector
 ===================
 
 These classes were designed to implement different strategies for selecting the output at each step in the generation. 
@@ -20,11 +20,11 @@ will always be 1 at most.
 
 """
 
-class Dyci2CandidateSelector(CandidateSelector, Parametric, ABC):
+class Dicy2CandidateSelector(CandidateSelector, Parametric, ABC):
         pass
 
 
-class TempCandidateSelector(Dyci2CandidateSelector):
+class TempCandidateSelector(Dicy2CandidateSelector):
     def decide(self, candidates: Candidates) -> Optional[Candidate]:
         if candidates.size() == 0:
             return None
@@ -38,7 +38,7 @@ class TempCandidateSelector(Dyci2CandidateSelector):
         pass
 
 
-class DefaultFallbackSelector(Dyci2CandidateSelector):
+class DefaultFallbackSelector(Dicy2CandidateSelector):
     def __init__(self):
         # TODO: Need to handle execution/generation trace properly here
         self.logger = logging.getLogger(__name__)

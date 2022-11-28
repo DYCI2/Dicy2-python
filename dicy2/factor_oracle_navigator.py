@@ -3,13 +3,13 @@ import logging
 import random
 from typing import List, Optional, Callable, Dict, Tuple, TypeVar, Any, Type
 
-from dyci2.equiv import BasicEquiv, Equiv
-from dyci2.intervals import Intervals
-from dyci2.label import Dyci2Label
-from dyci2.navigator import Navigator
-from dyci2.parameter import Parameter, OrdinalRange
-from dyci2.prefix_indexing import PrefixIndexing
-from dyci2.utils import none_is_infinite
+from dicy2.equiv import BasicEquiv, Equiv
+from dicy2.intervals import Intervals
+from dicy2.label import Dicy2Label
+from dicy2.navigator import Navigator
+from dicy2.parameter import Parameter, OrdinalRange
+from dicy2.prefix_indexing import PrefixIndexing
+from dicy2.utils import none_is_infinite
 from gig.main.candidate import Candidate
 
 T = TypeVar('T')
@@ -33,7 +33,7 @@ class FactorOracleNavigator(Navigator[T]):
                  continuity_with_future: Tuple[float, float] = (0.0, 1.0)):
         self.logger = logging.getLogger(__name__)
         self.sequence: List[Optional[T]] = [None]  # initial state
-        self.labels: List[Optional[Dyci2Label]] = [None]  # initial state
+        self.labels: List[Optional[Dicy2Label]] = [None]  # initial state
         self.equiv: Equiv = equiv
         self.max_continuity: Parameter[int] = Parameter(max_continuity, OrdinalRange(0, None))
         self.avoid_repetitions_mode: Parameter[int] = Parameter(0)
@@ -75,7 +75,7 @@ class FactorOracleNavigator(Navigator[T]):
 
     def learn_sequence(self,
                        sequence: List[Optional[T]],
-                       labels: List[Optional[Dyci2Label]],
+                       labels: List[Optional[Dicy2Label]],
                        equiv: Optional[Equiv] = None) -> None:
         """ Learns (appends) a new sequence in the model. """
         if equiv is None:
@@ -86,7 +86,7 @@ class FactorOracleNavigator(Navigator[T]):
 
     def learn_event(self,
                     event: Optional[T],
-                    label: Optional[Dyci2Label],
+                    label: Optional[Dicy2Label],
                     equiv: Optional[Equiv] = None) -> None:
         """ Learns (appends) a single event in the model. """
         self.sequence.append(event)
@@ -111,10 +111,10 @@ class FactorOracleNavigator(Navigator[T]):
         self.current_position_in_sequence = -1
         self.current_navigation_index = -1
 
-    def reset_memory(self, label_type: Type[Dyci2Label] = Dyci2Label) -> None:
+    def reset_memory(self, label_type: Type[Dicy2Label] = Dicy2Label) -> None:
         """ Resets the memory and the internal state of the FactorOracleNavigator """
         self.sequence: List[Optional[T]] = [None]  # initial state
-        self.labels: List[Optional[Dyci2Label]] = [None]  # initial state
+        self.labels: List[Optional[Dicy2Label]] = [None]  # initial state
         self.clear()
 
     def feedback(self, output_event: Optional[Candidate]) -> None:
@@ -165,8 +165,8 @@ class FactorOracleNavigator(Navigator[T]):
 
     def find_prefix_matching_with_labels(self,
                                          use_intervals: bool,
-                                         memory_labels: List[Optional[Dyci2Label]],
-                                         labels_to_match: List[Dyci2Label],
+                                         memory_labels: List[Optional[Dicy2Label]],
+                                         labels_to_match: List[Dicy2Label],
                                          authorized_indices: List[int],
                                          authorized_transformations: List[int],
                                          sequence_to_interval_fun: Optional[Callable],
@@ -200,7 +200,7 @@ class FactorOracleNavigator(Navigator[T]):
 
     def follow_continuation_using_transition(self,
                                              authorized_indices: List[int],
-                                             direct_transitions: Dict[int, Tuple[Dyci2Label, int]]) -> List[int]:
+                                             direct_transitions: Dict[int, Tuple[Dicy2Label, int]]) -> List[int]:
         """
         Continuation using direct transition from self.current_position_in_sequence.
 
@@ -211,7 +211,7 @@ class FactorOracleNavigator(Navigator[T]):
 
         """
 
-        direct_transition: Optional[Tuple[Dyci2Label, int]] = direct_transitions.get(self.current_position_in_sequence)
+        direct_transition: Optional[Tuple[Dicy2Label, int]] = direct_transitions.get(self.current_position_in_sequence)
 
         if direct_transition is not None and self.current_continuity < self.max_continuity.get():
             # TODO: Assign a value to a match instead of returning it directly
@@ -220,7 +220,7 @@ class FactorOracleNavigator(Navigator[T]):
 
     def continuations_with_jump(self,
                                 authorized_indices: List[int],
-                                direct_transitions: Dict[int, Tuple[Dyci2Label, int]]) -> List[int]:
+                                direct_transitions: Dict[int, Tuple[Dicy2Label, int]]) -> List[int]:
 
         """
         List of continuations with jumps to indexes with similar contexts direct transition from
@@ -232,7 +232,7 @@ class FactorOracleNavigator(Navigator[T]):
         **matching the required label** filtered to satisfy the constraints of taboos and repetitions.
 
         """
-        direct_transition: Optional[Tuple[Dyci2Label, int]] = direct_transitions.get(self.current_position_in_sequence)
+        direct_transition: Optional[Tuple[Dicy2Label, int]] = direct_transitions.get(self.current_position_in_sequence)
 
         if direct_transition:
             authorized_indices = [i for i in authorized_indices if i != direct_transition[1]]
@@ -252,7 +252,7 @@ class FactorOracleNavigator(Navigator[T]):
 
     def follow_continuation_with_jump(self,
                                       authorized_indices: List[int],
-                                      direct_transitions: Dict[int, Tuple[Dyci2Label, int]]) -> List[int]:
+                                      direct_transitions: Dict[int, Tuple[Dicy2Label, int]]) -> List[int]:
 
         """
         Random selection of a continuation with jump to indexes with similar contexts direct transition from
@@ -272,7 +272,7 @@ class FactorOracleNavigator(Navigator[T]):
         return []
 
     def find_matching_label_without_continuation(self,
-                                                 required_label: Dyci2Label,
+                                                 required_label: Dicy2Label,
                                                  authorized_indices: List[int],
                                                  equiv: Optional[Equiv] = None) -> List[int]:
 

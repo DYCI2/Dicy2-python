@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from dyci2.label import Dyci2Label
+from dicy2.label import Dicy2Label
 
 """ 
 EQUIV
@@ -15,11 +15,11 @@ class Equiv(ABC):
 
     @staticmethod
     @abstractmethod
-    def eq(a: Dyci2Label, b: Dyci2Label) -> bool:
+    def eq(a: Dicy2Label, b: Dicy2Label) -> bool:
         """ TODO: Docstring """
 
 
 class BasicEquiv(Equiv):
     @staticmethod
-    def eq(a: Dyci2Label, b: Dyci2Label) -> bool:
+    def eq(a: Dicy2Label, b: Dicy2Label) -> bool:
         return a == b

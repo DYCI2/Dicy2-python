@@ -30,9 +30,9 @@ from gig.main.exceptions import LabelError
 from gig.main.label import Label
 
 
-class Dyci2Label(Label, ABC):
+class Dicy2Label(Label, ABC):
     """
-    Abstract base class for the labels used in DYCI2. Can be extended to implement new behaviours
+    Abstract base class for the labels used in DICY2. Can be extended to implement new behaviours
     """
 
     def __repr__(self):
@@ -50,21 +50,21 @@ class Dyci2Label(Label, ABC):
 
     @classmethod
     @abstractmethod
-    def sequence_from_list(cls, init_list: List[str], **kwargs) -> List['Dyci2Label']:
+    def sequence_from_list(cls, init_list: List[str], **kwargs) -> List['Dicy2Label']:
         """
-        Parse a list of strings into a list of :class:`~label.Dyci2Label`.
+        Parse a list of strings into a list of :class:`~label.Dicy2Label`.
         Implementing this function is mandatory
         """
 
     @classmethod
     @abstractmethod
-    def parse(cls, raw_data: Any) -> 'Dyci2Label':
+    def parse(cls, raw_data: Any) -> 'Dicy2Label':
         """
-        Parse a single piece of data into a single :class:`~label.Dyci2Label`
+        Parse a single piece of data into a single :class:`~label.Dicy2Label`
         """
 
     @classmethod
-    def type_from_string(cls, s: str) -> Type['Dyci2Label']:
+    def type_from_string(cls, s: str) -> Type['Dicy2Label']:
         """ raises: LabelError if string doesn't match a type """
         if s.lower() == "listlabel" or s.lower() == "list":
             return ListLabel
@@ -76,7 +76,7 @@ class Dyci2Label(Label, ABC):
             raise LabelError(f"No label '{s}' exists")
 
 
-class IntervallicLabel(Dyci2Label, ABC):
+class IntervallicLabel(Dicy2Label, ABC):
     """
     Abstract base class for labels with intervallic/relative representations that should support transforms
     """
@@ -85,7 +85,7 @@ class IntervallicLabel(Dyci2Label, ABC):
     @abstractmethod
     def equiv_mod_interval(cls, x: List[Any], y: List[Any]) -> bool:
         """
-        In addition to implementing the method :meth:`~label.Dyci2Label.__eq__`,
+        In addition to implementing the method :meth:`~label.Dicy2Label.__eq__`,
         intervallic labels must also implement this method in order to handle intervallic comparison
         """
 
@@ -143,11 +143,11 @@ class IntervallicIntegerLabel(IntervallicLabel):
         return isinstance(a, IntervallicIntegerLabel) and a.label == self.label
 
     @classmethod
-    def sequence_from_list(cls, init_list: List[str], **kwargs) -> List['Dyci2Label']:
+    def sequence_from_list(cls, init_list: List[str], **kwargs) -> List['Dicy2Label']:
         raise LabelError(f"This method is not supported for class {cls.__name__}")
 
     @classmethod
-    def parse(cls, raw_data: Any) -> 'Dyci2Label':
+    def parse(cls, raw_data: Any) -> 'Dicy2Label':
         if isinstance(raw_data, int):
             return cls(raw_data)
         else:
@@ -164,7 +164,7 @@ class ChordLabel(IntervallicLabel):
         if type(label) == list and len(label) == 2:
             label = str(label[0]) + " " + str(label[1])
 
-        Dyci2Label.__init__(self, label=label)
+        Dicy2Label.__init__(self, label=label)
 
         if self.label is None:
             self.root = None
@@ -318,7 +318,7 @@ class ChordLabel(IntervallicLabel):
             return None
 
 
-class ListLabel(Dyci2Label):
+class ListLabel(Dicy2Label):
     """
     Default class for handling labels that do not support transforms.
 
@@ -343,7 +343,7 @@ class ListLabel(Dyci2Label):
             s += f"(depth = {self.depth})"
         return s
 
-    def __eq__(self, a: 'Dyci2Label'):
+    def __eq__(self, a: 'Dicy2Label'):
         if a is None:
             return False
         elif isinstance(a, self.__class__):

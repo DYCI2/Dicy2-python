@@ -5,12 +5,12 @@ import typing
 import warnings
 from typing import List, Tuple
 
-from dyci2.corpus_event import Dyci2CorpusEvent
-from dyci2.label import ChordLabel
-from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
-from dyci2.prospector import FactorOracleProspector
-from dyci2.generation_scheduler import Dyci2GenerationScheduler
-from dyci2.transforms import Transform
+from dicy2.corpus_event import Dicy2CorpusEvent
+from dicy2.label import ChordLabel
+from dicy2.dicy2_time import Dicy2Timepoint, TimeMode
+from dicy2.prospector import FactorOracleProspector
+from dicy2.generation_scheduler import Dicy2GenerationScheduler
+from dicy2.transforms import Transform
 from gig.main.candidate import Candidate
 from gig.main.corpus import GenericCorpus
 from gig.main.corpus_event import GenericCorpusEvent, CorpusEvent
@@ -18,7 +18,7 @@ from gig.main.influence import LabelInfluence
 from gig.main.query import InfluenceQuery, TriggerQuery, Query
 
 
-def chord_format(lst: List[Tuple[Dyci2CorpusEvent, int]]):
+def chord_format(lst: List[Tuple[Dicy2CorpusEvent, int]]):
     return [[e.data, t] for (e, t) in lst]
 
 
@@ -26,7 +26,7 @@ def candidate_format(lst: List[Candidate]):
     return [typing.cast(GenericCorpusEvent, e.event).data for e in lst]
 
 
-# class TestDyci2GeneratorScheduler(TestCase):
+# class TestDicy2GeneratorScheduler(TestCase):
 #     def test_basic(self):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG, format='%(message)s')
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     sequence: List[ChordLabel] = ChordLabel.sequence_from_list(list_for_sequence)
     print(labels)
     print(sequence)
-    memory: GenericCorpus[ChordLabel] = GenericCorpus([Dyci2CorpusEvent(content, i, label=label)
+    memory: GenericCorpus[ChordLabel] = GenericCorpus([Dicy2CorpusEvent(content, i, label=label)
                                                        for (i, (content, label)) in
                                                        enumerate(zip(sequence, labels))],
                                                       label_types=[ChordLabel])
@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     prospector: FactorOracleProspector = FactorOracleProspector(corpus=None, label_type=ChordLabel)
 
-    gen_scheduler: Dyci2GenerationScheduler = Dyci2GenerationScheduler(prospector=prospector,
+    gen_scheduler: Dicy2GenerationScheduler = Dicy2GenerationScheduler(prospector=prospector,
                                                                        authorized_tranformations=authorized_transf)
 
     gen_scheduler.read_memory(memory)
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     list_for_scenario: List[str] = ["g m7", "g m7", "c 7", "c 7", "f maj7", "f maj7"]
     labels_for_scenario: List[ChordLabel] = ChordLabel.sequence_from_list(list_for_scenario)
     influences_for_scenario: List[LabelInfluence] = [LabelInfluence(label) for label in labels_for_scenario]
-    query: InfluenceQuery = InfluenceQuery(influences_for_scenario, time=Dyci2Timepoint())
+    query: InfluenceQuery = InfluenceQuery(influences_for_scenario, time=Dicy2Timepoint())
     # query = new_temporal_query_sequence_of_events(handle=list_for_scenario, label_type=ChordLabel)
     print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
 
@@ -112,7 +112,7 @@ if __name__ == '__main__':
         gen_scheduler.performance_time,
         gen_scheduler.generation_process.generation_trace[gen_scheduler.performance_time]))
 
-    query: Query = TriggerQuery(3, Dyci2Timepoint(start_date=4, time_mode=TimeMode.ABSOLUTE))
+    query: Query = TriggerQuery(3, Dicy2Timepoint(start_date=4, time_mode=TimeMode.ABSOLUTE))
     # query = new_temporal_query_free_sequence_of_events(length=3, start_date=4, start_type="absolute")
     print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
     gen_scheduler.process_query(query=query)
@@ -143,7 +143,7 @@ if __name__ == '__main__':
     labels_for_scenario: List[ChordLabel] = ChordLabel.sequence_from_list(list_for_scenario)
     influences_for_scenario: List[LabelInfluence] = [LabelInfluence(label) for label in labels_for_scenario]
     query: InfluenceQuery = InfluenceQuery(influences_for_scenario,
-                                           time=Dyci2Timepoint(start_date=2, time_mode=TimeMode.RELATIVE))
+                                           time=Dicy2Timepoint(start_date=2, time_mode=TimeMode.RELATIVE))
     print("\n/!\ Receiving and processing a new query: /!\ \n{}".format(query))
     gen_scheduler.process_query(query=query)
 

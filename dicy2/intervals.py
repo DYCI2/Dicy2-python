@@ -16,7 +16,7 @@ The tools defined in this module handle such possibilities.
 
 """
 
-from dyci2.prefix_indexing import *
+from dicy2.prefix_indexing import *
 
 
 class Intervals:

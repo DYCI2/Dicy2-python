@@ -23,14 +23,14 @@ import random
 from abc import ABC, abstractmethod
 from typing import Callable, Tuple, Optional, List, Type, Dict, Union, cast
 
-from dyci2.equiv import Equiv, BasicEquiv
-from dyci2.factor_oracle_model import FactorOracle
-from dyci2.factor_oracle_navigator import FactorOracleNavigator
-from dyci2.label import Dyci2Label, IntervallicLabel
-from dyci2.model import Model
-from dyci2.navigator import Navigator
-from dyci2.parameter import Parametric
-from dyci2.transforms import Transform, TransposeTransform
+from dicy2.equiv import Equiv, BasicEquiv
+from dicy2.factor_oracle_model import FactorOracle
+from dicy2.factor_oracle_navigator import FactorOracleNavigator
+from dicy2.label import Dicy2Label, IntervallicLabel
+from dicy2.model import Model
+from dicy2.navigator import Navigator
+from dicy2.parameter import Parametric
+from dicy2.transforms import Transform, TransposeTransform
 from gig.main.candidate import Candidate
 from gig.main.candidates import Candidates, ListCandidates
 from gig.main.corpus import Corpus
@@ -41,7 +41,7 @@ from gig.main.label import Label
 from gig.main.prospector import Prospector
 
 
-class Dyci2Prospector(Prospector, Parametric, ABC):
+class Dicy2Prospector(Prospector, Parametric, ABC):
     """
         **Factor Oracle Navigator class**.
         This class implements heuristics of navigation through a Factor Oracle automaton for creative applications:
@@ -62,7 +62,7 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
         >>> #FON = FactorOracleGenerator(sequence, labels)
     """
 
-    def __init__(self, label_type: Type[Dyci2Label], *args, **kwargs):
+    def __init__(self, label_type: Type[Dicy2Label], *args, **kwargs):
         """
         Constructor for the class FactorOracleNavigator.
         :see also: The class FactorOracle in FactorOracleAutomaton.py
@@ -76,7 +76,7 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
         """
         super().__init__(*args, **kwargs)
         self.logger = logging.getLogger(__name__)
-        self.label_type: Type[Dyci2Label] = label_type
+        self.label_type: Type[Dicy2Label] = label_type
 
         self.next_output: Optional[Candidates] = None
 
@@ -87,8 +87,8 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
     ################################################################################################################
 
     @classmethod
-    def default(cls) -> 'Dyci2Prospector':
-        return FactorOracleProspector(corpus=Corpus([]), label_type=Dyci2Label)
+    def default(cls) -> 'Dicy2Prospector':
+        return FactorOracleProspector(corpus=Corpus([]), label_type=Dicy2Label)
 
     ################################################################################################################
     # ABSTRACT METHODS (PUBLIC/PRIVATE)
@@ -104,11 +104,11 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
         """ TODO: Docstring """
 
     @abstractmethod
-    def _simply_guided_navigation(self, label: Dyci2Label, **kwargs) -> List[CorpusEvent]:
+    def _simply_guided_navigation(self, label: Dicy2Label, **kwargs) -> List[CorpusEvent]:
         """ TODO: Docstring"""
 
     @abstractmethod
-    def _scenario_initial_candidate(self, labels: List[Dyci2Label],
+    def _scenario_initial_candidate(self, labels: List[Dicy2Label],
                                     authorized_transformations: List[int]) -> Candidates:
         """ TODO: Docstring (very important!) """
 
@@ -136,10 +136,10 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
                 raise StateError(f"{self.__class__.__name__} can only handle a corpus with a single label type. "
                                  f"Actual: {len(corpus.label_types)}")
 
-            if not issubclass(corpus.label_types[0], Dyci2Label):
+            if not issubclass(corpus.label_types[0], Dicy2Label):
                 raise StateError(f"Invalid label type {corpus.label_types[0].__class__.__name__}")
 
-            self.reset_memory(cast(Type[Dyci2Label], corpus.label_types[0]))
+            self.reset_memory(cast(Type[Dicy2Label], corpus.label_types[0]))
 
         self.corpus = corpus
         for event in corpus.events:
@@ -151,11 +151,11 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
                     StateError if no `Corpus` has been loaded
                     LabelError if attempting to learn an event with a label type that doesn't exist in the Corpus
         """
-        # TODO Need a strategy for initializing an empty corpus, since this is what normally (always?) happens in DYCI2
+        # TODO Need a strategy for initializing an empty corpus, since this is what normally (always?) happens in DICY2
         if self.corpus is None:
             raise StateError("No corpus has been loaded")
 
-        label: Optional[Dyci2Label] = event.get_label(self.label_type)
+        label: Optional[Dicy2Label] = event.get_label(self.label_type)
         if isinstance(event, self.corpus.get_content_type()) and label is not None:
             if append_to_corpus:
                 self.corpus.append(event)
@@ -180,7 +180,7 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
             raise StateError("Memory is empty")
 
         candidates: List[CorpusEvent]
-        if isinstance(influence, LabelInfluence) and isinstance(influence.value, Dyci2Label):
+        if isinstance(influence, LabelInfluence) and isinstance(influence.value, Dicy2Label):
             candidates = self._simply_guided_navigation(influence.value,
                                                         forward_context_length_min=forward_context_length_min,
                                                         shift_index=index_in_generation_cycle,
@@ -226,7 +226,7 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
     # PUBLIC: CLASS-SPECIFIC METHODS
     ################################################################################################################
 
-    def reset_memory(self, label_type: Type[Dyci2Label] = Dyci2Label) -> None:
+    def reset_memory(self, label_type: Type[Dicy2Label] = Dicy2Label) -> None:
         """ TODO: Docstring """
         self.corpus = None
         self.label_type = label_type
@@ -237,9 +237,9 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
         if self.corpus is None:
             raise StateError("No corpus has been loaded")
 
-        labels: List[Dyci2Label] = []
+        labels: List[Dicy2Label] = []
         for influence in influences:
-            if not (isinstance(influence, LabelInfluence) and isinstance(influence.value, Dyci2Label)):
+            if not (isinstance(influence, LabelInfluence) and isinstance(influence.value, Dicy2Label)):
                 raise QueryError(f"class {self.__class__.__name__} cannot handle "
                                  f"influences of type {influence.__class__.__name__}")
 
@@ -271,10 +271,10 @@ class Dyci2Prospector(Prospector, Parametric, ABC):
         self.navigator.equiv = equiv
 
 
-class FactorOracleProspector(Dyci2Prospector):
+class FactorOracleProspector(Dicy2Prospector):
     def __init__(self,
                  corpus: Optional[Corpus],
-                 label_type: Type[Dyci2Label],
+                 label_type: Type[Dicy2Label],
                  max_continuity: int=1000,
                  control_parameters=(),
                  history_parameters=(),
@@ -304,7 +304,7 @@ class FactorOracleProspector(Dyci2Prospector):
         if len(self.corpus) == 0:
             raise StateError("Memory is empty")
 
-        if not all([isinstance(influence.value, Dyci2Label) for influence in influences]):
+        if not all([isinstance(influence.value, Dicy2Label) for influence in influences]):
             raise QueryError(f"Invalid label type encountered in {self.__class__.__name__}")
 
         if init:
@@ -347,7 +347,7 @@ class FactorOracleProspector(Dyci2Prospector):
         return [self.model.get_event_by_internal_index(i) for i in authorized_indices]
 
     def _simply_guided_navigation(self,
-                                  required_label: Dyci2Label,
+                                  required_label: Dicy2Label,
                                   forward_context_length_min: int = 0,
                                   shift_index: int = 0,
                                   no_empty_event: bool = True
@@ -367,7 +367,7 @@ class FactorOracleProspector(Dyci2Prospector):
 
         return [self.model.get_event_by_internal_index(i) for i in authorized_indices]
 
-    def _scenario_initial_candidate(self, labels: List[Dyci2Label],
+    def _scenario_initial_candidate(self, labels: List[Dicy2Label],
                                     authorized_transformations: List[int]) -> Candidates:
         # use model's internal corpus model to handle the initial None object
         valid_indices: List[int] = list(range(self.model.get_internal_sequence_length()))
@@ -386,7 +386,7 @@ class FactorOracleProspector(Dyci2Prospector):
 
         # FactorOracleModel's representation of the memory is slightly different from the Corpus
         modelled_events: List[Optional[CorpusEvent]]
-        modelled_labels: List[Optional[Dyci2Label]]
+        modelled_labels: List[Optional[Dicy2Label]]
         modelled_events, modelled_labels = self.model.get_internal_corpus_model()
 
         index_delta_prefixes: Dict[int, List[List[int]]] = self.navigator.find_prefix_matching_with_labels(
@@ -438,7 +438,7 @@ class FactorOracleProspector(Dyci2Prospector):
     #  free_navigation and simply_guided_navigation separately.
     def _continuation_based_navigation(self,
                                        authorized_indices: List[int],
-                                       required_label: Optional[Dyci2Label],
+                                       required_label: Optional[Dicy2Label],
                                        shift_index: Optional[int] = None,
                                        no_empty_event: bool = True) -> List[int]:
         str_print_info: str = f"{shift_index} " \

@@ -1,10 +1,10 @@
 from typing import List
 
-from dyci2.corpus_event import Dyci2CorpusEvent
-from dyci2.dyci2_time import Dyci2Timepoint
-from dyci2.generation_scheduler import Dyci2GenerationScheduler
-from dyci2.label import ListLabel
-from dyci2.prospector import FactorOracleProspector
+from dicy2.corpus_event import Dicy2CorpusEvent
+from dicy2.dicy2_time import Dicy2Timepoint
+from dicy2.generation_scheduler import Dicy2GenerationScheduler
+from dicy2.label import ListLabel
+from dicy2.prospector import FactorOracleProspector
 from gig.main.corpus import GenericCorpus
 from gig.main.influence import Influence
 from gig.main.query import InfluenceQuery
@@ -519,14 +519,14 @@ if __name__ == '__main__':
                     (54, [54, 150, 100]),
                     (55, [55, 1250, 100])]
 
-    gs: Dyci2GenerationScheduler = Dyci2GenerationScheduler(
+    gs: Dicy2GenerationScheduler = Dicy2GenerationScheduler(
         FactorOracleProspector(corpus=GenericCorpus([], label_types=[ListLabel]), label_type=ListLabel))
     for i, (label, event) in enumerate(bach_chorale):
-        gs.learn_event(Dyci2CorpusEvent(event, i, ListLabel.parse(label)))
+        gs.learn_event(Dicy2CorpusEvent(event, i, ListLabel.parse(label)))
 
     labels: List[ListLabel] = [ListLabel([e]) for e in [66, None, None, None, None, None, None, None, None, 79]]
 
-    query = InfluenceQuery(content=Influence.from_labels(labels), time=Dyci2Timepoint())
+    query = InfluenceQuery(content=Influence.from_labels(labels), time=Dicy2Timepoint())
     from timeit import default_timer as timer
 
     start = timer()

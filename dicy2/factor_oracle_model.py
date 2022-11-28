@@ -1,10 +1,10 @@
 import logging
 from typing import Optional, List, Type, TypeVar, Tuple
 
-from dyci2.equiv import Equiv, BasicEquiv
-from dyci2.label import Dyci2Label
-from dyci2.model import Model
-from dyci2.transforms import Transform
+from dicy2.equiv import Equiv, BasicEquiv
+from dicy2.label import Dicy2Label
+from dicy2.model import Model
+from dicy2.transforms import Transform
 from gig.main.candidate import Candidate
 
 T = TypeVar('T')
@@ -21,13 +21,13 @@ class FactorOracle(Model[T]):
     """
 
     def __init__(self,
-                 label_type: Type[Dyci2Label] = Dyci2Label,
+                 label_type: Type[Dicy2Label] = Dicy2Label,
                  equiv: Equiv = BasicEquiv()):
 
         self.logger = logging.getLogger(__name__)
         self.sequence: List[Optional[T]] = []
-        self.labels: List[Optional[Dyci2Label]] = []
-        self.label_type: Type[Dyci2Label] = label_type
+        self.labels: List[Optional[Dicy2Label]] = []
+        self.label_type: Type[Dicy2Label] = label_type
         self.direct_transitions = {}
         self.factor_links = {}
         self.suffix_links = {}
@@ -42,7 +42,7 @@ class FactorOracle(Model[T]):
 
     def learn_sequence(self,
                        sequence: List[Optional[T]],
-                       labels: List[Optional[Dyci2Label]],
+                       labels: List[Optional[Dicy2Label]],
                        equiv: Optional[Equiv] = None) -> None:
         """
         Learns (appends) a new sequence in the model.
@@ -56,7 +56,7 @@ class FactorOracle(Model[T]):
 
     def learn_event(self,
                     event: Optional[T],
-                    label: Optional[Dyci2Label],
+                    label: Optional[Dicy2Label],
                     equiv: Optional[Equiv] = None) -> None:
         """
         Learns (appends) a new state in the Factor Oracle automaton.
@@ -102,12 +102,12 @@ class FactorOracle(Model[T]):
     def clear(self) -> None:
         pass  # does not alter runtime state
 
-    def reset_memory(self, label_type: Type[Dyci2Label] = Dyci2Label) -> None:
+    def reset_memory(self, label_type: Type[Dicy2Label] = Dicy2Label) -> None:
         """ Resets the FactorOracle to its initial state with no memory learned """
 
         self.sequence: List[Optional[T]] = []
-        self.labels: List[Optional[Dyci2Label]] = []
-        self.label_type: Type[Dyci2Label] = label_type
+        self.labels: List[Optional[Dicy2Label]] = []
+        self.label_type: Type[Dicy2Label] = label_type
         self.direct_transitions = {}
         self.factor_links = {}
         self.suffix_links = {}
@@ -118,7 +118,7 @@ class FactorOracle(Model[T]):
     # PUBLIC: CLASS-SPECIFIC RUNTIME CONTROL
     ################################################################################################################
 
-    def get_internal_corpus_model(self) -> Tuple[List[Optional[T]], List[Optional[Dyci2Label]]]:
+    def get_internal_corpus_model(self) -> Tuple[List[Optional[T]], List[Optional[Dicy2Label]]]:
         """ Returns the sequence and the labels as defined by the FactorOracle (in this case: with an initial None) """
         return self.sequence, self.labels
 
@@ -313,7 +313,7 @@ class FactorOracle(Model[T]):
 
     def continuations_with_label(self,
                                  index_state: int,
-                                 required_label: Dyci2Label,
+                                 required_label: Dicy2Label,
                                  forward_context_length_min: int = 1,
                                  equiv: Optional[Equiv] = None,
                                  authorize_direct_transition: bool = True) -> List[int]:

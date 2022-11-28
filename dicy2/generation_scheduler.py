@@ -20,13 +20,13 @@ Main classes: :class:`~Generator.Generator` (oriented towards offline generation
 import logging
 from typing import Optional, Type, List
 
-from dyci2.candidate_selector import TempCandidateSelector
-from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
-from dyci2.equiv import Equiv
-from dyci2.generation_history import GenerationHistory
-from dyci2.generator import Dyci2Generator
-from dyci2.parameter import Parametric
-from dyci2.prospector import Dyci2Prospector
+from dicy2.candidate_selector import TempCandidateSelector
+from dicy2.dicy2_time import Dicy2Timepoint, TimeMode
+from dicy2.equiv import Equiv
+from dicy2.generation_history import GenerationHistory
+from dicy2.generator import Dicy2Generator
+from dicy2.parameter import Parametric
+from dicy2.prospector import Dicy2Prospector
 from gig.main.candidate import Candidate
 from gig.main.candidateselector import CandidateSelector
 from gig.main.corpus import Corpus
@@ -39,7 +39,7 @@ from gig.main.query import Query
 # TODO : SUPPRIMER DANS LA DOC LES FONCTIONS "EQUIV-MOD..." "SEQUENCE TO INTERVAL..."
 
 
-class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
+class Dicy2GenerationScheduler(GenerationScheduler, Parametric):
     """
 
     The class **GenerationHandler** introduces time management and planning for interactive applications
@@ -51,7 +51,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
     (https://hal.archives-ouvertes.fr/hal-01184642/document),
     describing the first prototype of "improvisation handler".
 
-    It can be seen as a  wrapper around the :class:`~generator.Dyci2Generator` class with additional responsibility of
+    It can be seen as a  wrapper around the :class:`~generator.Dicy2Generator` class with additional responsibility of
     managing temporality: through recording the output of each :class:`~query.Query«` using the
     :class:`~generation_history.GenerationHistory` and through moving forward (or backward) along the timeline of
     content that has been generated.
@@ -61,10 +61,10 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
     """
 
     def __init__(self,
-                 prospector: Dyci2Prospector,
+                 prospector: Dicy2Prospector,
                  jury_type: Type[CandidateSelector] = TempCandidateSelector,
                  authorized_tranformations=(0,)):
-        self.generator: Dyci2Generator = Dyci2Generator(prospector=prospector,
+        self.generator: Dicy2Generator = Dicy2Generator(prospector=prospector,
                                                         jury_type=jury_type,
                                                         authorized_transforms=authorized_tranformations)
         self.logger = logging.getLogger(__name__)
@@ -80,7 +80,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         """
         Processes incoming queries by navigating to the correct position in time that the query is intended for and
         rewinds (or forwards) the internal state of all components to the state at that temporal position, then
-        processes the query through the :class:`~generator.Dyci2Generator` and records the output of the query.
+        processes the query through the :class:`~generator.Dicy2Generator` and records the output of the query.
 
         raises: TimepointError if the timepoint of the query is invalid
                 QueryError if the query is invalid
@@ -96,8 +96,8 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         self.logger.debug(f"current_performance_time: {self._performance_time}")
         self.logger.debug(f"current_generation_time: {self.generation_process.generation_time}")
 
-        if not isinstance(query.time, Dyci2Timepoint):
-            raise TimepointError(f"Can only handle queries with time format '{Dyci2Timepoint.__name__}'")
+        if not isinstance(query.time, Dicy2Timepoint):
+            raise TimepointError(f"Can only handle queries with time format '{Dicy2Timepoint.__name__}'")
 
         # TODO: Is this really a good strategy / relevant?
         if self.generator.initialized and not self._running and query.time.time_mode == TimeMode.RELATIVE:
@@ -130,7 +130,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         #       use GenerationScheduler.generation_index() to get this value
         # return generation_index
 
-    def update_performance_time(self, time: Dyci2Timepoint) -> None:
+    def update_performance_time(self, time: Dicy2Timepoint) -> None:
         """
         Set the current performance time, i.e. the time that is currently being performed / rendered
 
@@ -186,7 +186,7 @@ class Dyci2GenerationScheduler(GenerationScheduler, Parametric):
         self.generator.prospector.set_equiv_function(equiv=equiv)
 
     def increment_performance_time(self, increment: int = 1) -> None:
-        self.update_performance_time(Dyci2Timepoint(start_date=increment, time_mode=TimeMode.RELATIVE))
+        self.update_performance_time(Dicy2Timepoint(start_date=increment, time_mode=TimeMode.RELATIVE))
 
     def generation_index(self) -> int:
         return self.generation_process.start_index_of_last_sequence()

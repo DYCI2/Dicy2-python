@@ -1,6 +1,6 @@
-from dyci2.equiv import BasicEquiv
-from dyci2.label import ListLabel
-from dyci2.prefix_indexing import PrefixIndexing
+from dicy2.equiv import BasicEquiv
+from dicy2.label import ListLabel
+from dicy2.prefix_indexing import PrefixIndexing
 
 if __name__ == '__main__':
     # p = [0, 1, 0, 1]

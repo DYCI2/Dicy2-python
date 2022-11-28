@@ -2,7 +2,7 @@ import copy
 import logging
 from typing import List, Optional, Tuple
 
-from dyci2.corpus_event import Dyci2CorpusEvent
+from dicy2.corpus_event import Dicy2CorpusEvent
 from gig.main.candidate import Candidate
 from gig.main.exceptions import StateError
 
@@ -14,7 +14,7 @@ class GenerationHistory:
     start of the generation and their corresponding positions in time.
 
     The class :class:`~generation_history.GenerationHistory` is generally owned and managed by a
-    :class:`~generation_scheduler.Dyci2GenerationScheduler`.
+    :class:`~generation_scheduler.Dicy2GenerationScheduler`.
     """
     def __init__(self):
         self.logger = logging.getLogger(__name__)

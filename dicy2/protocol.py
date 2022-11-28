@@ -4,7 +4,7 @@ from enum import Enum
 class OscSendProtocol:
     """
     Class defining the protocol (set of keywords associated with each piece of data) for messages sent __to__ Max
-    from the :class:`~agent.Agent` and :class:`~server.Dyci2Server` classes
+    from the :class:`~agent.Agent` and :class:`~server.Dicy2Server` classes
 
     """
 

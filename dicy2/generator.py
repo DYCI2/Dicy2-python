@@ -1,10 +1,10 @@
 import logging
 from typing import Optional, Type, List
 
-from dyci2.candidate_selector import TempCandidateSelector, DefaultFallbackSelector
-from dyci2.parameter import Parametric, Parameter, NominalRange
-from dyci2.prospector import Dyci2Prospector
-from dyci2.transforms import Transform, NoTransform
+from dicy2.candidate_selector import TempCandidateSelector, DefaultFallbackSelector
+from dicy2.parameter import Parametric, Parameter, NominalRange
+from dicy2.prospector import Dicy2Prospector
+from dicy2.transforms import Transform, NoTransform
 from gig.main.candidate import Candidate
 from gig.main.candidates import Candidates, ListCandidates
 from gig.main.corpus import Corpus
@@ -16,9 +16,9 @@ from gig.main.query import Query
 from gig.main.query import TriggerQuery, InfluenceQuery
 
 
-class Dyci2Generator(Generator, Parametric):
+class Dicy2Generator(Generator, Parametric):
     """
-    The class :class:`~generator.Dyci2Generator` embeds a :class:`~prospector.Prospector` as "memory" (cf. class
+    The class :class:`~generator.Dicy2Generator` embeds a :class:`~prospector.Prospector` as "memory" (cf. class
     :class:`~prospector.FactorOracleProspector`) and processes **queries** (class :class:`~query.Query`) to
     generate new sequences. This class uses pattern matching techniques (cf. :class:`prefix_indexing.PrefixIndexing`)
     to enrich the navigation and generation methods offered by the chosen model with ("ImproteK-like") anticipative
@@ -32,13 +32,13 @@ class Dyci2Generator(Generator, Parametric):
 
     """
     def __init__(self,
-                 prospector: Dyci2Prospector,
+                 prospector: Dicy2Prospector,
                  jury_type: Type[CandidateSelector] = TempCandidateSelector,
                  authorized_transforms: List[int] = (0,),
                  force_output: bool = False):
         self.logger = logging.getLogger(__name__)
 
-        self.prospector: Dyci2Prospector = prospector
+        self.prospector: Dicy2Prospector = prospector
 
         self._initialized: bool = False
 
@@ -258,7 +258,7 @@ class Dyci2Generator(Generator, Parametric):
             1. Anticipation step: looking for an event in the memory sharing a common future with the current scenario.
             2. Navigation step: starting from the starting point found in the first step, navigation in the memory using
             :meth:`~prospector.Prospector.process` (which given the arguments provided in this function will
-            call the :meth:`~prospector.Dyci2Prospector._simply_guided_navigation` in each step),
+            call the :meth:`~prospector.Dicy2Prospector._simply_guided_navigation` in each step),
             until launching a new phase is necessary.
 
         """

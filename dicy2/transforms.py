@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 
-from dyci2.label import ChordLabel, Dyci2Label, IntervallicIntegerLabel
+from dicy2.label import ChordLabel, Dicy2Label, IntervallicIntegerLabel
 
 from gig.main.candidate import Candidate
 
@@ -51,7 +51,7 @@ class Transform(ABC):
 class NoTransform(Transform):
     def __init__(self):
         # self.admitted_types = [AbstractLabel, AbstractContents] # dictionary of admitted label classes
-        self.admitted_types = [Dyci2Label]  # dictionary of admitted label classes
+        self.admitted_types = [Dicy2Label]  # dictionary of admitted label classes
 
     def __repr__(self):
         return "No Transformation"

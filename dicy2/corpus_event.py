@@ -7,7 +7,7 @@ from gig.main.label import Label
 T = TypeVar('T')
 
 
-class Dyci2CorpusEvent(GenericCorpusEvent[T]):
+class Dicy2CorpusEvent(GenericCorpusEvent[T]):
     """ Extension of the :class:`~gig.GenericCorpusEvent` intended as the memory of the :class:`~gig.Corpus`,
     with the addition of a function for rendering its data over OSC """
     def __init__(self, data: T, index: int, label: Label):

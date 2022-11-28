@@ -3,10 +3,10 @@ from enum import Enum
 from gig.stubs.timepoint import Timepoint
 
 """ 
-DYCI2 Time
+DICY2 Time
 ===================
 
-Module for handling time in Dyci2 when using the :class:`~GenerationScheduler` class
+Module for handling time in Dicy2 when using the :class:`~GenerationScheduler` class
 
 """
 
@@ -21,7 +21,7 @@ class TimeMode(Enum):
         return TimeMode(time_mode.lower())
 
 
-class Dyci2Timepoint(Timepoint):
+class Dicy2Timepoint(Timepoint):
     def __init__(self, start_date: int = 0, time_mode: TimeMode = TimeMode.ABSOLUTE):
         self.start_date: int = start_date
         self.time_mode: TimeMode = time_mode

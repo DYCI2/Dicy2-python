@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
 """
-Dyci2 Server
+Dicy2 Server
 ===============
 
-This in the main entry point for the DYCI2 Library when using it with the Max front-end
+This in the main entry point for the DICY2 Library when using it with the Max front-end
 (or more generally when communicating with the library through OSC)
 
 Running this script launches a server through which new agents can be created and communicated with.
 
-usage: ./dyci2_server.py [-h] [--recvport RECV_PORT] [--sendport OUT_PORT] [--ip IP]
+usage: ./dicy2_server.py [-h] [--recvport RECV_PORT] [--sendport OUT_PORT] [--ip IP]
 
     --recvport RECV_PORT  input port used by the server
     --sendport OUT_PORT   output port used by the server
@@ -40,7 +40,7 @@ For example:
 ```
 
 Messages to agents created through the server are received through the server's
-:meth:`~dyci2_server.Dyci2Server._unmatched_osc` function and follow the same protocol.
+:meth:`~dicy2_server.Dicy2Server._unmatched_osc` function and follow the same protocol.
 Any function in the :class:`~agent.Agent` can be called through the server (assuming that an agent on
 address `<agent_address>` has been created through the command above) with the following syntax:
 
@@ -60,7 +60,7 @@ For example:
 
 The outbound protocol's keywords are defined in :class:`~protocol.OscSendProtocol`.
 
-If you rather are interested in using DYCI2 directly in Python without the OSC parsing layer,
+If you rather are interested in using DICY2 directly in Python without the OSC parsing layer,
 the :class:`~generation_scheduler.GenerationScheduler` is a better entry point.
 
 """
@@ -72,14 +72,14 @@ import logging
 import multiprocessing
 from typing import Dict, Optional, Type, Tuple
 
-from dyci2.agent import Agent
-from dyci2.label import Dyci2Label, ListLabel
-from dyci2.protocol import OscSendProtocol, Signal
+from dicy2.agent import Agent
+from dicy2.label import Dicy2Label, ListLabel
+from dicy2.protocol import OscSendProtocol, Signal
 from gig.io.async_osc import AsyncOsc
 from gig.main.exceptions import LabelError
 
 
-class Dyci2Server(AsyncOsc):
+class Dicy2Server(AsyncOsc):
     DEFAULT_ADDRESS = "/server"
     DEFAULT_RECV_PORT = 4566
     DEFAULT_SEND_PORT = 1233
@@ -102,13 +102,13 @@ class Dyci2Server(AsyncOsc):
 
     async def _main_loop(self) -> None:
         self.default_log_config()
-        self.logger.info("DYCI2 server started")
+        self.logger.info("DICY2 server started")
         self.send(OscSendProtocol.INITIALIZED)
         while self.running:
             self.send(OscSendProtocol.STATUS, "bang")
             await asyncio.sleep(self.STATUS_INTERVAL)
 
-        self.logger.info("DYCI2 server terminated")
+        self.logger.info("DICY2 server terminated")
         self.send(OscSendProtocol.TERMINATED, "bang")
 
     def _unmatched_osc(self, address: str, *args) -> None:
@@ -138,10 +138,10 @@ class Dyci2Server(AsyncOsc):
                      override: bool = False) -> None:
 
         if label_type_str is None:
-            label_type: Type[Dyci2Label] = ListLabel
+            label_type: Type[Dicy2Label] = ListLabel
         else:
             try:
-                label_type: Type[Dyci2Label] = Dyci2Label.type_from_string(label_type_str)
+                label_type: Type[Dicy2Label] = Dicy2Label.type_from_string(label_type_str)
             except LabelError as e:
                 self.logger.error(f"{str(e)}. No agent was created")
                 return
@@ -212,15 +212,15 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()
     logging.basicConfig(level=logging.INFO, format='[%(levelname)s]: %(message)s')
 
-    parser = argparse.ArgumentParser(description='Launch and manage a DYCI2 server')
+    parser = argparse.ArgumentParser(description='Launch and manage a DICY2 server')
     parser.add_argument('--recvport', metavar='RECV_PORT', type=int,
-                        help='input port used by the server', default=Dyci2Server.DEFAULT_RECV_PORT)
-    parser.add_argument('--sendport', metavar='OUT_PORT', type=int, default=Dyci2Server.DEFAULT_SEND_PORT,
+                        help='input port used by the server', default=Dicy2Server.DEFAULT_RECV_PORT)
+    parser.add_argument('--sendport', metavar='OUT_PORT', type=int, default=Dicy2Server.DEFAULT_SEND_PORT,
                         help='output port used by the server')
     parser.add_argument('--ip', metavar='IP', type=AsyncOsc.parse_ip, default="127.0.0.1",
                         help='ip address of the max client')
 
     parser_args = parser.parse_args()
 
-    server: Dyci2Server = Dyci2Server(parser_args.recvport, parser_args.sendport, parser_args.ip)
+    server: Dicy2Server = Dicy2Server(parser_args.recvport, parser_args.sendport, parser_args.ip)
     server.start()

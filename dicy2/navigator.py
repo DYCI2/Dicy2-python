@@ -20,9 +20,9 @@ The classes defined in this module are used in association with models (cf. :mod
 from abc import ABC, abstractmethod
 from typing import List, Optional, Generic, TypeVar, Type
 
-from dyci2.equiv import Equiv
-from dyci2.label import Dyci2Label
-from dyci2.parameter import Parametric
+from dicy2.equiv import Equiv
+from dicy2.label import Dicy2Label
+from dicy2.parameter import Parametric
 from gig.main.candidate import Candidate
 
 T = TypeVar('T')
@@ -34,14 +34,14 @@ class Navigator(Parametric, Generic[T], ABC):
     @abstractmethod
     def learn_sequence(self,
                        sequence: List[Optional[T]],
-                       labels: List[Optional[Dyci2Label]],
+                       labels: List[Optional[Dicy2Label]],
                        equiv: Optional[Equiv] = None) -> None:
         """ TODO: Docstring (can be copied from Model / FactorOracle) """
 
     @abstractmethod
     def learn_event(self,
                     event: Optional[T],
-                    label: Optional[Dyci2Label],
+                    label: Optional[Dicy2Label],
                     equiv: Optional[Equiv] = None) -> None:
         """ TODO: Docstring (can be copied from Model / FactorOracle) """
 
@@ -62,5 +62,5 @@ class Navigator(Parametric, Generic[T], ABC):
         """ TODO: Docstring """
 
     @abstractmethod
-    def reset_memory(self, label_type: Type[Dyci2Label] = Dyci2Label) -> None:
+    def reset_memory(self, label_type: Type[Dicy2Label] = Dicy2Label) -> None:
         """ TODO: Docstring """

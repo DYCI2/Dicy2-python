@@ -1,4 +1,4 @@
-# To build a distributable version of the dyci2_server.py , the full procedure is the following:
+# To build a distributable version of the dicy2_server.py , the full procedure is the following:
 #
 # ```shell
 # make pyinstaller
@@ -25,10 +25,10 @@
 
 
 PYINSTALLER_PATH = pyinstaller
-PYINSTALLER_TARGET = dyci2_server.py
-PYINSTALLER_TARGET_NAME = dyci2_server
-APP_PATH = dist/dyci2_server.app
-DMG_PATH = dist/dyci2_server.dmg
+PYINSTALLER_TARGET = dicy2_server.py
+PYINSTALLER_TARGET_NAME = dicy2_server
+APP_PATH = dist/dicy2_server.app
+DMG_PATH = dist/dicy2_server.dmg
 
 
 
@@ -44,7 +44,7 @@ pyinstaller:
 		--exclude-module PyQt5 \
 		--hidden-import="cmath" \
 		--codesign-identity="Developer ID Application: INST RECHER COORD ACOUST MUSICALE" \
-		--osx-entitlements-file="codesign/dyci2.entitlements"
+		--osx-entitlements-file="codesign/dicy2.entitlements"
 
 notarize:
 	hdiutil create "$(DMG_PATH)" -fs HFS+ -srcfolder "${APP_PATH}" -ov

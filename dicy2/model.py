@@ -22,10 +22,10 @@ Tutorial for the class :class:`~Model.FactorOracle` in :file:`_Tutorials_/Factor
 from abc import ABC, abstractmethod
 from typing import List, Optional, TypeVar, Generic, Type
 
-from dyci2.equiv import Equiv
-from dyci2.label import Dyci2Label
-from dyci2.parameter import Parametric
-from dyci2.transforms import Transform
+from dicy2.equiv import Equiv
+from dicy2.label import Dicy2Label
+from dicy2.parameter import Parametric
+from dicy2.transforms import Transform
 from gig.main.candidate import Candidate
 
 T = TypeVar('T')
@@ -41,7 +41,7 @@ class Model(Parametric, Generic[T], ABC):
     @abstractmethod
     def learn_sequence(self,
                        sequence: List[Optional[T]],
-                       labels: List[Optional[Dyci2Label]],
+                       labels: List[Optional[Dicy2Label]],
                        equiv: Optional[Equiv] = None) -> None:
         """
         Abstract method defining the behaviour when learning (appending) a sequence of events in the model
@@ -51,7 +51,7 @@ class Model(Parametric, Generic[T], ABC):
     @abstractmethod
     def learn_event(self,
                     event: Optional[T],
-                    label: Optional[Dyci2Label],
+                    label: Optional[Dicy2Label],
                     equiv: Optional[Equiv] = None) -> None:
         """
         Abstract method defining the behaviour when learning (appending) a single events in the model
@@ -61,7 +61,7 @@ class Model(Parametric, Generic[T], ABC):
     @abstractmethod
     def feedback(self, output_event: Optional[Candidate]) -> None:
         """
-        Abstract method defining the behaviour of the model when the :class:`~generator.Dyci2Generator` generates
+        Abstract method defining the behaviour of the model when the :class:`~generator.Dicy2Generator` generates
         output from an incoming :class:`~query.Query`.
 
         In most cases, the model will be stateless in relation to  the ongoing generation; in this case,
@@ -97,7 +97,7 @@ class Model(Parametric, Generic[T], ABC):
         """
 
     @abstractmethod
-    def reset_memory(self, label_type: Type[Dyci2Label] = Dyci2Label) -> None:
+    def reset_memory(self, label_type: Type[Dicy2Label] = Dicy2Label) -> None:
         """
         Abstract method defining how to reset the sequence of events learned
 

@@ -18,7 +18,7 @@ in Entertainment, Special issue on Musical metacreation Part I, 2017** (https://
 
 
 """
-from dyci2.label import ListLabel
+from dicy2.label import ListLabel
 
 
 class PrefixIndexing:

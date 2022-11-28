@@ -3,11 +3,11 @@
 ## Introduction
 
 
-The DYCI2 Server (`dyci2_server.py`) uses OSC for its inbound and outbound communication. Due to a limitation in the underlying [pythonosc](https://pypi.org/project/python-osc/) library, new OSC addresses cannot be added dynamically once the server has been started, therefore the server and all of its agents will have static OSC addresses and use keywords for all of its functions.
+The DICY2 Server (`dicy2_server.py`) uses OSC for its inbound and outbound communication. Due to a limitation in the underlying [pythonosc](https://pypi.org/project/python-osc/) library, new OSC addresses cannot be added dynamically once the server has been started, therefore the server and all of its agents will have static OSC addresses and use keywords for all of its functions.
 
 ### Inbound OSC Messages
 
-Any function declared in the classes `Dyci2Server` (`dyci2_server.py`) and `Agent` (`dyci2/agent.py`) can be called directly over OSC. The general form for OSC calls is the following:
+Any function declared in the classes `Dicy2Server` (`dicy2_server.py`) and `Agent` (`dicy2/agent.py`) can be called directly over OSC. The general form for OSC calls is the following:
 
 ```
 /<function_name> [<positional_argname1>=] arg1 [<positional_argname2>=] arg2 <...> [<kwargname1>=] kwarg1 <...>
@@ -17,7 +17,7 @@ The name of the arguments (`[<positional_argname1>=]`) may be prepended in the O
 
 An argument is an optional/keyword argument if it has a default value. In the documentation below, this is indicated in the type specification, e.g. an argument defined as `arg_name: arg_type` is positional while `arg_name: arg_type = some_value` is an optional/keyword argument where `some_value` is the default value.
 
-For example, the following OSC call can be made to call the `Dyci2Server.create_agent` function, which has three parameters: `agent_osc_address`, `label_type_str` and `override`:
+For example, the following OSC call can be made to call the `Dicy2Server.create_agent` function, which has three parameters: `agent_osc_address`, `label_type_str` and `override`:
 
 `/server create_agent /agent1 chordlabel False`
 
@@ -41,7 +41,7 @@ There are two cases where it alters the default behaviour of python functions:
 
 #### Some more examples
 
-Assuming that the following function was declared in `Dyci2Server`
+Assuming that the following function was declared in `Dicy2Server`
 
 ```python
 def some_func(a: int, b: str, c: float, d: bool = False, f: Optional[int] = None):
@@ -87,7 +87,7 @@ The following types are supported:
 
 
 ### Outbound OSC Messages
-The values returned from a function call are defined in the `dyci2/protocol.py` file They follow a similar syntax:
+The values returned from a function call are defined in the `dicy2/protocol.py` file They follow a similar syntax:
 
 ```
 /<osc_address> <keyword> <values...>

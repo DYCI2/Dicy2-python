@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Minimal example illustrating how to use the `Dyci2Generator` class with a `FactorOracleProspector`
+Minimal example illustrating how to use the `Dicy2Generator` class with a `FactorOracleProspector`
 
 """
 
@@ -9,10 +9,10 @@ import logging
 import typing
 from typing import List, Optional, Type
 
-from dyci2.corpus_event import Dyci2CorpusEvent
-from dyci2.generator import Dyci2Generator
-from dyci2.label import Dyci2Label, ListLabel
-from dyci2.prospector import FactorOracleProspector
+from dicy2.corpus_event import Dicy2CorpusEvent
+from dicy2.generator import Dicy2Generator
+from dicy2.label import Dicy2Label, ListLabel
+from dicy2.prospector import FactorOracleProspector
 from gig.main.candidate import Candidate
 from gig.main.corpus import GenericCorpus
 from gig.main.influence import LabelInfluence
@@ -81,16 +81,16 @@ if __name__ == '__main__':
     logging.basicConfig(level=log_level, format='%(asctime)s.%(msecs)03d [%(levelname)s]: %(name)s: %(message)s',
                         datefmt="%H:%M:%S")
 
-    label_type: Type[Dyci2Label] = ListLabel
+    label_type: Type[Dicy2Label] = ListLabel
 
-    corpus: GenericCorpus[Dyci2Label] = GenericCorpus([Dyci2CorpusEvent(content, i, label=label_type([label]))
+    corpus: GenericCorpus[Dicy2Label] = GenericCorpus([Dicy2CorpusEvent(content, i, label=label_type([label]))
                                                        for (i, (label, content)) in enumerate(data)],
                                                       label_types=[label_type])
     prospector: FactorOracleProspector = FactorOracleProspector(corpus, label_type, max_continuity=max_continuity)
-    generator: Dyci2Generator = Dyci2Generator(prospector, force_output=force_output)
+    generator: Dicy2Generator = Dicy2Generator(prospector, force_output=force_output)
 
     query: Query = InfluenceQuery([LabelInfluence(label_type([v])) for v in search_for])
 
     output: List[Optional[Candidate]] = generator.process_query(query)
 
-    print([typing.cast(Dyci2CorpusEvent, v.event).data if v is not None else None for v in output])
+    print([typing.cast(Dicy2CorpusEvent, v.event).data if v is not None else None for v in output])

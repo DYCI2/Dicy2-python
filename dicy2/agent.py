@@ -11,7 +11,7 @@
 """
 OSC AGENT
 ===================
-Class defining an OSC server embedding an instance of class :class:`~Dyci2GenerationScheduler`.
+Class defining an OSC server embedding an instance of class :class:`~Dicy2GenerationScheduler`.
 See the different tutorials accompanied with Max patches.
 
 This class can be used at the root of the code when only a single agent communicating over OSC is needed,
@@ -29,14 +29,14 @@ from maxosc.caller import Caller
 from maxosc.exceptions import MaxOscError
 from maxosc.maxformatter import MaxFormatter
 
-from dyci2.corpus_event import Dyci2CorpusEvent
-from dyci2.dyci2_time import Dyci2Timepoint, TimeMode
-from dyci2.generation_scheduler import Dyci2GenerationScheduler
-from dyci2.label import Dyci2Label, ListLabel
-from dyci2.parameter import Parameter
-from dyci2.prospector import Dyci2Prospector, FactorOracleProspector
-from dyci2.protocol import OscSendProtocol, Signal
-from dyci2.utils import FormattingUtils, GenerationTraceFormatter, MemoryFormatter
+from dicy2.corpus_event import Dicy2CorpusEvent
+from dicy2.dicy2_time import Dicy2Timepoint, TimeMode
+from dicy2.generation_scheduler import Dicy2GenerationScheduler
+from dicy2.label import Dicy2Label, ListLabel
+from dicy2.parameter import Parameter
+from dicy2.prospector import Dicy2Prospector, FactorOracleProspector
+from dicy2.protocol import OscSendProtocol, Signal
+from dicy2.utils import FormattingUtils, GenerationTraceFormatter, MemoryFormatter
 from gig.io.async_osc import AsyncOsc
 from gig.io.osc_sender import OscSender, OscLogForwarder
 from gig.main.candidate import Candidate
@@ -57,7 +57,7 @@ class Agent(Caller, multiprocessing.Process):
                  send_port: int,
                  ip: str,
                  server_control_queue: multiprocessing.Queue,
-                 label_type: Type[Dyci2Label] = ListLabel,
+                 label_type: Type[Dicy2Label] = ListLabel,
                  log_to_osc: bool = True,
                  reraise_exceptions: bool = False,
                  defer_queries: bool = True,
@@ -81,10 +81,10 @@ class Agent(Caller, multiprocessing.Process):
 
         self.server_queue: multiprocessing.Queue = server_control_queue
 
-        self._label_type: Type[Dyci2Label] = label_type
+        self._label_type: Type[Dicy2Label] = label_type
         corpus: GenericCorpus = GenericCorpus([], label_types=[label_type])
-        prospector: Dyci2Prospector = FactorOracleProspector(corpus=corpus, label_type=label_type)
-        self.generation_scheduler: Dyci2GenerationScheduler = Dyci2GenerationScheduler(prospector=prospector)
+        prospector: Dicy2Prospector = FactorOracleProspector(corpus=corpus, label_type=label_type)
+        self.generation_scheduler: Dicy2GenerationScheduler = Dicy2GenerationScheduler(prospector=prospector)
 
         self.running: bool = False
 
@@ -211,7 +211,7 @@ class Agent(Caller, multiprocessing.Process):
             self.logger.error(f"{str(e)}. Query was ignored")
             return
 
-        timepoint: Dyci2Timepoint = Dyci2Timepoint(start_date=int(start_date), time_mode=time_mode)
+        timepoint: Dicy2Timepoint = Dicy2Timepoint(start_date=int(start_date), time_mode=time_mode)
 
         # Free query
         if label_type_str is None and labels_data is None and isinstance(query_scope, int) and query_scope > 0:
@@ -220,8 +220,8 @@ class Agent(Caller, multiprocessing.Process):
         # Guided query
         elif label_type_str is not None and labels_data is not None and query_scope is None:
             try:
-                label_type: Type[Dyci2Label] = Dyci2Label.type_from_string(label_type_str)
-                labels: List[Dyci2Label] = [label_type.parse(s) for s in labels_data]
+                label_type: Type[Dicy2Label] = Dicy2Label.type_from_string(label_type_str)
+                labels: List[Dicy2Label] = [label_type.parse(s) for s in labels_data]
                 query: Query = InfluenceQuery(content=Influence.from_labels(labels), time=timepoint)
             except (ValueError, LabelError) as e:
                 self.logger.error(f"{str(e)}. Query was ignored")
@@ -266,7 +266,7 @@ class Agent(Caller, multiprocessing.Process):
 
     def set_performance_time(self, new_time: int) -> None:
         if (isinstance(new_time, int) or isinstance(new_time, float)) and new_time >= 0:
-            timepoint = Dyci2Timepoint(start_date=int(new_time))
+            timepoint = Dicy2Timepoint(start_date=int(new_time))
             self.generation_scheduler.update_performance_time(time=timepoint)
             self.send(OscSendProtocol.PERFORMANCE_TIME, self.generation_scheduler.performance_time)
         else:
@@ -290,12 +290,12 @@ class Agent(Caller, multiprocessing.Process):
 
     def clear(self,
               label_type: str = ListLabel.__name__,
-              content_type: str = Dyci2CorpusEvent.__name__) -> None:
+              content_type: str = Dicy2CorpusEvent.__name__) -> None:
         # TODO: content_type is unused and only added as a placeholder for now
         # TODO: Handle label type (should probably update Prospector + self._label_type)
 
         try:
-            label_type: Type[Dyci2Label] = Dyci2Label.type_from_string(str(label_type))
+            label_type: Type[Dicy2Label] = Dicy2Label.type_from_string(str(label_type))
         except ValueError as e:
             self.logger.error(f"{str(e)}. Could not create new memory")
             return
@@ -309,8 +309,8 @@ class Agent(Caller, multiprocessing.Process):
 
     def learn_event(self, label_type_str: str, label_value: Any, content_value: str) -> None:
         try:
-            label_type: Type[Dyci2Label] = Dyci2Label.type_from_string(str(label_type_str))
-            label: Dyci2Label = label_type.parse(label_value)
+            label_type: Type[Dicy2Label] = Dicy2Label.type_from_string(str(label_type_str))
+            label: Dicy2Label = label_type.parse(label_value)
         except (ValueError, LabelError) as e:
             self.logger.error(f"{str(e)}. Could not learn event")
             return
@@ -321,7 +321,7 @@ class Agent(Caller, multiprocessing.Process):
             return
 
         index: int = len(corpus)
-        event: Dyci2CorpusEvent = Dyci2CorpusEvent(data=content_value, label=label, index=index)
+        event: Dicy2CorpusEvent = Dicy2CorpusEvent(data=content_value, label=label, index=index)
 
         try:
             self.generation_scheduler.learn_event(event=event)

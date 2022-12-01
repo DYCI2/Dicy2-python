@@ -1,4 +1,2 @@
-numpy
-librosa==0.4.2
-maxosc
+maxosc>=0.0.6
 python-osc

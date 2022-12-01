@@ -37,6 +37,7 @@ pyinstaller:
 	$(PYINSTALLER_PATH) $(PYINSTALLER_TARGET) \
 		--clean \
 		--noconfirm \
+		--icon codesign/dicy2.icns \
 		--onedir \
 		--noconsole \
 		--name $(PYINSTALLER_TARGET_NAME) \

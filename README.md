@@ -40,7 +40,11 @@ In the root of this repository, there are two examples illustrating two differen
 * `generator_tutorial.py`: A minimal example on how to quickly generate content using the `Generator` class. Edit the file to run the different queries or to write your own queries
 * `dicy2_server.py`: The server that is used by the [Dicy2 Max Library](https://github.com/DYCI2/Dicy2/releases). This illustrates communication over OSC, see the header of the file for more information. Run with `./dicy2_server.py`
 
+------
+
 ### Going Further
+
+## Some entry points
 The examples outlined under [Running the Dicy2 Python Library](#Running-the-Dicy2-Python-Library) are excellent starting points, but there are a couple of other possible classes to start from if you want to integrate the DYCI2 Python Library in your own project:
 * The `Generator` class (`dicy2/generator.py`) is a good starting point for generating content in an offline setting without managing time
 * The `GenerationScheduler` class (`dicy2/generation_scheduler.py`) is a good starting point for generating content with time management in real-time 
@@ -48,15 +52,17 @@ The examples outlined under [Running the Dicy2 Python Library](#Running-the-Dicy
 
 For a specification on the OSC protocol used in the Dicy2 Python Library, see `docs/osc_protocol.md`. Its usage is also thoroughly documentented in the header of the `dyci2_server.py` file.
 
-------
 
 ## Building the Dicy2 Server Application
 While this use case is unlikely to be relevant for most users, it is possible to build a standalone application of the `dicy2_server.py` from the Python code using [PyInstaller](https://pyinstaller.org/en/stable/). A pre-built application is already distributed in the release of the [Dicy2 Max Library](https://github.com/DYCI2/Dicy2/releases). 
 
-See the head of the `Makefile` for information on building 
+See the head of the `Makefile` for information on building. 
 
+------
 
-## Troubleshooting
+### More
+
+## Contact us
 Please write to `jerome.nika@ircam.fr` for any question, or to share with us your projects using Dicy2!
 
 ## License

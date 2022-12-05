@@ -49,6 +49,8 @@ The examples outlined under [Running the Dicy2 Python Library](#Running-the-Dicy
 
 For a specification on the OSC protocol used in the Dicy2 Python Library, see `docs/osc_protocol.md`. Its usage is also thoroughly documentented in the header of the `dyci2_server.py` file.
 
+------
+
 ## Building the Dicy2 Server Application
 While this use case is unlikely to be relevant for most users, it is possible to build a standalone application of the `dicy2_server.py` from the Python code using [PyInstaller](https://pyinstaller.org/en/stable/). A pre-built application is already distributed in the release of the [Dicy2 Max Library](https://github.com/DYCI2/Dicy2/releases). 
 

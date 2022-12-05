@@ -1,16 +1,18 @@
 # Dicy2 Python Library
 
-Dicy2 is a collection of agents and tools for the interactive generation of structured musical sequences. It can be integrated into musical setups ranging from the production of structured material within a compositional process to the design of autonomous agents for improvised interaction. Dicy2 is available as a [library for Max](https://forum.ircam.fr/projects/detail/dicy2/) and a [plugin for Ableton Live](https://forum.ircam.fr/projects/detail/dicy2-for-live/).
+Dicy2 is a collection of agents and tools using machine-learning for the interactive generation of structured musical sequences. It can be integrated into musical setups ranging from the production of structured material within a compositional process to the design of autonomous agents for improvised interaction. 
+
+It is available as a [library for Max](https://forum.ircam.fr/projects/detail/dicy2/) and a [plugin for Ableton Live](https://forum.ircam.fr/projects/detail/dicy2-for-live/). 
+
+Dicy2 is a library of the Ircam Musical Representations team, designed and developed by [Jérôme Nika](https://jeromenika.com/) and Joakim Borg (Python generative engine / Gig RepMus API) in the framework of the ANR-DYCI2, ANR-MERCI, ERC-REACH projects directed by Gérard Assayag, and Ircam "UPI CompAI" project.
 
 ------
 
 In this repository we provide the generative core of these applications as a Python library. The Dicy2 Python library defines the core models and tools for the interactive generation of symbolic musical sequences and implements several models, generative heuristics, time management strategies, and architectures of interactive agents.
 
-Dicy2 is a library of the Ircam Musical Representations team, designed and developed by [Jérôme Nika](https://jeromenika.com/) and Joakim Borg (Python generative engine / Gig RepMus API) in the framework of the ANR-DYCI2, ANR-MERCI, ERC-REACH projects directed by Gérard Assayag, and Ircam "UPI CompAI" project. 
-
 ------
 
-## Some references
+## About Dicy2
 
 
 If using the library, please quote: __Nika, J., Déguernel, K., Chemla, A., Vincent, E., & Assayag, G. (2017, October). Dyci2 agents: merging the" free"," reactive", and" scenario-based" music generation paradigms. In International Computer Music Conference. [(Article)](https://hal.archives-ouvertes.fr/hal-01583089/document).__
@@ -39,7 +41,6 @@ If using the library, please quote: __Nika, J., Déguernel, K., Chemla, A., Vinc
 In the root of this repository, there are two examples illustrating two different usages of the Dicy2 Python Library:
 * `generator_tutorial.py`: A minimal example on how to quickly generate content using the `Generator` class. Edit the file to run the different queries or to write your own queries
 * `dicy2_server.py`: The server that is used by the [Dicy2 Max Library](https://github.com/DYCI2/Dicy2/releases). This illustrates communication over OSC, see the header of the file for more information. Run with `./dicy2_server.py`
-
 
 ### Going Further
 The examples outlined under [Running the Dicy2 Python Library](#Running-the-Dicy2-Python-Library) are excellent starting points, but there are a couple of other possible classes to start from if you want to integrate the DYCI2 Python Library in your own project:

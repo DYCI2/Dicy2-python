@@ -4,11 +4,12 @@ Dicy2 is a collection of agents and tools for the interactive generation of stru
 
 In this repository we provide the generative core of these applications as a Python library. The Dicy2 Python library defines the core models and tools for the interactive generation of symbolic musical sequences and implements several models, generative heuristics, time management strategies, and architectures of interactive agents.
 
+Dicy2 is a library of the Ircam Musical Representations team, designed and developed by [Jérôme Nika](https://jeromenika.com/) and Joakim Borg (Python generative engine / Gig RepMus API) in the framework of the ANR-DYCI2, ANR-MERCI, ERC-REACH projects directed by Gérard Assayag, and the Ircam "UPI CompAI" project. 
+
 ------
 
-## References
+## Some references
 
-Dicy2 is a library of the Ircam Musical Representations team, designed and developed by [Jérôme Nika](https://jeromenika.com/) and Joakim Borg (Python generative engine / Gig RepMus API) in the framework of the ANR-DYCI2, ANR-MERCI, ERC-REACH projects directed by Gérard Assayag, and the Ircam "UPI CompAI" project. 
 
 If using the library, please quote: __Nika, J., Déguernel, K., Chemla, A., Vincent, E., & Assayag, G. (2017, October). Dyci2 agents: merging the" free"," reactive", and" scenario-based" music generation paradigms. In International Computer Music Conference. [(Article)](https://hal.archives-ouvertes.fr/hal-01583089/document).__
 

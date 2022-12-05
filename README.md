@@ -1,6 +1,8 @@
 # Dicy2 Python Library
 
-Dicy2 is a collection of agents and tools for the interactive generation of structured musical sequences. It can be integrated into musical setups ranging from the production of structured material within a compositional process to the design of autonomous agents for improvised interaction. Dicy2 is available as a [library for Max](https://forum.ircam.fr/projects/detail/dicy2/) and a [plugin for Ableton Live](https://forum.ircam.fr/projects/detail/dicy2-for-live/). 
+Dicy2 is a collection of agents and tools for the interactive generation of structured musical sequences. It can be integrated into musical setups ranging from the production of structured material within a compositional process to the design of autonomous agents for improvised interaction. Dicy2 is available as a [library for Max](https://forum.ircam.fr/projects/detail/dicy2/) and a [plugin for Ableton Live](https://forum.ircam.fr/projects/detail/dicy2-for-live/).
+
+------
 
 In this repository we provide the generative core of these applications as a Python library. The Dicy2 Python library defines the core models and tools for the interactive generation of symbolic musical sequences and implements several models, generative heuristics, time management strategies, and architectures of interactive agents.
 

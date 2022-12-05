@@ -4,7 +4,7 @@ Dicy2 is a collection of agents and tools using machine-learning for the interac
 
 It is available as a [library for Max](https://forum.ircam.fr/projects/detail/dicy2/) and a [plugin for Ableton Live](https://forum.ircam.fr/projects/detail/dicy2-for-live/). 
 
-Dicy2 is a library of the Ircam Musical Representations team, designed and developed by [Jérôme Nika](https://jeromenika.com/) and Joakim Borg (Python generative engine / Gig RepMus API) in the framework of the [ANR-DYCI2](http://repmus.ircam.fr/dyci2), [ANR-MERCI](http://repmus.ircam.fr/merci), [ERC-REACH](http://repmus.ircam.fr/reach) projects directed by Gérard Assayag, and Ircam "UPI CompAI" project.
+Dicy2 is a library of the Ircam Musical Representations team, designed and developed by [Jérôme Nika](https://jeromenika.com/) and Joakim Borg (Python generative engine / [Gig RepMus API](https://github.com/DYCI2/gig)) in the framework of the [ANR-DYCI2](http://repmus.ircam.fr/dyci2), [ANR-MERCI](http://repmus.ircam.fr/merci), [ERC-REACH](http://repmus.ircam.fr/reach) projects directed by Gérard Assayag, and Ircam "UPI CompAI" project.
 
 ------
 

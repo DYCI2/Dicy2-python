@@ -18,7 +18,7 @@ If using the library, please quote: __Nika, J., Déguernel, K., Chemla, A., Vinc
 
 * __[Video presentation about Dicy2 in English](https://youtu.be/RXKJbpJb8w4?t=1530)__
 
-* __Some videos of collaborations with musicians using Dicy2 or its previous versions: https://www.youtube.com/channel/UCAKZIW0mMWCrX80yS96ZxAw__.
+* __[Some videos of collaborations with musicians using Dicy2 or its previous versions]https://youtube.com/playlist?list=PL-(C_JLZNFAGfGwtMPrRz9gOD3LnAMnHkO)__.
 
 
 ------

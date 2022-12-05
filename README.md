@@ -54,7 +54,7 @@ For a specification on the OSC protocol used in the Dicy2 Python Library, see `d
 
 
 ### Building the Dicy2 Server Application
-While this use case is unlikely to be relevant for most users, it is possible to build a standalone application of the `dicy2_server.py` from the Python code using [PyInstaller](https://pyinstaller.org/en/stable/). A pre-built application is already distributed in the release of the [Dicy2 Max Library](https://github.com/DYCI2/Dicy2/releases). 
+While this use case is unlikely to be relevant for most users, it is possible to build a standalone application of the `dicy2_server.py` from the Python code using [PyInstaller](https://pyinstaller.org/en/stable/). A pre-built application is already distributed in the release of the [Dicy2 Max Library](https://forum.ircam.fr/projects/detail/dicy2/). 
 
 See the head of the `Makefile` for information on building. 
 

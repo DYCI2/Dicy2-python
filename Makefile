@@ -1,3 +1,4 @@
+#
 # To build a distributable version of the dicy2_server.py , the full procedure is the following:
 #
 # ```shell
@@ -6,10 +7,14 @@
 # make dmg
 # ```
 #
+# Our normal procedure has been to:
+# * run `make pyinstaller` on High Sierra (MacOS 10.13) to support every OS from High Sierra to Monterey
+# * run `make notarize` on Big Sur (MacOS 11.0) or later (since `notarytool` was introduced with MacOS 11)
+#
 # Again, you will need to adapt the `pyinstaller` command to correspond to your own codesigning identity.
 #
 # You will also need to adapt the `xcrun notarytool` line of the `make notarize` command to correspond to your
-#   own app-specific password generated from your [Apple Developer Account](https://appleid.apple.com/account/).
+#   own app-specific password generated from your [Apple Developer Account](https://appleid.apple.com/account/). Go to "App specific password".
 #   To store the password to make it available by script, you can run `xcrun notarytool store-credentials`. The values in each should be:
 #   * Profile name: repmus (for compatibility below, you can change it to whatever if you update the notarize command further down in the Makefile)
 #   * App Store Connect API: (leave it empty)
@@ -22,10 +27,6 @@
 #   PyInstaller are generally forward-compatible but not backward-compatible with earlier MacOS versions
 #   than the system it was built on. An application built on an Intel Mac is also generally compatible with M1 (or M2)
 #   macs but not vice versa. It is therefore recommended to build the app on the oldest OS that should be supported.
-#
-# Our normal procedure has been to:
-# * run `make pyinstaller` on High Sierra (MacOS 10.13) to support every OS from High Sierra to Monterey
-# * run `make notarize` on Big Sur (MacOS 11.0) or later (since `notarytool` was introduced with MacOS 11)
 #
 
 

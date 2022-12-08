@@ -10,6 +10,12 @@
 #
 # You will also need to adapt the `xcrun notarytool` line of the `make notarize` command to correspond to your
 #   own app-specific password generated from your [Apple Developer Account](https://appleid.apple.com/account/).
+#   To store the password to make it available by script, you can run `xcrun notarytool store-credentials`. The values in each should be:
+#   * Profile name: repmus (for compatibility below, you can change it to whatever if you update the notarize command further down in the Makefile)
+#   * App Store Connect API: (leave it empty)
+#   * Developer Apple ID: your email
+#   * App-specific password: the password that you generated
+#   * Developer team ID: You can find it [here](https://developer.apple.com/account/) under "Membership Details"
 #   For more info on this step, see `xcrun notarytool --help`
 #
 # Note that PyInstaller does not support cross-compilation and that applications built with
